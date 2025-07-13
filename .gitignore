@@ -1,0 +1,14 @@
+/target
+**/*.rs.bk
+*.pdb
+Cargo.lock.bak
+
+# editores
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# salidas de ejecucion
+/out
+*.bin.tmp
