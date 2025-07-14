@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/lorenz-arch"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "UNLICENSED"
+repository = "https://github.com/juanjcbreton/lorenz"
+
+[workspace.dependencies]
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
