@@ -5,9 +5,14 @@
 
 pub mod bits;
 pub mod error;
+pub mod modelo;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
 pub use error::{ErrorArquitectura, FalloValidacion, Posicion, Regla};
+pub use modelo::{
+    Acceso, Bandera, Ciclos, Dispositivo, Endianness, Instruccion, Interrupciones, Maquina,
+    Operando, Region, Registro, RolRegistro, SentidoPila, TipoDispositivo, TipoOperando,
+};
 
 /// Version del formato de descripcion que esta biblioteca entiende.
 pub const VERSION_FORMATO: &str = "0.1";
