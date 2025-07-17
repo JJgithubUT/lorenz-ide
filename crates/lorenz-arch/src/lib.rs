@@ -4,10 +4,13 @@
 //! su cuenta, todas la consultan aqui (RNF-MAN-002).
 
 pub mod bits;
+pub mod carga;
 pub mod error;
 pub mod modelo;
+pub mod validacion;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
+pub use carga::{cargar, cargar_archivo};
 pub use error::{ErrorArquitectura, FalloValidacion, Posicion, Regla};
 pub use modelo::{
     Acceso, Bandera, Ciclos, Dispositivo, Endianness, Instruccion, Interrupciones, Maquina,
