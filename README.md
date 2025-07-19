@@ -12,7 +12,7 @@ Fase 1 en curso: nucleo y formato de descripcion de arquitectura.
 
 | Componente | Estado |
 | --- | --- |
-| `lorenz-arch` — formato y validacion | en desarrollo |
+| `lorenz-arch` — formato y validacion | carga y validacion funcionando |
 | `lorenz-emu` — emulador funcional | pendiente |
 | `lorenz-asm` — ensamblador y desensamblador | pendiente |
 | `lorenz-cli` — linea de comandos | pendiente |

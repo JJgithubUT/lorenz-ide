@@ -17,6 +17,44 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-15 — Nucleo de carga y validacion de arquitectura
+
+**Hecho:**
+
+- Workspace de cargo con el crate `lorenz-arch`, raiz del grafo de dependencias.
+- Analizador del lenguaje de campos de bits: bits fijos, campos con nombre, relleno y separador de
+  palabra, con mascara y valor fijo para comparar codificaciones entre si.
+- Modelo en memoria de una maquina: registros con rol, banderas, instrucciones, operandos, costes
+  en ciclos, regiones y dispositivos.
+- Cargador de TOML en dos capas: estructuras crudas que reflejan el archivo y conversion al modelo
+  validado.
+- Validador con las diez reglas del formato. Acumula todos los fallos antes de rechazar.
+- Maquina de ejemplo de 8 bits en `ejemplos/ejemplo-8/maquina.toml`, que carga y valida limpia.
+- 74 pruebas en verde: 26 del analizador de bits, 21 de carga, 26 de validacion y 1 de documentacion.
+
+**Decidido:**
+
+- **D-005** — Los errores de validacion se acumulan y se devuelven juntos. Ver diez problemas de una
+  vez ahorra diez ciclos de prueba y error.
+- **D-006** — Cada regla de validacion lleva un codigo corto (`E-BITS`, `E-AMBIG`) y el requisito de
+  la ERS que la exige, para que la salida sea rastreable al documento.
+- **D-007** — Una codificacion invalida detiene la carga de inmediato, a diferencia de los fallos de
+  validacion: sin codificacion no hay nada que validar.
+- **D-008** — Una version mayor distinta del formato se rechaza; una menor distinta se acepta.
+
+**Pendiente:**
+
+- El analizador de la expresion de semantica: hoy se guarda como texto sin interpretar.
+- Posiciones de linea en los fallos de validacion; el tipo `Posicion` ya existe pero el cargador
+  todavia no la rellena.
+- Herencia entre descripciones (RF-ARQ-035).
+
+**Requisitos:** RF-ARQ-001 a 009, 011, 013 a 019, 024 a 032, 034, 037, 042.
+
+**Commits:** rama `feat/workspace-skeleton`, 11 commits, fusionada a `develop`.
+
+**Estado del contador:** 16 de 1000 commits.
+
 ## 2026-10-15 — Arranque del repositorio
 
 **Hecho:**
