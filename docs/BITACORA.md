@@ -17,6 +17,39 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-15 — Cadencia de 1000 commits en una semana
+
+**Hecho:**
+
+- `docs/GIT-WORKFLOW.md` gana la seccion 1.1: metas diarias y por hora, calendario de siete dias
+  con acumulado al cierre de cada uno, las unidades que justifican un commit propio y lo que no se
+  hace para subir el contador.
+- `scripts/contador.sh` compara los commits de una rama contra el calendario.
+- Programado el arranque del desarrollo para las 1:30 del 2026-10-16, hora de Ciudad de Mexico.
+
+**Decidido:**
+
+- **D-010** — La meta de 1000 commits se cumple en una semana de desarrollo, del 2026-10-16 al
+  2026-10-22: 140 commits por dia como minimo, uno cada diez minutos de trabajo. (D-009 queda
+  reservado para la decision sobre como se interpreta el campo `semantica`.)
+- **D-011** — El calendario fija el ritmo, no el alcance. Si el trabajo de un dia queda corto, el
+  alcance pasa al dia siguiente; el contador no se recupera inflandolo.
+- **D-012** — Quedan prohibidos los commits vacios, los cambios de formato sin motivo y reescribir
+  historial publicado para modificar el contador.
+
+**Pendiente:**
+
+- Revisar el reparto por fase de la seccion 1: sumaba 1050 pensando en un ritmo mas lento y no
+  coincide con el calendario de la semana.
+
+**Requisitos:** ninguno; proceso.
+
+**Commits:** rama `docs/cadencia-mil-commits`.
+
+**Estado del contador:** 20 de 1000 commits.
+
+---
+
 ## 2026-10-15 — Nucleo de carga y validacion de arquitectura
 
 **Hecho:**
