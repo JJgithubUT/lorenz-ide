@@ -7,6 +7,7 @@ pub mod bits;
 pub mod carga;
 pub mod error;
 pub mod modelo;
+pub mod semantica;
 pub mod validacion;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
