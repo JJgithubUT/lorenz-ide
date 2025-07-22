@@ -4,5 +4,7 @@
 //! pequeno: asignaciones, aritmetica, acceso a memoria, condicionales y entrada/salida.
 
 pub mod ast;
+pub mod error;
 
 pub use ast::{Destino, Expr, OpBinario, OpUnario, Programa, Sentencia};
+pub use error::ErrorSemantica;
