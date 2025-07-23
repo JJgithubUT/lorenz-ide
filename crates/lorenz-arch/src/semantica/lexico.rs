@@ -90,7 +90,42 @@ pub fn tokenizar(texto: &str) -> Result<Vec<Lexema>, ErrorSemantica> {
             continue;
         }
 
-        return Err(ErrorSemantica::nuevo(i, format!("caracter '{ch}' inesperado")));
+        // operadores: primero los de dos caracteres
+        let siguiente = c.get(i + 1).copied();
+        let (token, largo) = match (ch, siguiente) {
+            ('<', Some('<')) => (Token::DesplazaIzq, 2),
+            ('>', Some('>')) => (Token::DesplazaDer, 2),
+            ('<', Some('=')) => (Token::MenorIgual, 2),
+            ('>', Some('=')) => (Token::MayorIgual, 2),
+            ('=', Some('=')) => (Token::IgualIgual, 2),
+            ('!', Some('=')) => (Token::Distinto, 2),
+            ('&', Some('&')) => (Token::AmpAmp, 2),
+            ('|', Some('|')) => (Token::TuberiaTuberia, 2),
+            ('+', _) => (Token::Mas, 1),
+            ('-', _) => (Token::Menos, 1),
+            ('*', _) => (Token::Estrella, 1),
+            ('/', _) => (Token::Barra, 1),
+            ('%', _) => (Token::Porcentaje, 1),
+            ('&', _) => (Token::Ampersand, 1),
+            ('|', _) => (Token::Tuberia, 1),
+            ('^', _) => (Token::Circunflejo, 1),
+            ('~', _) => (Token::Tilde, 1),
+            ('!', _) => (Token::Admiracion, 1),
+            ('<', _) => (Token::Menor, 1),
+            ('>', _) => (Token::Mayor, 1),
+            ('=', _) => (Token::Igual, 1),
+            (';', _) => (Token::PuntoYComa, 1),
+            (':', _) => (Token::DosPuntos, 1),
+            ('(', _) => (Token::ParenAbre, 1),
+            (')', _) => (Token::ParenCierra, 1),
+            ('[', _) => (Token::CorcheteAbre, 1),
+            (']', _) => (Token::CorcheteCierra, 1),
+            ('{', _) => (Token::LlaveAbre, 1),
+            ('}', _) => (Token::LlaveCierra, 1),
+            _ => return Err(ErrorSemantica::nuevo(i, format!("caracter '{ch}' inesperado"))),
+        };
+        salida.push(Lexema { token, posicion: i });
+        i += largo;
     }
 
     salida.push(Lexema { token: Token::Fin, posicion: c.len() });
