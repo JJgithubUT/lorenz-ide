@@ -62,3 +62,47 @@ fn rechaza_un_numero_que_no_cabe_en_64_bits() {
 fn rechaza_letras_pegadas_a_un_numero() {
     assert!(tokenizar("12ab").is_err());
 }
+
+#[test]
+fn lee_identificadores() {
+    assert_eq!(
+        tokens("rd rs_2 _x PC"),
+        vec![
+            Token::Ident("rd".into()),
+            Token::Ident("rs_2".into()),
+            Token::Ident("_x".into()),
+            Token::Ident("PC".into()),
+            Token::Fin
+        ]
+    );
+}
+
+#[test]
+fn reconoce_las_palabras_reservadas() {
+    assert_eq!(tokens("si"), vec![Token::Si, Token::Fin]);
+    assert_eq!(tokens("detener"), vec![Token::Detener, Token::Fin]);
+}
+
+#[test]
+fn una_palabra_reservada_dentro_de_un_identificador_no_lo_es() {
+    assert_eq!(tokens("silla"), vec![Token::Ident("silla".into()), Token::Fin]);
+    assert_eq!(tokens("detenerse"), vec![Token::Ident("detenerse".into()), Token::Fin]);
+}
+
+#[test]
+fn las_palabras_reservadas_distinguen_mayusculas() {
+    assert_eq!(tokens("Si"), vec![Token::Ident("Si".into()), Token::Fin]);
+}
+
+#[test]
+fn mem_in_y_out_son_identificadores() {
+    assert_eq!(
+        tokens("mem in out"),
+        vec![
+            Token::Ident("mem".into()),
+            Token::Ident("in".into()),
+            Token::Ident("out".into()),
+            Token::Fin
+        ]
+    );
+}
