@@ -6,6 +6,7 @@
 pub mod ast;
 pub mod error;
 pub mod lexico;
+pub mod sintaxis;
 
 pub use ast::{Destino, Expr, OpBinario, OpUnario, Programa, Sentencia};
 pub use error::ErrorSemantica;
