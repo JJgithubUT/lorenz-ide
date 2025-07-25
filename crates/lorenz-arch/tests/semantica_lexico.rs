@@ -106,3 +106,104 @@ fn mem_in_y_out_son_identificadores() {
         ]
     );
 }
+
+#[test]
+fn lee_los_operadores_aritmeticos() {
+    assert_eq!(
+        tokens("+ - * / %"),
+        vec![Token::Mas, Token::Menos, Token::Estrella, Token::Barra, Token::Porcentaje, Token::Fin]
+    );
+}
+
+#[test]
+fn lee_los_operadores_de_bits() {
+    assert_eq!(
+        tokens("& | ^ ~ << >>"),
+        vec![
+            Token::Ampersand,
+            Token::Tuberia,
+            Token::Circunflejo,
+            Token::Tilde,
+            Token::DesplazaIzq,
+            Token::DesplazaDer,
+            Token::Fin
+        ]
+    );
+}
+
+#[test]
+fn lee_los_operadores_de_comparacion() {
+    assert_eq!(
+        tokens("== != < <= > >="),
+        vec![
+            Token::IgualIgual,
+            Token::Distinto,
+            Token::Menor,
+            Token::MenorIgual,
+            Token::Mayor,
+            Token::MayorIgual,
+            Token::Fin
+        ]
+    );
+}
+
+#[test]
+fn distingue_la_asignacion_de_la_igualdad() {
+    assert_eq!(tokens("= =="), vec![Token::Igual, Token::IgualIgual, Token::Fin]);
+}
+
+#[test]
+fn distingue_el_operador_logico_del_de_bits() {
+    assert_eq!(
+        tokens("& && | ||"),
+        vec![Token::Ampersand, Token::AmpAmp, Token::Tuberia, Token::TuberiaTuberia, Token::Fin]
+    );
+}
+
+#[test]
+fn distingue_la_negacion_de_la_desigualdad() {
+    assert_eq!(tokens("! !="), vec![Token::Admiracion, Token::Distinto, Token::Fin]);
+}
+
+#[test]
+fn lee_la_puntuacion() {
+    assert_eq!(
+        tokens("; : ( ) [ ] { }"),
+        vec![
+            Token::PuntoYComa,
+            Token::DosPuntos,
+            Token::ParenAbre,
+            Token::ParenCierra,
+            Token::CorcheteAbre,
+            Token::CorcheteCierra,
+            Token::LlaveAbre,
+            Token::LlaveCierra,
+            Token::Fin
+        ]
+    );
+}
+
+#[test]
+fn los_operadores_no_necesitan_espacios() {
+    assert_eq!(
+        tokens("a+b"),
+        vec![Token::Ident("a".into()), Token::Mas, Token::Ident("b".into()), Token::Fin]
+    );
+    assert_eq!(
+        tokens("a<<2"),
+        vec![Token::Ident("a".into()), Token::DesplazaIzq, Token::Numero(2), Token::Fin]
+    );
+}
+
+#[test]
+fn rechaza_un_caracter_desconocido() {
+    let e = tokenizar("a @ b").unwrap_err();
+    assert_eq!(e.posicion, 2);
+}
+
+#[test]
+fn las_posiciones_apuntan_al_inicio_de_cada_lexema() {
+    let l = tokenizar("ab = 12").unwrap();
+    let pos: Vec<usize> = l.iter().map(|x| x.posicion).collect();
+    assert_eq!(pos, vec![0, 3, 5, 7]);
+}
