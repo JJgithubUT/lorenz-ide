@@ -63,8 +63,35 @@ impl Analizador {
 
     // ---- expresiones ----
 
+    /// Punto de entrada de las expresiones: empieza por el nivel de menor precedencia.
     fn expresion(&mut self) -> Resultado<Expr> {
-        self.unario()
+        self.nivel(NIVEL_MENOR)
+    }
+
+    /// Precedencia por niveles, de menor (1) a mayor (9), con asociatividad a la izquierda:
+    ///
+    /// | Nivel | Operadores |
+    /// | --- | --- |
+    /// | 1 | `\|\|` |
+    /// | 2 | `&&` |
+    /// | 3 | `==` `!=` `<` `<=` `>` `>=` |
+    /// | 4 | `\|` |
+    /// | 5 | `^` |
+    /// | 6 | `&` |
+    /// | 7 | `<<` `>>` |
+    /// | 8 | `+` `-` |
+    /// | 9 | `*` `/` `%` |
+    fn nivel(&mut self, nivel: u8) -> Resultado<Expr> {
+        if nivel > NIVEL_MAYOR {
+            return self.unario();
+        }
+        let mut izquierda = self.nivel(nivel + 1)?;
+        while let Some(op) = operador_del_nivel(self.actual(), nivel) {
+            self.avanzar();
+            let derecha = self.nivel(nivel + 1)?;
+            izquierda = Expr::Binario(op, Box::new(izquierda), Box::new(derecha));
+        }
+        Ok(izquierda)
     }
 
     fn unario(&mut self) -> Resultado<Expr> {
@@ -117,6 +144,35 @@ impl Analizador {
             )),
         }
     }
+}
+
+const NIVEL_MENOR: u8 = 1;
+const NIVEL_MAYOR: u8 = 9;
+
+/// Operador binario que corresponde a un token en un nivel de precedencia dado.
+fn operador_del_nivel(t: &Token, nivel: u8) -> Option<OpBinario> {
+    let op = match (nivel, t) {
+        (1, Token::TuberiaTuberia) => OpBinario::OLogico,
+        (2, Token::AmpAmp) => OpBinario::YLogico,
+        (3, Token::IgualIgual) => OpBinario::Igual,
+        (3, Token::Distinto) => OpBinario::Distinto,
+        (3, Token::Menor) => OpBinario::Menor,
+        (3, Token::MenorIgual) => OpBinario::MenorIgual,
+        (3, Token::Mayor) => OpBinario::Mayor,
+        (3, Token::MayorIgual) => OpBinario::MayorIgual,
+        (4, Token::Tuberia) => OpBinario::O,
+        (5, Token::Circunflejo) => OpBinario::Xor,
+        (6, Token::Ampersand) => OpBinario::Y,
+        (7, Token::DesplazaIzq) => OpBinario::DesplazaIzq,
+        (7, Token::DesplazaDer) => OpBinario::DesplazaDer,
+        (8, Token::Mas) => OpBinario::Suma,
+        (8, Token::Menos) => OpBinario::Resta,
+        (9, Token::Estrella) => OpBinario::Producto,
+        (9, Token::Barra) => OpBinario::Division,
+        (9, Token::Porcentaje) => OpBinario::Modulo,
+        _ => return None,
+    };
+    Some(op)
 }
 
 /// Descripcion de un token para los mensajes de error.
