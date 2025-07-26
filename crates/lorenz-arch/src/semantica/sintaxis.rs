@@ -61,6 +61,86 @@ impl Analizador {
         }
     }
 
+    // ---- sentencias ----
+
+    /// Lee sentencias separadas por `;` hasta encontrar `cierre` (que no consume).
+    fn lista(&mut self, cierre: &Token) -> Resultado<Vec<Sentencia>> {
+        let mut sentencias = Vec::new();
+        loop {
+            while *self.actual() == Token::PuntoYComa {
+                self.avanzar();
+            }
+            if self.actual() == cierre {
+                break;
+            }
+            sentencias.push(self.sentencia()?);
+            if *self.actual() == Token::PuntoYComa {
+                continue;
+            }
+            if self.actual() == cierre {
+                break;
+            }
+            return Err(ErrorSemantica::nuevo(
+                self.posicion(),
+                format!("se esperaba ';' o el final y se encontro {}", describir(self.actual())),
+            ));
+        }
+        Ok(sentencias)
+    }
+
+    fn sentencia(&mut self) -> Resultado<Sentencia> {
+        match self.actual().clone() {
+            Token::Detener => {
+                self.avanzar();
+                Ok(Sentencia::Detener)
+            }
+            Token::Si => {
+                self.avanzar();
+                let condicion = self.expresion()?;
+                self.esperar(Token::DosPuntos, "':' despues de la condicion")?;
+                let cuerpo = if *self.actual() == Token::LlaveAbre {
+                    self.avanzar();
+                    let interior = self.lista(&Token::LlaveCierra)?;
+                    self.esperar(Token::LlaveCierra, "'}'")?;
+                    interior
+                } else {
+                    vec![self.sentencia()?]
+                };
+                Ok(Sentencia::Si(condicion, cuerpo))
+            }
+            Token::Ident(_) => self.asignacion(),
+            otro => Err(ErrorSemantica::nuevo(
+                self.posicion(),
+                format!("se esperaba una sentencia y se encontro {}", describir(&otro)),
+            )),
+        }
+    }
+
+    fn asignacion(&mut self) -> Resultado<Sentencia> {
+        let nombre = match self.actual().clone() {
+            Token::Ident(n) => n,
+            _ => unreachable!("asignacion solo se llama sobre un identificador"),
+        };
+        self.avanzar();
+
+        let destino = if (nombre == "mem" || nombre == "out") && *self.actual() == Token::CorcheteAbre {
+            self.avanzar();
+            let interior = self.expresion()?;
+            self.esperar(Token::CorcheteCierra, "']'")?;
+            if nombre == "mem" {
+                Destino::Mem(interior)
+            } else {
+                Destino::Salida(interior)
+            }
+        } else {
+            Destino::Nombre(nombre)
+        };
+
+        self.esperar(Token::Igual, "'=' en la asignacion")?;
+        let valor = self.expresion()?;
+        Ok(Sentencia::Asignar(destino, valor))
+    }
+
     // ---- expresiones ----
 
     /// Punto de entrada de las expresiones: empieza por el nivel de menor precedencia.
@@ -221,4 +301,14 @@ pub fn analizar_expresion(texto: &str) -> Resultado<Expr> {
     let e = a.expresion()?;
     a.esperar(Token::Fin, "el final de la expresion")?;
     Ok(e)
+}
+
+/// Analiza la semantica completa de una instruccion.
+///
+/// Un texto vacio es valido y produce un programa sin sentencias.
+pub fn analizar(texto: &str) -> Resultado<Programa> {
+    let mut a = Analizador::nuevo(texto)?;
+    let sentencias = a.lista(&Token::Fin)?;
+    a.esperar(Token::Fin, "el final del texto")?;
+    Ok(Programa { sentencias })
 }

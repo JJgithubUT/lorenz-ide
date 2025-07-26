@@ -10,3 +10,4 @@ pub mod sintaxis;
 
 pub use ast::{Destino, Expr, OpBinario, OpUnario, Programa, Sentencia};
 pub use error::ErrorSemantica;
+pub use sintaxis::{analizar, analizar_expresion};
