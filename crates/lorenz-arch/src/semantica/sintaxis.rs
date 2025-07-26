@@ -64,7 +64,24 @@ impl Analizador {
     // ---- expresiones ----
 
     fn expresion(&mut self) -> Resultado<Expr> {
-        self.primario()
+        self.unario()
+    }
+
+    fn unario(&mut self) -> Resultado<Expr> {
+        let op = match self.actual() {
+            Token::Admiracion => Some(OpUnario::NegacionLogica),
+            Token::Tilde => Some(OpUnario::NegacionBits),
+            Token::Menos => Some(OpUnario::Menos),
+            _ => None,
+        };
+        match op {
+            Some(op) => {
+                self.avanzar();
+                let operando = self.unario()?;
+                Ok(Expr::Unario(op, Box::new(operando)))
+            }
+            None => self.primario(),
+        }
     }
 
     fn primario(&mut self) -> Resultado<Expr> {
