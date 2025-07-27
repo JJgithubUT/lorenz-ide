@@ -38,11 +38,6 @@ impl Analizador {
         self.lexemas[self.indice].posicion
     }
 
-    fn siguiente(&self) -> &Token {
-        let i = (self.indice + 1).min(self.lexemas.len() - 1);
-        &self.lexemas[i].token
-    }
-
     fn avanzar(&mut self) {
         if self.indice < self.lexemas.len() - 1 {
             self.indice += 1;
