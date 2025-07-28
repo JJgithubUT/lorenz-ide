@@ -226,3 +226,146 @@ fn reconoce_division_y_modulo() {
 fn reconoce_el_desplazamiento_a_la_derecha() {
     assert_eq!(analizar_expresion("a >> 2").unwrap(), bin(OpBinario::DesplazaDer, n("a"), lit(2)));
 }
+
+// ---------------------------------------------------------------------------
+// sentencias
+// ---------------------------------------------------------------------------
+
+#[test]
+fn un_texto_vacio_es_un_programa_vacio() {
+    assert!(analizar("").unwrap().sentencias.is_empty());
+    assert!(analizar("   ").unwrap().sentencias.is_empty());
+}
+
+#[test]
+fn analiza_una_asignacion_a_registro() {
+    let p = analizar("rd = rs").unwrap();
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(Destino::Nombre("rd".into()), n("rs"))]
+    );
+}
+
+#[test]
+fn analiza_una_asignacion_con_aritmetica() {
+    let p = analizar("rd = rd + rs").unwrap();
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(
+            Destino::Nombre("rd".into()),
+            bin(OpBinario::Suma, n("rd"), n("rs"))
+        )]
+    );
+}
+
+#[test]
+fn analiza_una_escritura_en_memoria() {
+    let p = analizar("mem[dir] = rs").unwrap();
+    assert_eq!(p.sentencias, vec![Sentencia::Asignar(Destino::Mem(n("dir")), n("rs"))]);
+}
+
+#[test]
+fn analiza_una_lectura_de_memoria() {
+    let p = analizar("rd = mem[dir]").unwrap();
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(Destino::Nombre("rd".into()), Expr::Mem(Box::new(n("dir"))))]
+    );
+}
+
+#[test]
+fn analiza_una_salida_a_puerto() {
+    let p = analizar("out[puerto] = rs").unwrap();
+    assert_eq!(p.sentencias, vec![Sentencia::Asignar(Destino::Salida(n("puerto")), n("rs"))]);
+}
+
+#[test]
+fn analiza_una_entrada_desde_puerto() {
+    let p = analizar("rd = in[puerto]").unwrap();
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(
+            Destino::Nombre("rd".into()),
+            Expr::Entrada(Box::new(n("puerto")))
+        )]
+    );
+}
+
+#[test]
+fn analiza_detener() {
+    assert_eq!(analizar("detener").unwrap().sentencias, vec![Sentencia::Detener]);
+}
+
+#[test]
+fn analiza_un_condicional_simple() {
+    let p = analizar("si Z: pc = dir").unwrap();
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Si(
+            n("Z"),
+            vec![Sentencia::Asignar(Destino::Nombre("pc".into()), n("dir"))]
+        )]
+    );
+}
+
+#[test]
+fn analiza_un_condicional_con_condicion_compuesta() {
+    let p = analizar("si Z && !C: pc = dir").unwrap();
+    match &p.sentencias[0] {
+        Sentencia::Si(cond, _) => assert_eq!(
+            *cond,
+            bin(OpBinario::YLogico, n("Z"), Expr::Unario(OpUnario::NegacionLogica, Box::new(n("C"))))
+        ),
+        otro => panic!("se esperaba un condicional, hay {otro:?}"),
+    }
+}
+
+#[test]
+fn analiza_un_condicional_con_llaves() {
+    let p = analizar("si Z: { a = 1; b = 2 }").unwrap();
+    match &p.sentencias[0] {
+        Sentencia::Si(_, cuerpo) => assert_eq!(cuerpo.len(), 2),
+        otro => panic!("se esperaba un condicional, hay {otro:?}"),
+    }
+}
+
+#[test]
+fn analiza_condicionales_anidados() {
+    let p = analizar("si a: si b: c = 1").unwrap();
+    match &p.sentencias[0] {
+        Sentencia::Si(_, cuerpo) => assert!(matches!(cuerpo[0], Sentencia::Si(_, _))),
+        otro => panic!("{otro:?}"),
+    }
+}
+
+#[test]
+fn analiza_una_secuencia_con_punto_y_coma() {
+    let p = analizar("sp = sp - 1; mem[sp] = rs").unwrap();
+    assert_eq!(p.sentencias.len(), 2);
+}
+
+#[test]
+fn admite_un_punto_y_coma_final() {
+    assert_eq!(analizar("a = 1;").unwrap().sentencias.len(), 1);
+}
+
+#[test]
+fn admite_puntos_y_comas_repetidos() {
+    assert_eq!(analizar("a = 1;; b = 2").unwrap().sentencias.len(), 2);
+}
+
+#[test]
+fn el_condicional_sin_llaves_solo_abarca_una_sentencia() {
+    let p = analizar("si Z: a = 1; b = 2").unwrap();
+    assert_eq!(p.sentencias.len(), 2);
+    assert!(matches!(p.sentencias[1], Sentencia::Asignar(_, _)));
+}
+
+#[test]
+fn un_condicional_con_llaves_vacias_es_valido() {
+    let p = analizar("si Z: { }").unwrap();
+    match &p.sentencias[0] {
+        Sentencia::Si(_, cuerpo) => assert!(cuerpo.is_empty()),
+        otro => panic!("{otro:?}"),
+    }
+}
