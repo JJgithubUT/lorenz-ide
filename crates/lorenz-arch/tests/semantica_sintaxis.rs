@@ -115,3 +115,114 @@ fn el_unario_liga_mas_fuerte_que_el_binario() {
         )
     );
 }
+
+// ---------------------------------------------------------------------------
+// precedencia y asociatividad
+// ---------------------------------------------------------------------------
+
+#[test]
+fn el_producto_liga_mas_que_la_suma() {
+    assert_eq!(
+        analizar_expresion("a + b * c").unwrap(),
+        bin(OpBinario::Suma, n("a"), bin(OpBinario::Producto, n("b"), n("c")))
+    );
+}
+
+#[test]
+fn la_suma_es_asociativa_a_la_izquierda() {
+    assert_eq!(
+        analizar_expresion("a - b - c").unwrap(),
+        bin(OpBinario::Resta, bin(OpBinario::Resta, n("a"), n("b")), n("c"))
+    );
+}
+
+#[test]
+fn los_parentesis_cambian_la_agrupacion() {
+    assert_eq!(
+        analizar_expresion("(a + b) * c").unwrap(),
+        bin(OpBinario::Producto, bin(OpBinario::Suma, n("a"), n("b")), n("c"))
+    );
+}
+
+#[test]
+fn el_desplazamiento_liga_menos_que_la_suma() {
+    assert_eq!(
+        analizar_expresion("a << b + 1").unwrap(),
+        bin(OpBinario::DesplazaIzq, n("a"), bin(OpBinario::Suma, n("b"), lit(1)))
+    );
+}
+
+#[test]
+fn el_and_de_bits_liga_menos_que_el_desplazamiento() {
+    assert_eq!(
+        analizar_expresion("a & b << 1").unwrap(),
+        bin(OpBinario::Y, n("a"), bin(OpBinario::DesplazaIzq, n("b"), lit(1)))
+    );
+}
+
+#[test]
+fn xor_liga_menos_que_and_y_mas_que_or() {
+    assert_eq!(
+        analizar_expresion("a | b ^ c & d").unwrap(),
+        bin(
+            OpBinario::O,
+            n("a"),
+            bin(OpBinario::Xor, n("b"), bin(OpBinario::Y, n("c"), n("d")))
+        )
+    );
+}
+
+#[test]
+fn la_comparacion_liga_menos_que_las_operaciones_de_bits() {
+    // como en Rust: a == b | c se lee a == (b | c)
+    assert_eq!(
+        analizar_expresion("a == b | c").unwrap(),
+        bin(OpBinario::Igual, n("a"), bin(OpBinario::O, n("b"), n("c")))
+    );
+}
+
+#[test]
+fn el_y_logico_liga_menos_que_la_comparacion() {
+    assert_eq!(
+        analizar_expresion("a < b && c != d").unwrap(),
+        bin(
+            OpBinario::YLogico,
+            bin(OpBinario::Menor, n("a"), n("b")),
+            bin(OpBinario::Distinto, n("c"), n("d"))
+        )
+    );
+}
+
+#[test]
+fn el_o_logico_es_el_de_menor_precedencia() {
+    assert_eq!(
+        analizar_expresion("a || b && c").unwrap(),
+        bin(OpBinario::OLogico, n("a"), bin(OpBinario::YLogico, n("b"), n("c")))
+    );
+}
+
+#[test]
+fn reconoce_los_seis_operadores_de_comparacion() {
+    let casos = [
+        ("a == b", OpBinario::Igual),
+        ("a != b", OpBinario::Distinto),
+        ("a < b", OpBinario::Menor),
+        ("a <= b", OpBinario::MenorIgual),
+        ("a > b", OpBinario::Mayor),
+        ("a >= b", OpBinario::MayorIgual),
+    ];
+    for (texto, op) in casos {
+        assert_eq!(analizar_expresion(texto).unwrap(), bin(op, n("a"), n("b")), "{texto}");
+    }
+}
+
+#[test]
+fn reconoce_division_y_modulo() {
+    assert_eq!(analizar_expresion("a / b").unwrap(), bin(OpBinario::Division, n("a"), n("b")));
+    assert_eq!(analizar_expresion("a % b").unwrap(), bin(OpBinario::Modulo, n("a"), n("b")));
+}
+
+#[test]
+fn reconoce_el_desplazamiento_a_la_derecha() {
+    assert_eq!(analizar_expresion("a >> 2").unwrap(), bin(OpBinario::DesplazaDer, n("a"), lit(2)));
+}
