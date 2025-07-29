@@ -369,3 +369,135 @@ fn un_condicional_con_llaves_vacias_es_valido() {
         otro => panic!("{otro:?}"),
     }
 }
+
+// ---------------------------------------------------------------------------
+// errores
+// ---------------------------------------------------------------------------
+
+#[test]
+fn rechaza_una_asignacion_sin_valor() {
+    assert!(analizar("rd =").is_err());
+}
+
+#[test]
+fn rechaza_una_asignacion_sin_igual() {
+    assert!(analizar("rd rs").is_err());
+}
+
+#[test]
+fn rechaza_asignar_a_un_literal() {
+    assert!(analizar("5 = rd").is_err());
+}
+
+#[test]
+fn rechaza_un_condicional_sin_dos_puntos() {
+    assert!(analizar("si Z pc = dir").is_err());
+}
+
+#[test]
+fn rechaza_un_condicional_sin_cuerpo() {
+    assert!(analizar("si Z:").is_err());
+}
+
+#[test]
+fn rechaza_un_parentesis_sin_cerrar() {
+    assert!(analizar_expresion("(a + b").is_err());
+}
+
+#[test]
+fn rechaza_un_corchete_sin_cerrar() {
+    assert!(analizar_expresion("mem[a").is_err());
+}
+
+#[test]
+fn rechaza_una_llave_sin_cerrar() {
+    assert!(analizar("si Z: { a = 1").is_err());
+}
+
+#[test]
+fn rechaza_un_operador_sin_segundo_operando() {
+    assert!(analizar_expresion("a +").is_err());
+}
+
+#[test]
+fn rechaza_dos_valores_seguidos() {
+    assert!(analizar_expresion("a b").is_err());
+}
+
+#[test]
+fn rechaza_una_expresion_donde_va_una_sentencia() {
+    assert!(analizar("a + b").is_err());
+}
+
+#[test]
+fn rechaza_sentencias_sin_separador() {
+    assert!(analizar("a = 1 b = 2").is_err());
+}
+
+#[test]
+fn rechaza_detener_con_argumentos() {
+    assert!(analizar("detener 1").is_err());
+}
+
+#[test]
+fn rechaza_una_palabra_reservada_como_valor() {
+    assert!(analizar_expresion("si").is_err());
+}
+
+#[test]
+fn el_error_indica_la_posicion() {
+    let e = analizar("rd = ").unwrap_err();
+    assert_eq!(e.posicion, 5);
+}
+
+#[test]
+fn el_error_dice_que_se_encontro() {
+    let e = analizar("rd = ;").unwrap_err();
+    assert!(e.mensaje.contains("';'"), "mensaje: {}", e.mensaje);
+}
+
+#[test]
+fn un_error_lexico_se_propaga() {
+    assert!(analizar("rd = rs @ 1").is_err());
+}
+
+// ---------------------------------------------------------------------------
+// impresion: reproduce un texto que vuelve a analizarse igual
+// ---------------------------------------------------------------------------
+
+fn ida_y_vuelta(texto: &str) {
+    let primero = analizar(texto).unwrap();
+    let impreso = primero.to_string();
+    let segundo = analizar(&impreso).unwrap_or_else(|e| panic!("'{impreso}' no se analiza: {e}"));
+    assert_eq!(primero, segundo, "texto original: '{texto}', impreso: '{impreso}'");
+}
+
+#[test]
+fn la_impresion_reproduce_asignaciones() {
+    ida_y_vuelta("rd = rd + rs");
+    ida_y_vuelta("mem[dir] = rs");
+    ida_y_vuelta("rd = mem[sp + 1]");
+}
+
+#[test]
+fn la_impresion_reproduce_condicionales() {
+    ida_y_vuelta("si Z: pc = dir");
+    ida_y_vuelta("si Z && !C: { a = 1; b = 2 }");
+}
+
+#[test]
+fn la_impresion_reproduce_la_precedencia() {
+    ida_y_vuelta("a = 1 + 2 * 3 << 4 & 5 | 6 ^ 7");
+    ida_y_vuelta("a = (1 + 2) * 3");
+    ida_y_vuelta("a = b < c && d >= e || f == g");
+}
+
+#[test]
+fn la_impresion_reproduce_secuencias_y_detener() {
+    ida_y_vuelta("sp = sp - 1; mem[sp] = rs; detener");
+}
+
+#[test]
+fn la_impresion_reproduce_entrada_y_salida() {
+    ida_y_vuelta("out[p] = in[q]");
+}
