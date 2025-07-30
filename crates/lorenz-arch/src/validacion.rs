@@ -23,6 +23,7 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     arranque(m, &mut fallos);
     dispositivos_citados(m, &mut fallos);
     banderas_citadas(m, &mut fallos);
+    nombres_de_semantica(m, &mut fallos);
     rangos(m, &mut fallos);
     fallos
 }
@@ -353,5 +354,72 @@ fn rangos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                 m.arranque, m.bits_direccion
             ),
         ));
+    }
+}
+
+/// RF-ARQ-022: la semantica solo cita nombres que existen y solo asigna a lo asignable.
+///
+/// Un nombre puede ser un operando de la instruccion, un registro, una bandera, o los alias `pc` y
+/// `sp` cuando existe un registro con ese rol.
+fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    for ins in &m.instrucciones {
+        let es_operando = |n: &str| ins.operandos.iter().any(|o| o.nombre == n);
+        let es_alias = |n: &str| match n {
+            "pc" => m.registro_con_rol(RolRegistro::ContadorPrograma).is_some(),
+            "sp" => m.registro_con_rol(RolRegistro::PunteroPila).is_some(),
+            _ => false,
+        };
+        let existe = |n: &str| es_operando(n) || m.registro(n).is_some() || m.bandera(n).is_some() || es_alias(n);
+
+        for nombre in ins.programa.nombres_leidos() {
+            if !existe(&nombre) {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "la semantica de '{}' cita '{}', que no es un operando, un registro ni una bandera",
+                        ins.mnemonico, nombre
+                    ),
+                ));
+            }
+        }
+
+        for nombre in ins.programa.nombres_escritos() {
+            if !existe(&nombre) {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "la semantica de '{}' asigna a '{}', que no existe",
+                        ins.mnemonico, nombre
+                    ),
+                ));
+                continue;
+            }
+
+            let operando_no_registro = ins
+                .operandos
+                .iter()
+                .find(|o| o.nombre == nombre)
+                .map(|o| !matches!(o.tipo, TipoOperando::Registro { .. }))
+                .unwrap_or(false);
+            if operando_no_registro {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "la semantica de '{}' asigna al operando '{}', que no es un registro",
+                        ins.mnemonico, nombre
+                    ),
+                ));
+            }
+
+            if m.registro(&nombre).map(|r| r.rol == RolRegistro::Fijo).unwrap_or(false) {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "la semantica de '{}' asigna al registro '{}', que es de solo lectura",
+                        ins.mnemonico, nombre
+                    ),
+                ));
+            }
+        }
     }
 }
