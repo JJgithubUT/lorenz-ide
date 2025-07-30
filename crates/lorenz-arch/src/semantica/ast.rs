@@ -179,3 +179,87 @@ impl fmt::Display for Programa {
         escribir_lista(f, &self.sentencias)
     }
 }
+
+impl Expr {
+    /// Anade a `salida` todos los nombres que la expresion lee, en orden de aparicion.
+    pub fn recoger_nombres(&self, salida: &mut Vec<String>) {
+        match self {
+            Expr::Literal(_) => {}
+            Expr::Nombre(n) => salida.push(n.clone()),
+            Expr::Mem(e) | Expr::Entrada(e) | Expr::Unario(_, e) => e.recoger_nombres(salida),
+            Expr::Binario(_, a, b) => {
+                a.recoger_nombres(salida);
+                b.recoger_nombres(salida);
+            }
+        }
+    }
+}
+
+impl Programa {
+    /// Nombres que el programa lee, sin repetir y en orden de aparicion.
+    ///
+    /// Incluye los que aparecen dentro de los indices de `mem[...]` y `out[...]` de un destino.
+    pub fn nombres_leidos(&self) -> Vec<String> {
+        let mut todos = Vec::new();
+        recoger_leidos(&self.sentencias, &mut todos);
+        sin_repetir(todos)
+    }
+
+    /// Nombres que el programa asigna directamente (no a memoria ni a puertos).
+    pub fn nombres_escritos(&self) -> Vec<String> {
+        let mut todos = Vec::new();
+        recoger_escritos(&self.sentencias, &mut todos);
+        sin_repetir(todos)
+    }
+
+    /// Si alguna sentencia puede detener la maquina.
+    pub fn puede_detener(&self) -> bool {
+        fn alguna(sentencias: &[Sentencia]) -> bool {
+            sentencias.iter().any(|s| match s {
+                Sentencia::Detener => true,
+                Sentencia::Si(_, cuerpo) => alguna(cuerpo),
+                Sentencia::Asignar(_, _) => false,
+            })
+        }
+        alguna(&self.sentencias)
+    }
+}
+
+fn recoger_leidos(sentencias: &[Sentencia], salida: &mut Vec<String>) {
+    for s in sentencias {
+        match s {
+            Sentencia::Asignar(destino, valor) => {
+                match destino {
+                    Destino::Nombre(_) => {}
+                    Destino::Mem(e) | Destino::Salida(e) => e.recoger_nombres(salida),
+                }
+                valor.recoger_nombres(salida);
+            }
+            Sentencia::Si(condicion, cuerpo) => {
+                condicion.recoger_nombres(salida);
+                recoger_leidos(cuerpo, salida);
+            }
+            Sentencia::Detener => {}
+        }
+    }
+}
+
+fn recoger_escritos(sentencias: &[Sentencia], salida: &mut Vec<String>) {
+    for s in sentencias {
+        match s {
+            Sentencia::Asignar(Destino::Nombre(n), _) => salida.push(n.clone()),
+            Sentencia::Asignar(_, _) | Sentencia::Detener => {}
+            Sentencia::Si(_, cuerpo) => recoger_escritos(cuerpo, salida),
+        }
+    }
+}
+
+fn sin_repetir(nombres: Vec<String>) -> Vec<String> {
+    let mut vistos = Vec::new();
+    for n in nombres {
+        if !vistos.contains(&n) {
+            vistos.push(n);
+        }
+    }
+    vistos
+}
