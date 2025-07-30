@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use crate::bits::Codificacion;
+use crate::semantica::Programa;
 
 /// Orden de bytes de la maquina.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,7 +111,10 @@ pub struct Instruccion {
     pub sintaxis: String,
     pub codificacion: Codificacion,
     pub operandos: Vec<Operando>,
+    /// Texto de la semantica tal como lo escribio el usuario.
     pub semantica: String,
+    /// La misma semantica, ya analizada: es lo que interpreta el emulador (D-009).
+    pub programa: Programa,
     pub afecta: Vec<String>,
     pub ciclos: Ciclos,
     pub descripcion: String,

@@ -12,6 +12,7 @@ use serde::Deserialize;
 use crate::bits::Codificacion;
 use crate::error::{ErrorArquitectura, FalloValidacion, Regla};
 use crate::modelo::*;
+use crate::semantica;
 use crate::validacion;
 use crate::VERSION_FORMATO;
 
@@ -292,12 +293,24 @@ fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<M
 
         let sintaxis = if i.sintaxis.is_empty() { i.mnemonico.clone() } else { i.sintaxis };
 
+        let programa = match semantica::analizar(&i.semantica) {
+            Ok(p) => p,
+            Err(e) => {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!("la semantica de '{}' no es valida: {}", i.mnemonico, e),
+                ));
+                semantica::Programa::default()
+            }
+        };
+
         instrucciones.push(Instruccion {
             mnemonico: i.mnemonico,
             sintaxis,
             codificacion,
             operandos,
             semantica: i.semantica,
+            programa,
             afecta: i.afecta,
             ciclos,
             descripcion: i.descripcion,
