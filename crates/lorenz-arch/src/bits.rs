@@ -10,6 +10,11 @@
 //! | Relleno | `.` | Bit ignorado al decodificar, cero al ensamblar |
 //! | Palabra extra | `\|` | Lo que sigue ocupa la siguiente palabra |
 //!
+//! Un campo puede repetirse en palabras distintas, nunca dentro de la misma: sus fragmentos se
+//! concatenan para formar un solo operando. Es lo que permite una direccion de 16 bits repartida en
+//! dos palabras de 8 (`dir:8 | dir:8`). El primer fragmento es el menos significativo en una maquina
+//! little endian y el mas significativo en una big endian.
+//!
 //! ```
 //! use lorenz_arch::bits::Codificacion;
 //!
@@ -159,6 +164,7 @@ impl Codificacion {
     pub fn analizar(texto: &str) -> Result<Self, ErrorBits> {
         let mut palabras = Vec::new();
         let mut actual = Palabra::default();
+        // nombres ya usados dentro de la palabra en curso: un campo puede repetirse en otra palabra
         let mut vistos: Vec<String> = Vec::new();
 
         let caracteres: Vec<char> = texto.chars().collect();
@@ -181,6 +187,7 @@ impl Codificacion {
                         return Err(ErrorBits::PalabraVacia);
                     }
                     palabras.push(std::mem::take(&mut actual));
+                    vistos.clear();
                     i += 1;
                 }
                 c if c.is_ascii_alphabetic() || c == '_' => {
