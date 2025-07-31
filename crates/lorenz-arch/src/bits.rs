@@ -284,6 +284,43 @@ impl Codificacion {
         None
     }
 
+    /// Todos los fragmentos de un campo, en el orden en que aparecen en la codificacion.
+    ///
+    /// Un campo que no se reparte devuelve un solo fragmento.
+    pub fn fragmentos(&self, nombre: &str) -> Vec<UbicacionCampo> {
+        let mut encontrados = Vec::new();
+        for (indice, palabra) in self.palabras.iter().enumerate() {
+            for pieza in &palabra.piezas {
+                if let Pieza::Campo { nombre: n, bits } = pieza {
+                    if n == nombre {
+                        encontrados.push(UbicacionCampo {
+                            palabra: indice,
+                            desplazamiento: palabra.desplazamiento_de(nombre).unwrap_or(0),
+                            bits: *bits,
+                        });
+                    }
+                }
+            }
+        }
+        encontrados
+    }
+
+    /// Bits totales de un campo sumando todos sus fragmentos; 0 si no existe.
+    pub fn bits_totales(&self, nombre: &str) -> u32 {
+        self.fragmentos(nombre).iter().map(|f| f.bits).sum()
+    }
+
+    /// Nombres de campo sin repetir, en el orden de su primera aparicion.
+    pub fn campos_unicos(&self) -> Vec<&str> {
+        let mut unicos: Vec<&str> = Vec::new();
+        for nombre in self.campos() {
+            if !unicos.contains(&nombre) {
+                unicos.push(nombre);
+            }
+        }
+        unicos
+    }
+
     /// Cuantas palabras ocupa la instruccion.
     pub fn longitud_en_palabras(&self) -> usize {
         self.palabras.len()
