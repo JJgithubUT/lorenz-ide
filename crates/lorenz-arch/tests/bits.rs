@@ -175,3 +175,57 @@ fn las_piezas_declaran_sus_bits() {
     assert_eq!(piezas[1], Pieza::Relleno);
     assert_eq!(piezas[2].bits(), 3);
 }
+
+#[test]
+fn un_campo_puede_repartirse_en_dos_palabras() {
+    let c = Codificacion::analizar("0100 rd:2 .. | dir:8 | dir:8").unwrap();
+    assert_eq!(c.longitud_en_palabras(), 3);
+    assert_eq!(c.fragmentos("dir").len(), 2);
+    assert_eq!(c.bits_totales("dir"), 16);
+}
+
+#[test]
+fn los_fragmentos_van_en_orden_de_aparicion() {
+    let c = Codificacion::analizar("0100 .... | dir:8 | dir:4 ....").unwrap();
+    let f = c.fragmentos("dir");
+    assert_eq!(f[0].palabra, 1);
+    assert_eq!(f[0].bits, 8);
+    assert_eq!(f[1].palabra, 2);
+    assert_eq!(f[1].bits, 4);
+    assert_eq!(f[1].desplazamiento, 4);
+}
+
+#[test]
+fn un_campo_repetido_en_la_misma_palabra_sigue_siendo_error() {
+    assert!(matches!(
+        Codificacion::analizar("rd:2 rd:2 .... | imm:8"),
+        Err(ErrorBits::CampoDuplicado { .. })
+    ));
+}
+
+#[test]
+fn un_campo_inexistente_no_tiene_fragmentos() {
+    let c = Codificacion::analizar("0001 rd:2 rs:2").unwrap();
+    assert!(c.fragmentos("zz").is_empty());
+    assert_eq!(c.bits_totales("zz"), 0);
+}
+
+#[test]
+fn un_campo_sin_repartir_tiene_un_solo_fragmento() {
+    let c = Codificacion::analizar("0001 rd:2 rs:2").unwrap();
+    assert_eq!(c.fragmentos("rd").len(), 1);
+    assert_eq!(c.bits_totales("rd"), 2);
+}
+
+#[test]
+fn campos_unicos_no_repite_los_nombres() {
+    let c = Codificacion::analizar("0100 rd:2 .. | dir:8 | dir:8").unwrap();
+    assert_eq!(c.campos(), vec!["rd", "dir", "dir"]);
+    assert_eq!(c.campos_unicos(), vec!["rd", "dir"]);
+}
+
+#[test]
+fn el_mismo_nombre_en_palabras_distintas_no_cambia_el_ancho_de_cada_palabra() {
+    let c = Codificacion::analizar("0100 rd:2 .. | dir:8 | dir:8").unwrap();
+    assert!(c.palabras().iter().all(|p| p.ancho() == 8));
+}
