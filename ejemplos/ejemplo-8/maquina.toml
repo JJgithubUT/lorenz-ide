@@ -121,7 +121,7 @@ descripcion = "Suma dos registros y deja el resultado en el primero."
 [[instruccion]]
 mnemonico = "LD"
 sintaxis  = "LD {rd}, [{dir}]"
-codigo    = "0100 rd:2 .. | dir:8 | dir_alta:8"
+codigo    = "0100 rd:2 .. | dir:8 | dir:8"
 semantica = "rd = mem[dir]"
 ciclos    = 4
 descripcion = "Lee memoria en un registro."
@@ -132,14 +132,11 @@ descripcion = "Lee memoria en un registro."
   [[instruccion.operando]]
   nombre = "dir"
   tipo = "direccion"
-  [[instruccion.operando]]
-  nombre = "dir_alta"
-  tipo = "direccion"
 
 [[instruccion]]
 mnemonico = "ST"
 sintaxis  = "ST [{dir}], {rs}"
-codigo    = "0101 rs:2 .. | dir:8 | dir_alta:8"
+codigo    = "0101 rs:2 .. | dir:8 | dir:8"
 semantica = "mem[dir] = rs"
 ciclos    = 4
 descripcion = "Escribe un registro en memoria."
@@ -150,22 +147,16 @@ descripcion = "Escribe un registro en memoria."
   [[instruccion.operando]]
   nombre = "dir"
   tipo = "direccion"
-  [[instruccion.operando]]
-  nombre = "dir_alta"
-  tipo = "direccion"
 
 [[instruccion]]
 mnemonico = "JZ"
 sintaxis  = "JZ {dir}"
-codigo    = "0110 .... | dir:8 | dir_alta:8"
+codigo    = "0110 .... | dir:8 | dir:8"
 semantica = "si Z: pc = dir"
 ciclos    = { tomado = 3, no_tomado = 2 }
 descripcion = "Salta si la bandera Z esta encendida."
   [[instruccion.operando]]
   nombre = "dir"
-  tipo = "direccion"
-  [[instruccion.operando]]
-  nombre = "dir_alta"
   tipo = "direccion"
 
 [[instruccion]]
