@@ -110,8 +110,9 @@ fn campos_y_operandos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                         ));
                     }
                 }
-                if let Some(ubicacion) = ins.codificacion.campo(&operando.nombre) {
-                    let capacidad = 1usize << ubicacion.bits.min(32);
+                let bits_campo = ins.codificacion.bits_totales(&operando.nombre);
+                if bits_campo > 0 {
+                    let capacidad = 1usize << bits_campo.min(32);
                     if permitidos.len() > capacidad {
                         fallos.push(fallo(
                             Regla::CampoSinOperando,
