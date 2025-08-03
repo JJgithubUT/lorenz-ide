@@ -10,6 +10,11 @@
 //! | Relleno | `.` | Bit ignorado al decodificar, cero al ensamblar |
 //! | Palabra extra | `\|` | Lo que sigue ocupa la siguiente palabra |
 //!
+//! Un campo puede repetirse en palabras distintas, nunca dentro de la misma: sus fragmentos se
+//! concatenan para formar un solo operando. Es lo que permite una direccion de 16 bits repartida en
+//! dos palabras de 8 (`dir:8 | dir:8`). El primer fragmento es el menos significativo en una maquina
+//! little endian y el mas significativo en una big endian.
+//!
 //! ```
 //! use lorenz_arch::bits::Codificacion;
 //!
@@ -159,6 +164,7 @@ impl Codificacion {
     pub fn analizar(texto: &str) -> Result<Self, ErrorBits> {
         let mut palabras = Vec::new();
         let mut actual = Palabra::default();
+        // nombres ya usados dentro de la palabra en curso: un campo puede repetirse en otra palabra
         let mut vistos: Vec<String> = Vec::new();
 
         let caracteres: Vec<char> = texto.chars().collect();
@@ -181,6 +187,7 @@ impl Codificacion {
                         return Err(ErrorBits::PalabraVacia);
                     }
                     palabras.push(std::mem::take(&mut actual));
+                    vistos.clear();
                     i += 1;
                 }
                 c if c.is_ascii_alphabetic() || c == '_' => {
@@ -275,6 +282,43 @@ impl Codificacion {
             }
         }
         None
+    }
+
+    /// Todos los fragmentos de un campo, en el orden en que aparecen en la codificacion.
+    ///
+    /// Un campo que no se reparte devuelve un solo fragmento.
+    pub fn fragmentos(&self, nombre: &str) -> Vec<UbicacionCampo> {
+        let mut encontrados = Vec::new();
+        for (indice, palabra) in self.palabras.iter().enumerate() {
+            for pieza in &palabra.piezas {
+                if let Pieza::Campo { nombre: n, bits } = pieza {
+                    if n == nombre {
+                        encontrados.push(UbicacionCampo {
+                            palabra: indice,
+                            desplazamiento: palabra.desplazamiento_de(nombre).unwrap_or(0),
+                            bits: *bits,
+                        });
+                    }
+                }
+            }
+        }
+        encontrados
+    }
+
+    /// Bits totales de un campo sumando todos sus fragmentos; 0 si no existe.
+    pub fn bits_totales(&self, nombre: &str) -> u32 {
+        self.fragmentos(nombre).iter().map(|f| f.bits).sum()
+    }
+
+    /// Nombres de campo sin repetir, en el orden de su primera aparicion.
+    pub fn campos_unicos(&self) -> Vec<&str> {
+        let mut unicos: Vec<&str> = Vec::new();
+        for nombre in self.campos() {
+            if !unicos.contains(&nombre) {
+                unicos.push(nombre);
+            }
+        }
+        unicos
     }
 
     /// Cuantas palabras ocupa la instruccion.

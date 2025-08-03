@@ -93,6 +93,8 @@ pub enum Regla {
     NombreDuplicado,
     /// Valores fuera de los limites admitidos por el formato.
     ValorFueraDeRango,
+    /// La semantica de una instruccion no se puede analizar o cita nombres que no existen.
+    SemanticaInvalida,
 }
 
 impl Regla {
@@ -109,6 +111,7 @@ impl Regla {
             Regla::BanderaInexistente => "E-BANDERA",
             Regla::NombreDuplicado => "E-DUPLICADO",
             Regla::ValorFueraDeRango => "E-RANGO",
+            Regla::SemanticaInvalida => "E-SEMANT",
         }
     }
 
@@ -125,6 +128,7 @@ impl Regla {
             Regla::BanderaInexistente => "RF-ARQ-024",
             Regla::NombreDuplicado => "RF-ARQ-007",
             Regla::ValorFueraDeRango => "RF-ARQ-003",
+            Regla::SemanticaInvalida => "RF-ARQ-022",
         }
     }
 }

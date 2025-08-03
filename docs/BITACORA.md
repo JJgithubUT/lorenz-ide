@@ -17,6 +17,53 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Analizador del lenguaje de semantica
+
+**Hecho:**
+
+- Arbol de sintaxis de la semantica: expresiones, destinos, sentencias y programa, con impresion que
+  se vuelve a analizar igual.
+- Analizador lexico: numeros decimales, hexadecimales y binarios con separador `_`, identificadores,
+  palabras reservadas, operadores y puntuacion.
+- Parser de descenso recursivo con nueve niveles de precedencia, sentencias, condicionales con y sin
+  llaves y la secuencia con `;`.
+- El cargador analiza la semantica al cargar y guarda el arbol en cada instruccion. Un error de
+  sintaxis se acumula como fallo `E-SEMANT` en lugar de detener la carga.
+- Validacion de nombres: lo que la semantica cita debe ser un operando, un registro, una bandera o
+  los alias `pc` y `sp`; solo se asigna a lo asignable.
+- Campos repartidos en varias palabras de la instruccion (`dir:8 | dir:8`).
+- `docs/SEMANTICA.md` con la gramatica, la tabla de precedencia y la convencion de banderas.
+- 64 pruebas del parser, 26 del lexico, 25 de validacion de semantica y 7 nuevas de campos
+  repartidos.
+
+**Decidido:**
+
+- **D-009** — El emulador interpreta un arbol analizado una sola vez al cargar, no el texto en cada
+  instruccion. La arquitectura sigue siendo editable sin recompilar.
+- **D-013** — Las banderas `Z`, `N` y `C` se calculan solas desde el ultimo valor asignado por la
+  instruccion; cualquier otra bandera se asigna de forma explicita. Una asignacion explicita manda
+  sobre la convencion.
+- **D-014** — Un campo de la codificacion puede repartirse en palabras distintas y sus fragmentos se
+  concatenan en un operando (primer fragmento menos significativo en little endian). Motivo: una
+  direccion de 16 bits no cabe en una instruccion de palabras de 8 bits. Esto corrige un ejemplo del
+  documento de formato v0.1, que mostraba `dir:16` dentro de una palabra de 8 bits y el validador
+  habria rechazado.
+- **D-015** — La precedencia de operadores sigue la de Rust: la comparacion liga menos que las
+  operaciones de bits.
+
+**Pendiente:**
+
+- Corregir el documento de formato v0.1 con la convencion de campos repartidos.
+- Posiciones de linea del TOML en los fallos de validacion.
+
+**Requisitos:** RF-ARQ-014, 015, 018, 022, 034, 037, 042.
+
+**Commits:** rama `feat/semantica-parser`, 28 commits.
+
+**Estado del contador:** 50 de 1000 commits.
+
+---
+
 ## 2026-10-15 — Cadencia de 1000 commits en una semana
 
 **Hecho:**
