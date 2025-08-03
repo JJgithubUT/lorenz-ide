@@ -5,3 +5,7 @@
 //!
 //! El emulador es determinista: la misma maquina, el mismo programa y las mismas entradas producen
 //! siempre el mismo resultado (RF-EMU-016).
+
+pub mod error;
+
+pub use error::ErrorEjecucion;
