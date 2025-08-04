@@ -126,4 +126,21 @@ impl Memoria {
         r.celdas[(direccion - r.desde) as usize] = valor & mascara;
         Ok(())
     }
+
+    /// Lee una palabra ignorando los permisos: para el depurador (RF-EMU-022).
+    pub fn leer_privilegiado(&self, direccion: u64) -> Result<u64, ErrorEjecucion> {
+        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let r = &self.regiones[i];
+        Ok(r.celdas[(direccion - r.desde) as usize])
+    }
+
+    /// Escribe una palabra ignorando los permisos: para el depurador y para cargar programas en
+    /// una ROM (RF-EMU-022, RF-EMU-023).
+    pub fn escribir_privilegiado(&mut self, direccion: u64, valor: u64) -> Result<(), ErrorEjecucion> {
+        let mascara = self.mascara_palabra;
+        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let r = &mut self.regiones[i];
+        r.celdas[(direccion - r.desde) as usize] = valor & mascara;
+        Ok(())
+    }
 }
