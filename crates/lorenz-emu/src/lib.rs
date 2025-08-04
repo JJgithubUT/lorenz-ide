@@ -9,3 +9,6 @@
 pub mod error;
 
 pub use error::ErrorEjecucion;
+pub mod memoria;
+
+pub use memoria::Memoria;
