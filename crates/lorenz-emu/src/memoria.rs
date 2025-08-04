@@ -96,4 +96,34 @@ impl Memoria {
     pub fn celdas_totales(&self) -> u64 {
         self.regiones.iter().map(|r| r.celdas.len() as u64).sum()
     }
+
+    /// Lee una palabra respetando los permisos de la region (RF-EMU-021).
+    pub fn leer(&self, direccion: u64) -> Result<u64, ErrorEjecucion> {
+        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let r = &self.regiones[i];
+        if !r.acceso.lectura {
+            return Err(ErrorEjecucion::LecturaDeSoloEscritura {
+                direccion,
+                region: r.nombre.clone(),
+            });
+        }
+        Ok(r.celdas[(direccion - r.desde) as usize])
+    }
+
+    /// Escribe una palabra respetando los permisos de la region (RF-EMU-020).
+    ///
+    /// El valor se trunca al ancho de palabra de la maquina.
+    pub fn escribir(&mut self, direccion: u64, valor: u64) -> Result<(), ErrorEjecucion> {
+        let mascara = self.mascara_palabra;
+        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let r = &mut self.regiones[i];
+        if !r.acceso.escritura {
+            return Err(ErrorEjecucion::EscrituraEnSoloLectura {
+                direccion,
+                region: r.nombre.clone(),
+            });
+        }
+        r.celdas[(direccion - r.desde) as usize] = valor & mascara;
+        Ok(())
+    }
 }
