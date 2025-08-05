@@ -26,6 +26,9 @@ pub struct Estado {
     valores: Vec<u64>,
     indice_pc: usize,
     indice_sp: Option<usize>,
+    indice_banderas: Option<usize>,
+    /// Nombre y posicion de cada bandera dentro del registro de banderas.
+    banderas: Vec<(String, u32)>,
     arranque: u64,
 }
 
@@ -48,6 +51,8 @@ impl Estado {
             .position(|r| *r == RolRegistro::ContadorPrograma)
             .expect("una maquina validada siempre tiene contador de programa");
         let indice_sp = roles.iter().position(|r| *r == RolRegistro::PunteroPila);
+        let indice_banderas = roles.iter().position(|r| *r == RolRegistro::Banderas);
+        let banderas = maquina.banderas.iter().map(|b| (b.nombre.clone(), b.bit)).collect();
 
         let mut estado = Self {
             nombres,
@@ -57,6 +62,8 @@ impl Estado {
             iniciales,
             indice_pc,
             indice_sp,
+            indice_banderas,
+            banderas,
             arranque: maquina.arranque,
         };
         estado.valores[indice_pc] = maquina.arranque & estado.mascaras[indice_pc];
@@ -117,5 +124,47 @@ impl Estado {
         if let Some(i) = self.indice_sp {
             self.valores[i] = valor & self.mascaras[i];
         }
+    }
+
+    fn posicion_de_bandera(&self, nombre: &str) -> Result<(usize, u32), ErrorEjecucion> {
+        let inexistente = || ErrorEjecucion::BanderaInexistente { nombre: nombre.to_string() };
+        let registro = self.indice_banderas.ok_or_else(inexistente)?;
+        let bit = self
+            .banderas
+            .iter()
+            .find(|(n, _)| n == nombre)
+            .map(|(_, b)| *b)
+            .ok_or_else(inexistente)?;
+        Ok((registro, bit))
+    }
+
+    /// Si la bandera esta encendida.
+    pub fn bandera(&self, nombre: &str) -> Result<bool, ErrorEjecucion> {
+        let (registro, bit) = self.posicion_de_bandera(nombre)?;
+        Ok((self.valores[registro] >> bit) & 1 == 1)
+    }
+
+    /// Enciende o apaga una bandera sin tocar las demas (RF-EMU-007).
+    pub fn fijar_bandera(&mut self, nombre: &str, encendida: bool) -> Result<(), ErrorEjecucion> {
+        let (registro, bit) = self.posicion_de_bandera(nombre)?;
+        if encendida {
+            self.valores[registro] |= 1u64 << bit;
+        } else {
+            self.valores[registro] &= !(1u64 << bit);
+        }
+        self.valores[registro] &= self.mascaras[registro];
+        Ok(())
+    }
+
+    /// Nombres de las banderas declaradas, en el orden en que se declararon.
+    pub fn nombres_de_banderas(&self) -> Vec<&str> {
+        self.banderas.iter().map(|(n, _)| n.as_str()).collect()
+    }
+
+    /// Vuelve cada registro a su valor inicial y el contador de programa a la direccion de arranque
+    /// (RF-EMU-014).
+    pub fn reiniciar(&mut self) {
+        self.valores.clone_from(&self.iniciales);
+        self.valores[self.indice_pc] = self.arranque & self.mascaras[self.indice_pc];
     }
 }
