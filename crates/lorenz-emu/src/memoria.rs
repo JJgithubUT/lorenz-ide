@@ -143,4 +143,32 @@ impl Memoria {
         r.celdas[(direccion - r.desde) as usize] = valor & mascara;
         Ok(())
     }
+
+    /// Copia un bloque de palabras desde `direccion`, ignorando los permisos.
+    ///
+    /// Es la operacion con la que se carga un programa antes de ejecutar (RF-EMU-023). Si el bloque
+    /// no cabe entero dentro de las regiones, no se escribe nada.
+    pub fn cargar_bloque(&mut self, direccion: u64, palabras: &[u64]) -> Result<(), ErrorEjecucion> {
+        let fuera = || ErrorEjecucion::BloqueFueraDeRegion { direccion, longitud: palabras.len() };
+        for i in 0..palabras.len() as u64 {
+            let d = direccion.checked_add(i).ok_or_else(fuera)?;
+            if !self.es_valida(d) {
+                return Err(fuera());
+            }
+        }
+        for (i, valor) in palabras.iter().enumerate() {
+            self.escribir_privilegiado(direccion + i as u64, *valor)?;
+        }
+        Ok(())
+    }
+
+    /// Lee `longitud` palabras desde `direccion`, ignorando los permisos (RF-EMU-024).
+    pub fn volcar(&self, direccion: u64, longitud: usize) -> Result<Vec<u64>, ErrorEjecucion> {
+        (0..longitud as u64)
+            .map(|i| {
+                let d = direccion.checked_add(i).ok_or(ErrorEjecucion::BloqueFueraDeRegion { direccion, longitud })?;
+                self.leer_privilegiado(d)
+            })
+            .collect()
+    }
 }
