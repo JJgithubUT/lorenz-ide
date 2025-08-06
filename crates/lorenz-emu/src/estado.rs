@@ -27,6 +27,10 @@ pub struct Estado {
     indice_pc: usize,
     indice_sp: Option<usize>,
     indice_banderas: Option<usize>,
+    instrucciones: u64,
+    ciclos: u64,
+    detenida: bool,
+    interrupciones_habilitadas: bool,
     /// Nombre y posicion de cada bandera dentro del registro de banderas.
     banderas: Vec<(String, u32)>,
     arranque: u64,
@@ -63,6 +67,10 @@ impl Estado {
             indice_pc,
             indice_sp,
             indice_banderas,
+            instrucciones: 0,
+            ciclos: 0,
+            detenida: false,
+            interrupciones_habilitadas: false,
             banderas,
             arranque: maquina.arranque,
         };
@@ -166,5 +174,42 @@ impl Estado {
     pub fn reiniciar(&mut self) {
         self.valores.clone_from(&self.iniciales);
         self.valores[self.indice_pc] = self.arranque & self.mascaras[self.indice_pc];
+        self.instrucciones = 0;
+        self.ciclos = 0;
+        self.detenida = false;
+        self.interrupciones_habilitadas = false;
+    }
+
+    /// Instrucciones ejecutadas desde el ultimo reinicio.
+    pub fn instrucciones(&self) -> u64 {
+        self.instrucciones
+    }
+
+    /// Ciclos consumidos desde el ultimo reinicio.
+    pub fn ciclos(&self) -> u64 {
+        self.ciclos
+    }
+
+    /// Cuenta una instruccion ejecutada que costo `ciclos` ciclos (RF-EMU-016).
+    pub fn contar_instruccion(&mut self, ciclos: u64) {
+        self.instrucciones = self.instrucciones.saturating_add(1);
+        self.ciclos = self.ciclos.saturating_add(ciclos);
+    }
+
+    /// Si la maquina ejecuto una instruccion que la detiene.
+    pub fn detenida(&self) -> bool {
+        self.detenida
+    }
+
+    pub fn detener(&mut self) {
+        self.detenida = true;
+    }
+
+    pub fn interrupciones_habilitadas(&self) -> bool {
+        self.interrupciones_habilitadas
+    }
+
+    pub fn habilitar_interrupciones(&mut self, habilitadas: bool) {
+        self.interrupciones_habilitadas = habilitadas;
     }
 }
