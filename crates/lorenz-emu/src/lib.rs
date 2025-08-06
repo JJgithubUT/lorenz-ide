@@ -15,3 +15,7 @@ pub use memoria::Memoria;
 pub mod estado;
 
 pub use estado::Estado;
+
+pub mod puertos;
+
+pub use puertos::Puertos;
