@@ -17,6 +17,28 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Emulador: memoria, estado y puertos
+
+**Hecho:**
+
+- Nuevo crate `lorenz-emu` con el error de ejecucion `ErrorEjecucion`.
+- `Memoria`: una palabra por direccion, regiones ordenadas con busqueda binaria, permisos de lectura y
+  escritura, acceso privilegiado para depurador y cargador, carga de bloques todo o nada y volcado.
+- `Estado`: registros por nombre y por rol, truncado al ancho de cada registro, banderas como bits del
+  registro de banderas, contadores de instrucciones y ciclos, parada, interrupciones y `reiniciar`.
+- `Puertos`: cola de entrada y registro de salida por cada puerto que declara un dispositivo; tocar otro
+  da error.
+- Pruebas: 28 de memoria, 16 de estado y 8 de puertos.
+
+**Pendiente:** decodificador, interprete del arbol y bucle de ejecucion (bloques 3 a 5).
+
+**Requisitos:** RF-EMU-005, RF-EMU-007, RF-EMU-014, RF-EMU-016, RF-EMU-030, RF-EMU-031.
+
+**Commits:** contador en 63 al cerrar el bloque (objetivo del dia 1: 160; seguimos recuperando con
+commits pequenos).
+
+---
+
 ## 2026-10-16 — Analizador del lenguaje de semantica
 
 **Hecho:**
