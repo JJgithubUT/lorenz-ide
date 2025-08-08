@@ -212,4 +212,24 @@ impl Estado {
     pub fn habilitar_interrupciones(&mut self, habilitadas: bool) {
         self.interrupciones_habilitadas = habilitadas;
     }
+
+    /// Mascara con un 1 en cada bit del registro (su ancho), por nombre.
+    pub fn mascara_de_registro(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        Ok(self.mascaras[self.indice(nombre)?])
+    }
+
+    /// Nombre con el que se declaro el registro de contador de programa.
+    pub fn nombre_del_pc(&self) -> &str {
+        &self.nombres[self.indice_pc]
+    }
+
+    /// Nombre con el que se declaro el puntero de pila, si existe.
+    pub fn nombre_del_sp(&self) -> Option<&str> {
+        self.indice_sp.map(|i| self.nombres[i].as_str())
+    }
+
+    /// Si hay una bandera con ese nombre.
+    pub fn tiene_bandera(&self, nombre: &str) -> bool {
+        self.banderas.iter().any(|(n, _)| n == nombre)
+    }
 }
