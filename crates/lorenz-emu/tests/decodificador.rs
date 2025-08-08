@@ -130,13 +130,12 @@ fn decodificar_fuera_de_las_regiones_da_error_de_memoria() {
 }
 
 #[test]
-fn la_ultima_palabra_de_una_instruccion_puede_quedar_fuera_de_las_regiones() {
+fn si_la_segunda_palabra_cae_fuera_de_las_regiones_se_informa_de_esa_direccion() {
     let m = ejemplo_8();
     let mut mem = Memoria::nueva(&m).unwrap();
     mem.escribir_privilegiado(0xF0FF, 0x20).unwrap();
     assert!(matches!(
         Decodificador::nuevo(&m).decodificar(&mem, 0xF0FF),
-        Err(ErrorEjecucion::LecturaDeSoloEscritura { .. }) | Err(ErrorEjecucion::FueraDeRegion { .. })
-            | Err(ErrorEjecucion::InstruccionInvalida { .. })
+        Err(ErrorEjecucion::FueraDeRegion { direccion: 0xF100 })
     ));
 }
