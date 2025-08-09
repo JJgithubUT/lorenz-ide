@@ -23,3 +23,7 @@ pub use puertos::Puertos;
 pub mod decodificador;
 
 pub use decodificador::{Decodificada, Decodificador, OperandoDecodificado};
+
+pub mod interprete;
+
+pub use interprete::{Entorno, Interprete};
