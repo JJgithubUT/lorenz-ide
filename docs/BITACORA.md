@@ -29,7 +29,7 @@ Formato de una entrada:
 - Banderas Z, N y C calculadas con el ultimo valor asignado (D-013); las explicitas mandan.
 - `Emulador`: `paso` y `ejecutar(limite)`; los ciclos de un salto condicional dependen de si se
   toma; si una instruccion falla, el pc vuelve a ella.
-- Pruebas nuevas: 14 de decodificador, 41 de interprete, 18 de banderas y 20 de ejecucion completa
+- Pruebas nuevas: 14 de decodificador, 40 de interprete, 18 de banderas y 20 de ejecucion completa
   con programas reales del ejemplo de 8 bits.
 
 **Decidido:**
