@@ -17,6 +17,39 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Emulador: decodificador, interprete y bucle de ejecucion
+
+**Hecho:**
+
+- `Decodificador`: tabla armada con la mascara y el valor fijo de la primera palabra de cada
+  codificacion; comprueba tambien los bits fijos de las palabras siguientes; junta los campos
+  repartidos segun el endianness; extiende el signo de inmediatos con signo y desplazamientos.
+- `Interprete`: evalua el arbol de semantica con enteros de 128 bits, trunca al asignar, cortocircuita
+  `&&` y `||`, protege los desplazamientos enormes y devuelve error en divisiones entre cero.
+- Banderas Z, N y C calculadas con el ultimo valor asignado (D-013); las explicitas mandan.
+- `Emulador`: `paso` y `ejecutar(limite)`; los ciclos de un salto condicional dependen de si se
+  toma; si una instruccion falla, el pc vuelve a ella.
+- Pruebas nuevas: 14 de decodificador, 41 de interprete, 18 de banderas y 20 de ejecucion completa
+  con programas reales del ejemplo de 8 bits.
+
+**Decidido:**
+
+- **D-016** — Al ejecutar, `pc` en la semantica vale la direccion de la instruccion siguiente y
+  asignarlo es un salto. Motivo: asi un desplazamiento relativo se escribe `pc = pc + off` igual que
+  en las arquitecturas reales.
+- **D-017** — Si una instruccion falla, el emulador deja el pc en esa instruccion, pero los efectos
+  ya hechos antes del fallo dentro de la misma instruccion no se deshacen. Motivo: el depurador debe
+  mostrar donde fallo; deshacer exigiria transacciones que no aportan en esta fase.
+
+**Pendiente:** interrupciones (vectores y habilitacion), salida de traza y codigos de salida
+(RF-EMU-042 a 045), y el paso de la fase 1 a la interfaz de linea de comandos.
+
+**Requisitos:** RF-EMU-006, RF-EMU-007, RF-EMU-016 a RF-EMU-026.
+
+**Commits:** contador en 75 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Emulador: memoria, estado y puertos
 
 **Hecho:**
