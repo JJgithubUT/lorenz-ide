@@ -19,3 +19,15 @@ pub use estado::Estado;
 pub mod puertos;
 
 pub use puertos::Puertos;
+
+pub mod decodificador;
+
+pub use decodificador::{Decodificada, Decodificador, OperandoDecodificado};
+
+pub mod interprete;
+
+pub use interprete::{Entorno, Interprete, Resultado};
+
+pub mod emulador;
+
+pub use emulador::{Emulador, Paso, Resumen};
