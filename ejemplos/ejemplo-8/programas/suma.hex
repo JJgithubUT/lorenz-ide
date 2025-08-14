@@ -1,0 +1,5 @@
+# Suma 200 + 100 en 8 bits: el resultado es 44 con acarreo.
+20 C8      # LDI A, 200
+24 64      # LDI B, 100
+31         # ADD A, B
+F0         # HLT
