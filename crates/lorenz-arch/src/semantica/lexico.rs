@@ -70,7 +70,10 @@ pub fn tokenizar(texto: &str) -> Result<Vec<Lexema>, ErrorSemantica> {
         if ch.is_ascii_digit() {
             let inicio = i;
             let (valor, siguiente) = leer_numero(&c, i)?;
-            salida.push(Lexema { token: Token::Numero(valor), posicion: inicio });
+            salida.push(Lexema {
+                token: Token::Numero(valor),
+                posicion: inicio,
+            });
             i = siguiente;
             continue;
         }
@@ -86,7 +89,10 @@ pub fn tokenizar(texto: &str) -> Result<Vec<Lexema>, ErrorSemantica> {
                 "detener" => Token::Detener,
                 _ => Token::Ident(palabra),
             };
-            salida.push(Lexema { token, posicion: inicio });
+            salida.push(Lexema {
+                token,
+                posicion: inicio,
+            });
             continue;
         }
 
@@ -122,26 +128,35 @@ pub fn tokenizar(texto: &str) -> Result<Vec<Lexema>, ErrorSemantica> {
             (']', _) => (Token::CorcheteCierra, 1),
             ('{', _) => (Token::LlaveAbre, 1),
             ('}', _) => (Token::LlaveCierra, 1),
-            _ => return Err(ErrorSemantica::nuevo(i, format!("caracter '{ch}' inesperado"))),
+            _ => {
+                return Err(ErrorSemantica::nuevo(
+                    i,
+                    format!("caracter '{ch}' inesperado"),
+                ))
+            }
         };
         salida.push(Lexema { token, posicion: i });
         i += largo;
     }
 
-    salida.push(Lexema { token: Token::Fin, posicion: c.len() });
+    salida.push(Lexema {
+        token: Token::Fin,
+        posicion: c.len(),
+    });
     Ok(salida)
 }
 
 /// Lee un literal numerico: decimal, `0x` hexadecimal o `0b` binario. Admite `_` como separador.
 fn leer_numero(c: &[char], inicio: usize) -> Result<(u64, usize), ErrorSemantica> {
     let mut i = inicio;
-    let (base, digitos_desde) = if c[i] == '0' && i + 1 < c.len() && (c[i + 1] == 'x' || c[i + 1] == 'X') {
-        (16u32, i + 2)
-    } else if c[i] == '0' && i + 1 < c.len() && (c[i + 1] == 'b' || c[i + 1] == 'B') {
-        (2u32, i + 2)
-    } else {
-        (10u32, i)
-    };
+    let (base, digitos_desde) =
+        if c[i] == '0' && i + 1 < c.len() && (c[i + 1] == 'x' || c[i + 1] == 'X') {
+            (16u32, i + 2)
+        } else if c[i] == '0' && i + 1 < c.len() && (c[i + 1] == 'b' || c[i + 1] == 'B') {
+            (2u32, i + 2)
+        } else {
+            (10u32, i)
+        };
     i = digitos_desde;
 
     let mut valor: u64 = 0;
@@ -159,12 +174,18 @@ fn leer_numero(c: &[char], inicio: usize) -> Result<(u64, usize), ErrorSemantica
     }
 
     if !hubo_digitos {
-        return Err(ErrorSemantica::nuevo(inicio, "literal numerico sin digitos"));
+        return Err(ErrorSemantica::nuevo(
+            inicio,
+            "literal numerico sin digitos",
+        ));
     }
     if i < c.len() && c[i].is_alphanumeric() {
         return Err(ErrorSemantica::nuevo(
             i,
-            format!("el caracter '{}' no es un digito valido en este numero", c[i]),
+            format!(
+                "el caracter '{}' no es un digito valido en este numero",
+                c[i]
+            ),
         ));
     }
     Ok((valor, i))

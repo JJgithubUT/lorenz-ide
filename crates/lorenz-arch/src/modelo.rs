@@ -129,11 +129,17 @@ pub struct Acceso {
 
 impl Acceso {
     pub fn solo_lectura() -> Self {
-        Self { lectura: true, escritura: false }
+        Self {
+            lectura: true,
+            escritura: false,
+        }
     }
 
     pub fn lectura_escritura() -> Self {
-        Self { lectura: true, escritura: true }
+        Self {
+            lectura: true,
+            escritura: true,
+        }
     }
 }
 
@@ -168,12 +174,20 @@ impl Region {
 /// Clase de dispositivo que el emulador instancia.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TipoDispositivo {
-    Pantalla { ancho: u32, alto: u32, formato: String },
+    Pantalla {
+        ancho: u32,
+        alto: u32,
+        formato: String,
+    },
     Teclado,
     Uart,
     Temporizador,
-    Bloques { tamano_bloque: u32 },
-    Generico { script: String },
+    Bloques {
+        tamano_bloque: u32,
+    },
+    Generico {
+        script: String,
+    },
 }
 
 /// Un periferico conectado a la maquina.

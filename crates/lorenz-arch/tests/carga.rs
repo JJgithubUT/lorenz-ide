@@ -78,7 +78,10 @@ fn el_endianness_por_defecto_es_little() {
 
 #[test]
 fn lee_el_endianness_declarado() {
-    let texto = minima().replace("arranque = 0x0000", "arranque = 0x0000\nendianness = \"big\"");
+    let texto = minima().replace(
+        "arranque = 0x0000",
+        "arranque = 0x0000\nendianness = \"big\"",
+    );
     assert_eq!(cargar(&texto).unwrap().endianness, Endianness::Big);
 }
 
@@ -91,9 +94,20 @@ fn la_pila_por_defecto_es_descendente() {
 fn lee_los_roles_de_registro() {
     let texto = std::fs::read_to_string("../../ejemplos/ejemplo-8/maquina.toml").unwrap();
     let m = cargar(&texto).unwrap();
-    assert_eq!(m.registro_con_rol(RolRegistro::ContadorPrograma).unwrap().nombre, "PC");
-    assert_eq!(m.registro_con_rol(RolRegistro::PunteroPila).unwrap().nombre, "SP");
-    assert_eq!(m.registro_con_rol(RolRegistro::Banderas).unwrap().nombre, "F");
+    assert_eq!(
+        m.registro_con_rol(RolRegistro::ContadorPrograma)
+            .unwrap()
+            .nombre,
+        "PC"
+    );
+    assert_eq!(
+        m.registro_con_rol(RolRegistro::PunteroPila).unwrap().nombre,
+        "SP"
+    );
+    assert_eq!(
+        m.registro_con_rol(RolRegistro::Banderas).unwrap().nombre,
+        "F"
+    );
 }
 
 #[test]
@@ -116,7 +130,13 @@ fn el_coste_variable_se_lee_como_tabla() {
     let texto = std::fs::read_to_string("../../ejemplos/ejemplo-8/maquina.toml").unwrap();
     let m = cargar(&texto).unwrap();
     let ciclos = m.instruccion("JZ").unwrap().ciclos;
-    assert_eq!(ciclos, Ciclos::SegunSalto { tomado: 3, no_tomado: 2 });
+    assert_eq!(
+        ciclos,
+        Ciclos::SegunSalto {
+            tomado: 3,
+            no_tomado: 2
+        }
+    );
     assert_eq!(ciclos.peor_caso(), 3);
 }
 

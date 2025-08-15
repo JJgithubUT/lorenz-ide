@@ -91,7 +91,10 @@ fn conserva_el_texto_original() {
 #[test]
 fn rechaza_un_caracter_desconocido() {
     let e = Codificacion::analizar("00?1 ....").unwrap_err();
-    assert!(matches!(e, ErrorBits::CaracterInesperado { caracter: '?', .. }));
+    assert!(matches!(
+        e,
+        ErrorBits::CaracterInesperado { caracter: '?', .. }
+    ));
 }
 
 #[test]
@@ -126,12 +129,18 @@ fn rechaza_un_campo_repetido() {
 
 #[test]
 fn rechaza_una_codificacion_vacia() {
-    assert!(matches!(Codificacion::analizar(""), Err(ErrorBits::PalabraVacia)));
+    assert!(matches!(
+        Codificacion::analizar(""),
+        Err(ErrorBits::PalabraVacia)
+    ));
 }
 
 #[test]
 fn rechaza_una_palabra_vacia_entre_separadores() {
-    assert!(matches!(Codificacion::analizar("0001 .... | | imm:8"), Err(ErrorBits::PalabraVacia)));
+    assert!(matches!(
+        Codificacion::analizar("0001 .... | | imm:8"),
+        Err(ErrorBits::PalabraVacia)
+    ));
 }
 
 #[test]

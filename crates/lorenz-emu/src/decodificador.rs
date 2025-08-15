@@ -68,7 +68,11 @@ impl Decodificador {
                     codificacion: i.codificacion.clone(),
                     mascara: primera.mascara(),
                     valor: primera.valor_fijo(),
-                    operandos: i.operandos.iter().map(|o| (o.nombre.clone(), o.tipo.clone())).collect(),
+                    operandos: i
+                        .operandos
+                        .iter()
+                        .map(|o| (o.nombre.clone(), o.tipo.clone()))
+                        .collect(),
                 }
             })
             .collect();
@@ -80,12 +84,15 @@ impl Decodificador {
     }
 
     fn buscar(&self, primera: u64) -> Option<usize> {
-        self.entradas.iter().position(|e| primera & e.mascara == e.valor)
+        self.entradas
+            .iter()
+            .position(|e| primera & e.mascara == e.valor)
     }
 
     /// Cuantas palabras ocupa la instruccion que empieza con `primera`; `None` si ninguna encaja.
     pub fn longitud_de(&self, primera: u64) -> Option<usize> {
-        self.buscar(primera).map(|i| self.entradas[i].codificacion.longitud_en_palabras())
+        self.buscar(primera)
+            .map(|i| self.entradas[i].codificacion.longitud_en_palabras())
     }
 
     /// Valor de un campo juntando sus fragmentos (D-014).
@@ -108,7 +115,11 @@ impl Decodificador {
     /// Decodifica una instruccion a partir de sus palabras ya leidas.
     ///
     /// `palabras` debe tener al menos la longitud de la instruccion; las sobrantes se ignoran.
-    pub fn decodificar_palabras(&self, direccion: u64, palabras: &[u64]) -> Result<Decodificada, ErrorEjecucion> {
+    pub fn decodificar_palabras(
+        &self,
+        direccion: u64,
+        palabras: &[u64],
+    ) -> Result<Decodificada, ErrorEjecucion> {
         let invalida = |palabra| ErrorEjecucion::InstruccionInvalida { direccion, palabra };
         let primera = *palabras.first().ok_or_else(|| invalida(0))?;
         let indice = self.buscar(primera).ok_or_else(|| invalida(primera))?;
@@ -129,7 +140,9 @@ impl Decodificador {
             let crudo = self.valor_de_campo(entrada, nombre, palabras);
             let (valor, registro) = match tipo {
                 TipoOperando::Registro { permitidos } => {
-                    let nombre_reg = permitidos.get(crudo as usize).ok_or_else(|| invalida(primera))?;
+                    let nombre_reg = permitidos
+                        .get(crudo as usize)
+                        .ok_or_else(|| invalida(primera))?;
                     (crudo as i128, Some(nombre_reg.clone()))
                 }
                 TipoOperando::Inmediato { signo: true, .. } | TipoOperando::Desplazamiento => {
@@ -137,15 +150,33 @@ impl Decodificador {
                 }
                 _ => (crudo as i128, None),
             };
-            operandos.push(OperandoDecodificado { nombre: nombre.clone(), valor, registro });
+            operandos.push(OperandoDecodificado {
+                nombre: nombre.clone(),
+                valor,
+                registro,
+            });
         }
-        Ok(Decodificada { indice, direccion, longitud, operandos })
+        Ok(Decodificada {
+            indice,
+            direccion,
+            longitud,
+            operandos,
+        })
     }
 
     /// Lee y decodifica la instruccion que empieza en `direccion`.
-    pub fn decodificar(&self, memoria: &Memoria, direccion: u64) -> Result<Decodificada, ErrorEjecucion> {
+    pub fn decodificar(
+        &self,
+        memoria: &Memoria,
+        direccion: u64,
+    ) -> Result<Decodificada, ErrorEjecucion> {
         let primera = memoria.leer(direccion & self.mascara_direccion)?;
-        let longitud = self.longitud_de(primera).ok_or(ErrorEjecucion::InstruccionInvalida { direccion, palabra: primera })?;
+        let longitud = self
+            .longitud_de(primera)
+            .ok_or(ErrorEjecucion::InstruccionInvalida {
+                direccion,
+                palabra: primera,
+            })?;
         let mut palabras = Vec::with_capacity(longitud);
         palabras.push(primera);
         for n in 1..longitud {

@@ -17,6 +17,35 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Linea de comandos: validar y ejecutar
+
+**Hecho:**
+
+- Nuevo crate `lorenz-cli` con el binario `lorenz`; la logica vive en la biblioteca para probarla
+  sin lanzar procesos.
+- `lorenz validar <maquina.toml>` y `lorenz ejecutar <maquina.toml> <programa.hex>` con
+  `--limite`, `--direccion` y `--traza`.
+- Formato de programa en texto: palabras hexadecimales o binarias, comentarios con `#`.
+- Codigos de salida: 0 detenida, 1 fallo de ejecucion, 2 uso o archivos invalidos, 3 limite.
+- Programas de ejemplo `suma.hex` y `bucle.hex` en `ejemplos/ejemplo-8/programas`.
+- Pruebas: 15 de lectura de programas, 16 de argumentos, 20 de ordenes y 4 del binario como proceso.
+- Se aplico rustfmt a todo el codigo en un solo commit.
+
+**Decidido:**
+
+- **D-018** — La CLI usa solo la biblioteca estandar para leer argumentos. Motivo: pocas ordenes,
+  cero dependencias nuevas y mensajes de error en espanol sin adaptar un tercero.
+
+**Pendiente:** interrupciones (el formato no define aun como se vuelve de una; hace falta decidir
+la semantica de `vector` y un nombre para habilitarlas desde la semantica), dispositivos de
+pantalla y teclado conectados a las regiones y los puertos, y la salida de traza en formato maquina.
+
+**Requisitos:** RF-CLI-001 a RF-CLI-006, RF-EMU-042, RF-EMU-043.
+
+**Commits:** contador en 89 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Emulador: decodificador, interprete y bucle de ejecucion
 
 **Hecho:**

@@ -199,7 +199,10 @@ fn comprobar_version(pedida: &str) -> Result<(), ErrorArquitectura> {
     }
 }
 
-fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<Maquina, ErrorArquitectura> {
+fn convertir(
+    crudo: ArchivoCrudo,
+    fallos: &mut Vec<FalloValidacion>,
+) -> Result<Maquina, ErrorArquitectura> {
     let m = crudo.maquina;
 
     let endianness = match m.endianness.as_str() {
@@ -240,26 +243,40 @@ fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<M
                 otro => {
                     fallos.push(fallo(
                         Regla::ValorFueraDeRango,
-                        format!("el registro '{}' declara el rol desconocido '{}'", r.nombre, otro),
+                        format!(
+                            "el registro '{}' declara el rol desconocido '{}'",
+                            r.nombre, otro
+                        ),
                     ));
                     RolRegistro::General
                 }
             };
-            Registro { nombre: r.nombre, bits: r.bits, rol, inicial: r.inicial }
+            Registro {
+                nombre: r.nombre,
+                bits: r.bits,
+                rol,
+                inicial: r.inicial,
+            }
         })
         .collect();
 
     let banderas = crudo
         .flags
         .into_iter()
-        .map(|(nombre, b)| Bandera { nombre, bit: b.bit, descripcion: b.descripcion })
+        .map(|(nombre, b)| Bandera {
+            nombre,
+            bit: b.bit,
+            descripcion: b.descripcion,
+        })
         .collect();
 
     let mut instrucciones = Vec::new();
     for i in crudo.instrucciones {
-        let codificacion = Codificacion::analizar(&i.codigo).map_err(|e| {
-            ErrorArquitectura::Codificacion { mnemonico: i.mnemonico.clone(), causa: e.to_string() }
-        })?;
+        let codificacion =
+            Codificacion::analizar(&i.codigo).map_err(|e| ErrorArquitectura::Codificacion {
+                mnemonico: i.mnemonico.clone(),
+                causa: e.to_string(),
+            })?;
 
         let operandos = i
             .operandos
@@ -285,13 +302,20 @@ fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<M
                         TipoOperando::Direccion
                     }
                 };
-                Operando { nombre: o.nombre, tipo }
+                Operando {
+                    nombre: o.nombre,
+                    tipo,
+                }
             })
             .collect();
 
         let ciclos = convertir_ciclos(i.ciclos.as_ref(), &i.mnemonico, fallos);
 
-        let sintaxis = if i.sintaxis.is_empty() { i.mnemonico.clone() } else { i.sintaxis };
+        let sintaxis = if i.sintaxis.is_empty() {
+            i.mnemonico.clone()
+        } else {
+            i.sintaxis
+        };
 
         let programa = match semantica::analizar(&i.semantica) {
             Ok(p) => p,
@@ -322,15 +346,30 @@ fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<M
         .into_iter()
         .map(|r| {
             let acceso = match r.acceso.as_str() {
-                "r" => Acceso { lectura: true, escritura: false },
-                "w" => Acceso { lectura: false, escritura: true },
-                "rw" => Acceso { lectura: true, escritura: true },
+                "r" => Acceso {
+                    lectura: true,
+                    escritura: false,
+                },
+                "w" => Acceso {
+                    lectura: false,
+                    escritura: true,
+                },
+                "rw" => Acceso {
+                    lectura: true,
+                    escritura: true,
+                },
                 otro => {
                     fallos.push(fallo(
                         Regla::ValorFueraDeRango,
-                        format!("la region '{}' declara el acceso desconocido '{}'", r.nombre, otro),
+                        format!(
+                            "la region '{}' declara el acceso desconocido '{}'",
+                            r.nombre, otro
+                        ),
                     ));
-                    Acceso { lectura: true, escritura: true }
+                    Acceso {
+                        lectura: true,
+                        escritura: true,
+                    }
                 }
             };
             Region {
@@ -357,16 +396,23 @@ fn convertir(crudo: ArchivoCrudo, fallos: &mut Vec<FalloValidacion>) -> Result<M
                 "teclado" => TipoDispositivo::Teclado,
                 "uart" => TipoDispositivo::Uart,
                 "temporizador" => TipoDispositivo::Temporizador,
-                "bloques" => TipoDispositivo::Bloques { tamano_bloque: d.tamano_bloque.unwrap_or(512) },
+                "bloques" => TipoDispositivo::Bloques {
+                    tamano_bloque: d.tamano_bloque.unwrap_or(512),
+                },
                 "generico" => TipoDispositivo::Generico {
                     script: d.script.unwrap_or_default(),
                 },
                 otro => {
                     fallos.push(fallo(
                         Regla::ValorFueraDeRango,
-                        format!("el dispositivo '{}' declara el tipo desconocido '{}'", d.nombre, otro),
+                        format!(
+                            "el dispositivo '{}' declara el tipo desconocido '{}'",
+                            d.nombre, otro
+                        ),
                     ));
-                    TipoDispositivo::Generico { script: String::new() }
+                    TipoDispositivo::Generico {
+                        script: String::new(),
+                    }
                 }
             };
             Dispositivo {
@@ -414,7 +460,10 @@ fn convertir_ciclos(
         Some(toml::Value::Integer(n)) if *n >= 0 => Ciclos::Fijo(*n as u32),
         Some(toml::Value::Table(t)) => {
             let leer = |clave: &str| t.get(clave).and_then(|v| v.as_integer()).unwrap_or(1) as u32;
-            Ciclos::SegunSalto { tomado: leer("tomado"), no_tomado: leer("no_tomado") }
+            Ciclos::SegunSalto {
+                tomado: leer("tomado"),
+                no_tomado: leer("no_tomado"),
+            }
         }
         Some(_) => {
             fallos.push(fallo(
@@ -427,5 +476,9 @@ fn convertir_ciclos(
 }
 
 fn fallo(regla: Regla, detalle: String) -> FalloValidacion {
-    FalloValidacion { regla, detalle, posicion: None }
+    FalloValidacion {
+        regla,
+        detalle,
+        posicion: None,
+    }
 }

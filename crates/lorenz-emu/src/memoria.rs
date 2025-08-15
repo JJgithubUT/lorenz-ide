@@ -54,7 +54,10 @@ impl Memoria {
             });
         }
         regiones.sort_by_key(|r| r.desde);
-        Ok(Self { regiones, mascara_palabra: maquina.palabra_maxima() })
+        Ok(Self {
+            regiones,
+            mascara_palabra: maquina.palabra_maxima(),
+        })
     }
 
     /// Indice de la region que contiene la direccion, si hay alguna.
@@ -79,12 +82,14 @@ impl Memoria {
 
     /// Nombre de la region que contiene la direccion.
     pub fn region_de(&self, direccion: u64) -> Option<&str> {
-        self.localizar(direccion).map(|i| self.regiones[i].nombre.as_str())
+        self.localizar(direccion)
+            .map(|i| self.regiones[i].nombre.as_str())
     }
 
     /// Dispositivo al que responde la direccion, si pertenece a una region mapeada.
     pub fn dispositivo_de(&self, direccion: u64) -> Option<&str> {
-        self.localizar(direccion).and_then(|i| self.regiones[i].dispositivo.as_deref())
+        self.localizar(direccion)
+            .and_then(|i| self.regiones[i].dispositivo.as_deref())
     }
 
     /// Si la direccion cae en alguna region.
@@ -99,7 +104,9 @@ impl Memoria {
 
     /// Lee una palabra respetando los permisos de la region (RF-EMU-021).
     pub fn leer(&self, direccion: u64) -> Result<u64, ErrorEjecucion> {
-        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let i = self
+            .localizar(direccion)
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &self.regiones[i];
         if !r.acceso.lectura {
             return Err(ErrorEjecucion::LecturaDeSoloEscritura {
@@ -115,7 +122,9 @@ impl Memoria {
     /// El valor se trunca al ancho de palabra de la maquina.
     pub fn escribir(&mut self, direccion: u64, valor: u64) -> Result<(), ErrorEjecucion> {
         let mascara = self.mascara_palabra;
-        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let i = self
+            .localizar(direccion)
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &mut self.regiones[i];
         if !r.acceso.escritura {
             return Err(ErrorEjecucion::EscrituraEnSoloLectura {
@@ -129,16 +138,24 @@ impl Memoria {
 
     /// Lee una palabra ignorando los permisos: para el depurador (RF-EMU-022).
     pub fn leer_privilegiado(&self, direccion: u64) -> Result<u64, ErrorEjecucion> {
-        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let i = self
+            .localizar(direccion)
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &self.regiones[i];
         Ok(r.celdas[(direccion - r.desde) as usize])
     }
 
     /// Escribe una palabra ignorando los permisos: para el depurador y para cargar programas en
     /// una ROM (RF-EMU-022, RF-EMU-023).
-    pub fn escribir_privilegiado(&mut self, direccion: u64, valor: u64) -> Result<(), ErrorEjecucion> {
+    pub fn escribir_privilegiado(
+        &mut self,
+        direccion: u64,
+        valor: u64,
+    ) -> Result<(), ErrorEjecucion> {
         let mascara = self.mascara_palabra;
-        let i = self.localizar(direccion).ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let i = self
+            .localizar(direccion)
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &mut self.regiones[i];
         r.celdas[(direccion - r.desde) as usize] = valor & mascara;
         Ok(())
@@ -148,8 +165,15 @@ impl Memoria {
     ///
     /// Es la operacion con la que se carga un programa antes de ejecutar (RF-EMU-023). Si el bloque
     /// no cabe entero dentro de las regiones, no se escribe nada.
-    pub fn cargar_bloque(&mut self, direccion: u64, palabras: &[u64]) -> Result<(), ErrorEjecucion> {
-        let fuera = || ErrorEjecucion::BloqueFueraDeRegion { direccion, longitud: palabras.len() };
+    pub fn cargar_bloque(
+        &mut self,
+        direccion: u64,
+        palabras: &[u64],
+    ) -> Result<(), ErrorEjecucion> {
+        let fuera = || ErrorEjecucion::BloqueFueraDeRegion {
+            direccion,
+            longitud: palabras.len(),
+        };
         for i in 0..palabras.len() as u64 {
             let d = direccion.checked_add(i).ok_or_else(fuera)?;
             if !self.es_valida(d) {
@@ -166,7 +190,12 @@ impl Memoria {
     pub fn volcar(&self, direccion: u64, longitud: usize) -> Result<Vec<u64>, ErrorEjecucion> {
         (0..longitud as u64)
             .map(|i| {
-                let d = direccion.checked_add(i).ok_or(ErrorEjecucion::BloqueFueraDeRegion { direccion, longitud })?;
+                let d = direccion
+                    .checked_add(i)
+                    .ok_or(ErrorEjecucion::BloqueFueraDeRegion {
+                        direccion,
+                        longitud,
+                    })?;
                 self.leer_privilegiado(d)
             })
             .collect()

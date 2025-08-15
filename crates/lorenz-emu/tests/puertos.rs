@@ -17,9 +17,18 @@ fn solo_existen_los_puertos_declarados() {
 #[test]
 fn un_puerto_no_declarado_da_error_al_leer_y_escribir() {
     let mut p = puertos();
-    assert!(matches!(p.leer(9), Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })));
-    assert!(matches!(p.escribir(9, 1), Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })));
-    assert!(matches!(p.encolar_entrada(9, 1), Err(ErrorEjecucion::PuertoNoDeclarado { .. })));
+    assert!(matches!(
+        p.leer(9),
+        Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })
+    ));
+    assert!(matches!(
+        p.escribir(9, 1),
+        Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })
+    ));
+    assert!(matches!(
+        p.encolar_entrada(9, 1),
+        Err(ErrorEjecucion::PuertoNoDeclarado { .. })
+    ));
 }
 
 #[test]
@@ -34,7 +43,10 @@ fn la_entrada_sale_en_el_orden_en_que_entro() {
         p.encolar_entrada(1, v).unwrap();
     }
     assert_eq!(p.pendientes(1).unwrap(), 3);
-    assert_eq!([p.leer(1).unwrap(), p.leer(1).unwrap(), p.leer(1).unwrap()], [3, 1, 2]);
+    assert_eq!(
+        [p.leer(1).unwrap(), p.leer(1).unwrap(), p.leer(1).unwrap()],
+        [3, 1, 2]
+    );
     assert_eq!(p.pendientes(1).unwrap(), 0);
 }
 

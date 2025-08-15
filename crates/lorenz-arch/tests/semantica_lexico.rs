@@ -3,7 +3,11 @@
 use lorenz_arch::semantica::lexico::{tokenizar, Token};
 
 fn tokens(texto: &str) -> Vec<Token> {
-    tokenizar(texto).unwrap().into_iter().map(|l| l.token).collect()
+    tokenizar(texto)
+        .unwrap()
+        .into_iter()
+        .map(|l| l.token)
+        .collect()
 }
 
 #[test]
@@ -85,8 +89,14 @@ fn reconoce_las_palabras_reservadas() {
 
 #[test]
 fn una_palabra_reservada_dentro_de_un_identificador_no_lo_es() {
-    assert_eq!(tokens("silla"), vec![Token::Ident("silla".into()), Token::Fin]);
-    assert_eq!(tokens("detenerse"), vec![Token::Ident("detenerse".into()), Token::Fin]);
+    assert_eq!(
+        tokens("silla"),
+        vec![Token::Ident("silla".into()), Token::Fin]
+    );
+    assert_eq!(
+        tokens("detenerse"),
+        vec![Token::Ident("detenerse".into()), Token::Fin]
+    );
 }
 
 #[test]
@@ -111,7 +121,14 @@ fn mem_in_y_out_son_identificadores() {
 fn lee_los_operadores_aritmeticos() {
     assert_eq!(
         tokens("+ - * / %"),
-        vec![Token::Mas, Token::Menos, Token::Estrella, Token::Barra, Token::Porcentaje, Token::Fin]
+        vec![
+            Token::Mas,
+            Token::Menos,
+            Token::Estrella,
+            Token::Barra,
+            Token::Porcentaje,
+            Token::Fin
+        ]
     );
 }
 
@@ -149,20 +166,32 @@ fn lee_los_operadores_de_comparacion() {
 
 #[test]
 fn distingue_la_asignacion_de_la_igualdad() {
-    assert_eq!(tokens("= =="), vec![Token::Igual, Token::IgualIgual, Token::Fin]);
+    assert_eq!(
+        tokens("= =="),
+        vec![Token::Igual, Token::IgualIgual, Token::Fin]
+    );
 }
 
 #[test]
 fn distingue_el_operador_logico_del_de_bits() {
     assert_eq!(
         tokens("& && | ||"),
-        vec![Token::Ampersand, Token::AmpAmp, Token::Tuberia, Token::TuberiaTuberia, Token::Fin]
+        vec![
+            Token::Ampersand,
+            Token::AmpAmp,
+            Token::Tuberia,
+            Token::TuberiaTuberia,
+            Token::Fin
+        ]
     );
 }
 
 #[test]
 fn distingue_la_negacion_de_la_desigualdad() {
-    assert_eq!(tokens("! !="), vec![Token::Admiracion, Token::Distinto, Token::Fin]);
+    assert_eq!(
+        tokens("! !="),
+        vec![Token::Admiracion, Token::Distinto, Token::Fin]
+    );
 }
 
 #[test]
@@ -187,11 +216,21 @@ fn lee_la_puntuacion() {
 fn los_operadores_no_necesitan_espacios() {
     assert_eq!(
         tokens("a+b"),
-        vec![Token::Ident("a".into()), Token::Mas, Token::Ident("b".into()), Token::Fin]
+        vec![
+            Token::Ident("a".into()),
+            Token::Mas,
+            Token::Ident("b".into()),
+            Token::Fin
+        ]
     );
     assert_eq!(
         tokens("a<<2"),
-        vec![Token::Ident("a".into()), Token::DesplazaIzq, Token::Numero(2), Token::Fin]
+        vec![
+            Token::Ident("a".into()),
+            Token::DesplazaIzq,
+            Token::Numero(2),
+            Token::Fin
+        ]
     );
 }
 

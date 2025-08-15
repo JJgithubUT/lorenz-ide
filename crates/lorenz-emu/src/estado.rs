@@ -42,7 +42,11 @@ impl Estado {
     pub fn nuevo(maquina: &Maquina) -> Self {
         let nombres: Vec<String> = maquina.registros.iter().map(|r| r.nombre.clone()).collect();
         let roles: Vec<RolRegistro> = maquina.registros.iter().map(|r| r.rol).collect();
-        let mascaras: Vec<u64> = maquina.registros.iter().map(|r| mascara_de(r.bits)).collect();
+        let mascaras: Vec<u64> = maquina
+            .registros
+            .iter()
+            .map(|r| mascara_de(r.bits))
+            .collect();
         let iniciales: Vec<u64> = maquina
             .registros
             .iter()
@@ -56,7 +60,11 @@ impl Estado {
             .expect("una maquina validada siempre tiene contador de programa");
         let indice_sp = roles.iter().position(|r| *r == RolRegistro::PunteroPila);
         let indice_banderas = roles.iter().position(|r| *r == RolRegistro::Banderas);
-        let banderas = maquina.banderas.iter().map(|b| (b.nombre.clone(), b.bit)).collect();
+        let banderas = maquina
+            .banderas
+            .iter()
+            .map(|b| (b.nombre.clone(), b.bit))
+            .collect();
 
         let mut estado = Self {
             nombres,
@@ -82,7 +90,9 @@ impl Estado {
         self.nombres
             .iter()
             .position(|n| n == nombre)
-            .ok_or_else(|| ErrorEjecucion::RegistroInexistente { nombre: nombre.to_string() })
+            .ok_or_else(|| ErrorEjecucion::RegistroInexistente {
+                nombre: nombre.to_string(),
+            })
     }
 
     /// Cuantos registros tiene la maquina.
@@ -106,7 +116,9 @@ impl Estado {
     pub fn fijar_registro(&mut self, nombre: &str, valor: u64) -> Result<(), ErrorEjecucion> {
         let i = self.indice(nombre)?;
         if self.roles[i] == RolRegistro::Fijo {
-            return Err(ErrorEjecucion::RegistroDeSoloLectura { nombre: nombre.to_string() });
+            return Err(ErrorEjecucion::RegistroDeSoloLectura {
+                nombre: nombre.to_string(),
+            });
         }
         self.valores[i] = valor & self.mascaras[i];
         Ok(())
@@ -135,7 +147,9 @@ impl Estado {
     }
 
     fn posicion_de_bandera(&self, nombre: &str) -> Result<(usize, u32), ErrorEjecucion> {
-        let inexistente = || ErrorEjecucion::BanderaInexistente { nombre: nombre.to_string() };
+        let inexistente = || ErrorEjecucion::BanderaInexistente {
+            nombre: nombre.to_string(),
+        };
         let registro = self.indice_banderas.ok_or_else(inexistente)?;
         let bit = self
             .banderas

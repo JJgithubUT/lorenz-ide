@@ -61,7 +61,11 @@ fn desplazar_der(a: i128, n: i128) -> i128 {
     if n < 0 {
         0
     } else if n >= 127 {
-        if a < 0 { -1 } else { 0 }
+        if a < 0 {
+            -1
+        } else {
+            0
+        }
     } else {
         a >> n
     }
@@ -104,12 +108,14 @@ impl Interprete {
         }
         match nombre {
             "pc" => Ok(entorno.estado.pc() as i128),
-            "sp" => entorno
-                .estado
-                .sp()
-                .map(|v| v as i128)
-                .ok_or_else(|| ErrorEjecucion::RegistroInexistente { nombre: nombre.to_string() }),
-            _ => Err(ErrorEjecucion::RegistroInexistente { nombre: nombre.to_string() }),
+            "sp" => entorno.estado.sp().map(|v| v as i128).ok_or_else(|| {
+                ErrorEjecucion::RegistroInexistente {
+                    nombre: nombre.to_string(),
+                }
+            }),
+            _ => Err(ErrorEjecucion::RegistroInexistente {
+                nombre: nombre.to_string(),
+            }),
         }
     }
 
@@ -161,7 +167,9 @@ impl Interprete {
             _ => {}
         }
         let y = self.evaluar(b, instruccion, dec, entorno)?;
-        let cero = || ErrorEjecucion::DivisionEntreCero { mnemonico: instruccion.mnemonico.clone() };
+        let cero = || ErrorEjecucion::DivisionEntreCero {
+            mnemonico: instruccion.mnemonico.clone(),
+        };
         Ok(match op {
             OpBinario::Suma => x.wrapping_add(y),
             OpBinario::Resta => x.wrapping_sub(y),
@@ -199,10 +207,12 @@ impl Interprete {
         match destino {
             Destino::Nombre(nombre) => {
                 if let Some(o) = dec.operandos.iter().find(|o| &o.nombre == nombre) {
-                    let registro = o
-                        .registro
-                        .clone()
-                        .ok_or_else(|| ErrorEjecucion::RegistroInexistente { nombre: nombre.clone() })?;
+                    let registro =
+                        o.registro
+                            .clone()
+                            .ok_or_else(|| ErrorEjecucion::RegistroInexistente {
+                                nombre: nombre.clone(),
+                            })?;
                     return self.asignar_registro(&registro, valor, entorno, seg, &mut registrar);
                 }
                 if entorno.estado.registro(nombre).is_ok() {
@@ -219,8 +229,12 @@ impl Interprete {
                     _ => None,
                 };
                 match alias {
-                    Some(registro) => self.asignar_registro(&registro, valor, entorno, seg, &mut registrar),
-                    None => Err(ErrorEjecucion::RegistroInexistente { nombre: nombre.clone() }),
+                    Some(registro) => {
+                        self.asignar_registro(&registro, valor, entorno, seg, &mut registrar)
+                    }
+                    None => Err(ErrorEjecucion::RegistroInexistente {
+                        nombre: nombre.clone(),
+                    }),
                 }
             }
             Destino::Mem(direccion) => {
@@ -283,7 +297,8 @@ impl Interprete {
                 }
                 Sentencia::Asignar(destino, expr) => {
                     let valor = self.evaluar(expr, instruccion, dec, entorno)?;
-                    let acarreo = matches!(expr, Expr::Binario(op, _, _) if op.puede_producir_acarreo());
+                    let acarreo =
+                        matches!(expr, Expr::Binario(op, _, _) if op.puede_producir_acarreo());
                     self.asignar(destino, valor, instruccion, dec, entorno, seg)?;
                     if !matches!(destino, Destino::Nombre(n) if entorno.estado.tiene_bandera(n)) {
                         seg.con_acarreo = acarreo;
