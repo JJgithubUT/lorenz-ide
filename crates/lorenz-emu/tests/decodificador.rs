@@ -10,15 +10,29 @@ fn dec() -> Decodificador {
 }
 
 fn indice(m: &str) -> usize {
-    ejemplo_8().instrucciones.iter().position(|i| i.mnemonico == m).unwrap()
+    ejemplo_8()
+        .instrucciones
+        .iter()
+        .position(|i| i.mnemonico == m)
+        .unwrap()
 }
 
 fn valor(d: &lorenz_emu::Decodificada, nombre: &str) -> i128 {
-    d.operandos.iter().find(|o| o.nombre == nombre).unwrap().valor
+    d.operandos
+        .iter()
+        .find(|o| o.nombre == nombre)
+        .unwrap()
+        .valor
 }
 
 fn registro(d: &lorenz_emu::Decodificada, nombre: &str) -> String {
-    d.operandos.iter().find(|o| o.nombre == nombre).unwrap().registro.clone().unwrap()
+    d.operandos
+        .iter()
+        .find(|o| o.nombre == nombre)
+        .unwrap()
+        .registro
+        .clone()
+        .unwrap()
 }
 
 #[test]
@@ -57,7 +71,9 @@ fn ldi_usa_dos_palabras_y_trae_el_inmediato() {
 #[test]
 fn una_direccion_repartida_en_dos_palabras_junta_primero_la_baja_en_little_endian() {
     // LD A, [0x2010]: bajo 0x10, alto 0x20
-    let d = dec().decodificar_palabras(0, &[0b0100_0000, 0x10, 0x20]).unwrap();
+    let d = dec()
+        .decodificar_palabras(0, &[0b0100_0000, 0x10, 0x20])
+        .unwrap();
     assert_eq!(d.indice, indice("LD"));
     assert_eq!(d.longitud, 3);
     assert_eq!(valor(&d, "dir"), 0x2010);
@@ -65,7 +81,9 @@ fn una_direccion_repartida_en_dos_palabras_junta_primero_la_baja_en_little_endia
 
 #[test]
 fn st_decodifica_el_registro_origen_y_la_direccion() {
-    let d = dec().decodificar_palabras(0, &[0b0101_1000, 0xFF, 0x20]).unwrap();
+    let d = dec()
+        .decodificar_palabras(0, &[0b0101_1000, 0xFF, 0x20])
+        .unwrap();
     assert_eq!(d.indice, indice("ST"));
     assert_eq!(registro(&d, "rs"), "C");
     assert_eq!(valor(&d, "dir"), 0x20FF);
@@ -73,14 +91,29 @@ fn st_decodifica_el_registro_origen_y_la_direccion() {
 
 #[test]
 fn jz_y_hlt_se_reconocen() {
-    assert_eq!(dec().decodificar_palabras(0, &[0x60, 0x00, 0x00]).unwrap().indice, indice("JZ"));
-    assert_eq!(dec().decodificar_palabras(0, &[0xF0]).unwrap().indice, indice("HLT"));
+    assert_eq!(
+        dec()
+            .decodificar_palabras(0, &[0x60, 0x00, 0x00])
+            .unwrap()
+            .indice,
+        indice("JZ")
+    );
+    assert_eq!(
+        dec().decodificar_palabras(0, &[0xF0]).unwrap().indice,
+        indice("HLT")
+    );
 }
 
 #[test]
 fn un_codigo_sin_instruccion_es_invalido() {
     let e = dec().decodificar_palabras(0x10, &[0x70]).unwrap_err();
-    assert_eq!(e, ErrorEjecucion::InstruccionInvalida { direccion: 0x10, palabra: 0x70 });
+    assert_eq!(
+        e,
+        ErrorEjecucion::InstruccionInvalida {
+            direccion: 0x10,
+            palabra: 0x70
+        }
+    );
 }
 
 #[test]
@@ -93,7 +126,10 @@ fn faltan_palabras_para_la_instruccion() {
 
 #[test]
 fn sin_palabras_no_hay_instruccion() {
-    assert!(matches!(dec().decodificar_palabras(0, &[]), Err(ErrorEjecucion::InstruccionInvalida { .. })));
+    assert!(matches!(
+        dec().decodificar_palabras(0, &[]),
+        Err(ErrorEjecucion::InstruccionInvalida { .. })
+    ));
 }
 
 #[test]

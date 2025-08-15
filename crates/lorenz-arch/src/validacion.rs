@@ -29,7 +29,11 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
 }
 
 fn fallo(regla: Regla, detalle: String) -> FalloValidacion {
-    FalloValidacion { regla, detalle, posicion: None }
+    FalloValidacion {
+        regla,
+        detalle,
+        posicion: None,
+    }
 }
 
 /// RF-ARQ-016: los bits de cada palabra suman el ancho de palabra declarado.
@@ -142,7 +146,11 @@ fn roles_de_registro(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         ));
     }
 
-    for rol in [RolRegistro::ContadorPrograma, RolRegistro::PunteroPila, RolRegistro::Banderas] {
+    for rol in [
+        RolRegistro::ContadorPrograma,
+        RolRegistro::PunteroPila,
+        RolRegistro::Banderas,
+    ] {
         let n = contar(rol);
         if n > 1 {
             let nombres: Vec<&str> = m
@@ -153,7 +161,12 @@ fn roles_de_registro(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                 .collect();
             fallos.push(fallo(
                 Regla::RolUnico,
-                format!("el rol {:?} lo declaran {} registros: {}", rol, n, nombres.join(", ")),
+                format!(
+                    "el rol {:?} lo declaran {} registros: {}",
+                    rol,
+                    n,
+                    nombres.join(", ")
+                ),
             ));
         }
     }
@@ -180,10 +193,25 @@ fn nombres_duplicados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         }
     };
 
-    revisar("registros", m.registros.iter().map(|r| r.nombre.as_str()).collect());
-    revisar("regiones", m.regiones.iter().map(|r| r.nombre.as_str()).collect());
-    revisar("dispositivos", m.dispositivos.iter().map(|d| d.nombre.as_str()).collect());
-    revisar("instrucciones", m.instrucciones.iter().map(|i| i.mnemonico.as_str()).collect());
+    revisar(
+        "registros",
+        m.registros.iter().map(|r| r.nombre.as_str()).collect(),
+    );
+    revisar(
+        "regiones",
+        m.regiones.iter().map(|r| r.nombre.as_str()).collect(),
+    );
+    revisar(
+        "dispositivos",
+        m.dispositivos.iter().map(|d| d.nombre.as_str()).collect(),
+    );
+    revisar(
+        "instrucciones",
+        m.instrucciones
+            .iter()
+            .map(|i| i.mnemonico.as_str())
+            .collect(),
+    );
 }
 
 /// RF-ARQ-027: las regiones de memoria no se solapan.
@@ -293,13 +321,19 @@ fn rangos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     if !(4..=64).contains(&m.bits_palabra) {
         fallos.push(fallo(
             Regla::ValorFueraDeRango,
-            format!("el ancho de palabra es {} y debe estar entre 4 y 64 bits", m.bits_palabra),
+            format!(
+                "el ancho de palabra es {} y debe estar entre 4 y 64 bits",
+                m.bits_palabra
+            ),
         ));
     }
     if !(8..=64).contains(&m.bits_direccion) {
         fallos.push(fallo(
             Regla::ValorFueraDeRango,
-            format!("el ancho de direccion es {} y debe estar entre 8 y 64 bits", m.bits_direccion),
+            format!(
+                "el ancho de direccion es {} y debe estar entre 8 y 64 bits",
+                m.bits_direccion
+            ),
         ));
     }
 
@@ -307,11 +341,18 @@ fn rangos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         if registro.bits == 0 || registro.bits > 64 {
             fallos.push(fallo(
                 Regla::ValorFueraDeRango,
-                format!("el registro '{}' declara {} bits; el rango es 1..64", registro.nombre, registro.bits),
+                format!(
+                    "el registro '{}' declara {} bits; el rango es 1..64",
+                    registro.nombre, registro.bits
+                ),
             ));
             continue;
         }
-        let maximo = if registro.bits >= 64 { u64::MAX } else { (1u64 << registro.bits) - 1 };
+        let maximo = if registro.bits >= 64 {
+            u64::MAX
+        } else {
+            (1u64 << registro.bits) - 1
+        };
         if registro.inicial > maximo {
             fallos.push(fallo(
                 Regla::ValorFueraDeRango,
@@ -370,7 +411,9 @@ fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
             "sp" => m.registro_con_rol(RolRegistro::PunteroPila).is_some(),
             _ => false,
         };
-        let existe = |n: &str| es_operando(n) || m.registro(n).is_some() || m.bandera(n).is_some() || es_alias(n);
+        let existe = |n: &str| {
+            es_operando(n) || m.registro(n).is_some() || m.bandera(n).is_some() || es_alias(n)
+        };
 
         for nombre in ins.programa.nombres_leidos() {
             if !existe(&nombre) {
@@ -412,7 +455,10 @@ fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                 ));
             }
 
-            if m.registro(&nombre).map(|r| r.rol == RolRegistro::Fijo).unwrap_or(false) {
+            if m.registro(&nombre)
+                .map(|r| r.rol == RolRegistro::Fijo)
+                .unwrap_or(false)
+            {
                 fallos.push(fallo(
                     Regla::SemanticaInvalida,
                     format!(

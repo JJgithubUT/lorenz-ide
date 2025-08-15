@@ -12,7 +12,10 @@ pub struct ErrorSemantica {
 
 impl ErrorSemantica {
     pub fn nuevo(posicion: usize, mensaje: impl Into<String>) -> Self {
-        Self { posicion, mensaje: mensaje.into() }
+        Self {
+            posicion,
+            mensaje: mensaje.into(),
+        }
     }
 }
 

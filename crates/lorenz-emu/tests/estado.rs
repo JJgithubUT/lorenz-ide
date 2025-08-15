@@ -40,8 +40,14 @@ fn un_registro_de_16_bits_guarda_16_bits() {
 #[test]
 fn un_registro_inexistente_da_error() {
     let mut e = estado();
-    assert!(matches!(e.registro("Q"), Err(ErrorEjecucion::RegistroInexistente { .. })));
-    assert!(matches!(e.fijar_registro("Q", 1), Err(ErrorEjecucion::RegistroInexistente { .. })));
+    assert!(matches!(
+        e.registro("Q"),
+        Err(ErrorEjecucion::RegistroInexistente { .. })
+    ));
+    assert!(matches!(
+        e.fijar_registro("Q", 1),
+        Err(ErrorEjecucion::RegistroInexistente { .. })
+    ));
 }
 
 #[test]
@@ -86,13 +92,23 @@ fn apagar_una_bandera_no_toca_las_demas() {
 #[test]
 fn una_bandera_inexistente_da_error() {
     let mut e = estado();
-    assert!(matches!(e.bandera("N"), Err(ErrorEjecucion::BanderaInexistente { .. })));
-    assert!(matches!(e.fijar_bandera("N", true), Err(ErrorEjecucion::BanderaInexistente { .. })));
+    assert!(matches!(
+        e.bandera("N"),
+        Err(ErrorEjecucion::BanderaInexistente { .. })
+    ));
+    assert!(matches!(
+        e.fijar_bandera("N", true),
+        Err(ErrorEjecucion::BanderaInexistente { .. })
+    ));
 }
 
 #[test]
 fn los_nombres_de_banderas_son_los_declarados() {
-    let mut nombres = estado().nombres_de_banderas().into_iter().map(String::from).collect::<Vec<_>>();
+    let mut nombres = estado()
+        .nombres_de_banderas()
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
     nombres.sort();
     assert_eq!(nombres, ["C", "Z"]);
 }

@@ -11,7 +11,9 @@ pub enum Orden {
     Ayuda,
     Version,
     /// Cargar y validar una descripcion de arquitectura.
-    Validar { maquina: String },
+    Validar {
+        maquina: String,
+    },
     /// Cargar un programa y ejecutarlo.
     Ejecutar {
         maquina: String,
@@ -43,11 +45,20 @@ pub enum ErrorUso {
 }
 
 fn numero(opcion: &str, valor: &str) -> Result<u64, ErrorUso> {
-    let invalido = || ErrorUso::NumeroInvalido { opcion: opcion.to_string(), valor: valor.to_string() };
+    let invalido = || ErrorUso::NumeroInvalido {
+        opcion: opcion.to_string(),
+        valor: valor.to_string(),
+    };
     let sin_guiones = valor.replace('_', "");
-    if let Some(h) = sin_guiones.strip_prefix("0x").or_else(|| sin_guiones.strip_prefix("0X")) {
+    if let Some(h) = sin_guiones
+        .strip_prefix("0x")
+        .or_else(|| sin_guiones.strip_prefix("0X"))
+    {
         u64::from_str_radix(h, 16).map_err(|_| invalido())
-    } else if let Some(b) = sin_guiones.strip_prefix("0b").or_else(|| sin_guiones.strip_prefix("0B")) {
+    } else if let Some(b) = sin_guiones
+        .strip_prefix("0b")
+        .or_else(|| sin_guiones.strip_prefix("0B"))
+    {
         u64::from_str_radix(b, 2).map_err(|_| invalido())
     } else {
         sin_guiones.parse().map_err(|_| invalido())
@@ -92,7 +103,9 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
             "--traza" => traza = true,
             "--limite" | "--direccion" => {
                 i += 1;
-                let valor = resto.get(i).ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
                 let n = numero(a, valor)?;
                 if a == "--limite" {
                     limite = n;
@@ -111,5 +124,11 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     if let Some(extra) = it.next() {
         return Err(ErrorUso::Sobra(extra));
     }
-    Ok(Orden::Ejecutar { maquina, programa, limite, traza, direccion })
+    Ok(Orden::Ejecutar {
+        maquina,
+        programa,
+        limite,
+        traza,
+        direccion,
+    })
 }

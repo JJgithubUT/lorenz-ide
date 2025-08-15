@@ -31,11 +31,16 @@ impl Puertos {
                 puertos.insert(*numero, Puerto::default());
             }
         }
-        Puertos { puertos, mascara: mascara_de(maquina.bits_palabra) }
+        Puertos {
+            puertos,
+            mascara: mascara_de(maquina.bits_palabra),
+        }
     }
 
     fn puerto(&mut self, numero: u64) -> Result<&mut Puerto, ErrorEjecucion> {
-        self.puertos.get_mut(&numero).ok_or(ErrorEjecucion::PuertoNoDeclarado { puerto: numero })
+        self.puertos
+            .get_mut(&numero)
+            .ok_or(ErrorEjecucion::PuertoNoDeclarado { puerto: numero })
     }
 
     /// Numeros de puerto declarados, de menor a mayor.

@@ -56,9 +56,15 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
-        Orden::Ejecutar { maquina, programa, limite, traza, direccion } => {
-            ejecutar(&maquina, &programa, limite, traza, direccion, salida, errores)
-        }
+        Orden::Ejecutar {
+            maquina,
+            programa,
+            limite,
+            traza,
+            direccion,
+        } => ejecutar(
+            &maquina, &programa, limite, traza, direccion, salida, errores,
+        ),
     }
 }
 
@@ -144,7 +150,14 @@ fn ejecutar(
                 if traza {
                     escribir(
                         salida,
-                        &format!("{:0ancho$x}  {:<6} {} ciclos{}\n", p.direccion, p.mnemonico, p.ciclos, if p.salto { "  salto" } else { "" }, ancho = digitos),
+                        &format!(
+                            "{:0ancho$x}  {:<6} {} ciclos{}\n",
+                            p.direccion,
+                            p.mnemonico,
+                            p.ciclos,
+                            if p.salto { "  salto" } else { "" },
+                            ancho = digitos
+                        ),
                     );
                 }
             }
@@ -152,7 +165,11 @@ fn ejecutar(
             Err(e) => {
                 escribir(
                     errores,
-                    &format!("error en {:0ancho$x}: {e}\n", emulador.estado().pc(), ancho = digitos),
+                    &format!(
+                        "error en {:0ancho$x}: {e}\n",
+                        emulador.estado().pc(),
+                        ancho = digitos
+                    ),
                 );
                 break SALIDA_ERROR_EJECUCION;
             }
@@ -189,7 +206,11 @@ fn resumen(emulador: &mut Emulador, digitos: usize, salida: &mut dyn Write) {
     }
     let puertos = emulador.puertos().numeros();
     for p in puertos {
-        let escritos = emulador.puertos_mut().salida(p).map(<[u64]>::to_vec).unwrap_or_default();
+        let escritos = emulador
+            .puertos_mut()
+            .salida(p)
+            .map(<[u64]>::to_vec)
+            .unwrap_or_default();
         if !escritos.is_empty() {
             let lista: Vec<String> = escritos.iter().map(|v| format!("{v:#x}")).collect();
             texto.push_str(&format!("salida del puerto {p:#x}: {}\n", lista.join(" ")));

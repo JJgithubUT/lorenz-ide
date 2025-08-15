@@ -76,7 +76,10 @@ fn escribir_en_solo_lectura_falla() {
     let e = m.escribir(0x0010, 1).unwrap_err();
     assert_eq!(
         e,
-        ErrorEjecucion::EscrituraEnSoloLectura { direccion: 0x10, region: "rom".into() }
+        ErrorEjecucion::EscrituraEnSoloLectura {
+            direccion: 0x10,
+            region: "rom".into()
+        }
     );
 }
 
@@ -93,7 +96,10 @@ fn leer_de_solo_escritura_falla() {
     let e = m.leer(0x0300).unwrap_err();
     assert_eq!(
         e,
-        ErrorEjecucion::LecturaDeSoloEscritura { direccion: 0x300, region: "buzon".into() }
+        ErrorEjecucion::LecturaDeSoloEscritura {
+            direccion: 0x300,
+            region: "buzon".into()
+        }
     );
 }
 
@@ -166,9 +172,15 @@ fn cargar_un_bloque_es_todo_o_nada() {
 #[test]
 fn un_bloque_no_puede_cruzar_un_hueco() {
     let mut m = memoria();
-    assert!(m.cargar_bloque(0x00FE, &[1, 2, 3, 4]).is_ok(), "rom y ram son contiguas");
+    assert!(
+        m.cargar_bloque(0x00FE, &[1, 2, 3, 4]).is_ok(),
+        "rom y ram son contiguas"
+    );
     let mut m2 = memoria();
-    assert!(m2.cargar_bloque(0x01FF, &[1, 2]).is_err(), "despues de la ram hay un hueco");
+    assert!(
+        m2.cargar_bloque(0x01FF, &[1, 2]).is_err(),
+        "despues de la ram hay un hueco"
+    );
 }
 
 #[test]
@@ -222,7 +234,10 @@ acceso = "rw"
 "#;
     let maquina = lorenz_arch::cargar(texto).unwrap();
     let e = Memoria::nueva(&maquina).unwrap_err();
-    assert!(matches!(e, ErrorEjecucion::RegionDemasiadoGrande { .. }), "{e}");
+    assert!(
+        matches!(e, ErrorEjecucion::RegionDemasiadoGrande { .. }),
+        "{e}"
+    );
 }
 
 #[test]

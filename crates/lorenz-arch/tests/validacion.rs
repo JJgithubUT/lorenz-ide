@@ -206,7 +206,10 @@ acceso = "rw"
 
 #[test]
 fn detecta_una_region_invertida() {
-    let texto = base().replace("desde = 0x0000\nhasta = 0xFFFF", "desde = 0xF000\nhasta = 0x0FFF");
+    let texto = base().replace(
+        "desde = 0x0000\nhasta = 0xFFFF",
+        "desde = 0xF000\nhasta = 0x0FFF",
+    );
     assert!(codigos(&texto).contains(&Regla::ValorFueraDeRango.codigo()));
 }
 
@@ -232,7 +235,10 @@ fn detecta_una_region_que_cita_un_dispositivo_inexistente() {
 
 #[test]
 fn detecta_una_bandera_inexistente_en_afecta() {
-    let texto = base().replace(r#"semantica = "detener""#, "semantica = \"detener\"\nafecta = [\"N\"]");
+    let texto = base().replace(
+        r#"semantica = "detener""#,
+        "semantica = \"detener\"\nafecta = [\"N\"]",
+    );
     assert!(codigos(&texto).contains(&Regla::BanderaInexistente.codigo()));
 }
 
@@ -292,7 +298,10 @@ fn acumula_varios_fallos_en_una_sola_carga() {
         .replace(r#"codigo = "1111 ....""#, r#"codigo = "1111 ..""#)
         .replace(r#"rol = "pc""#, r#"rol = "general""#);
     let fallos = codigos(&texto);
-    assert!(fallos.len() >= 2, "se esperaban al menos dos fallos, hubo {fallos:?}");
+    assert!(
+        fallos.len() >= 2,
+        "se esperaban al menos dos fallos, hubo {fallos:?}"
+    );
     assert!(fallos.contains(&Regla::SumaDeBits.codigo()));
     assert!(fallos.contains(&Regla::RolUnico.codigo()));
 }
@@ -311,6 +320,9 @@ fn cada_regla_cita_su_requisito_de_la_ers() {
         Regla::NombreDuplicado,
         Regla::ValorFueraDeRango,
     ] {
-        assert!(regla.requisito().starts_with("RF-ARQ-"), "{regla:?} no cita requisito");
+        assert!(
+            regla.requisito().starts_with("RF-ARQ-"),
+            "{regla:?} no cita requisito"
+        );
     }
 }

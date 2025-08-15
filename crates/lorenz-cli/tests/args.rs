@@ -27,21 +27,32 @@ fn version_tiene_varios_nombres() {
 
 #[test]
 fn una_orden_desconocida_se_nombra() {
-    assert_eq!(interpretar(&v(&["bailar"])), Err(ErrorUso::OrdenDesconocida("bailar".into())));
+    assert_eq!(
+        interpretar(&v(&["bailar"])),
+        Err(ErrorUso::OrdenDesconocida("bailar".into()))
+    );
 }
 
 #[test]
 fn validar_pide_una_maquina() {
-    assert_eq!(interpretar(&v(&["validar"])), Err(ErrorUso::Falta("maquina")));
+    assert_eq!(
+        interpretar(&v(&["validar"])),
+        Err(ErrorUso::Falta("maquina"))
+    );
     assert_eq!(
         interpretar(&v(&["validar", "m.toml"])),
-        Ok(Orden::Validar { maquina: "m.toml".into() })
+        Ok(Orden::Validar {
+            maquina: "m.toml".into()
+        })
     );
 }
 
 #[test]
 fn validar_rechaza_argumentos_de_mas() {
-    assert_eq!(interpretar(&v(&["validar", "a", "b"])), Err(ErrorUso::Sobra("b".into())));
+    assert_eq!(
+        interpretar(&v(&["validar", "a", "b"])),
+        Err(ErrorUso::Sobra("b".into()))
+    );
 }
 
 #[test]
@@ -54,8 +65,14 @@ fn validar_rechaza_opciones() {
 
 #[test]
 fn ejecutar_pide_maquina_y_programa() {
-    assert_eq!(interpretar(&v(&["ejecutar"])), Err(ErrorUso::Falta("maquina")));
-    assert_eq!(interpretar(&v(&["ejecutar", "m"])), Err(ErrorUso::Falta("programa")));
+    assert_eq!(
+        interpretar(&v(&["ejecutar"])),
+        Err(ErrorUso::Falta("maquina"))
+    );
+    assert_eq!(
+        interpretar(&v(&["ejecutar", "m"])),
+        Err(ErrorUso::Falta("programa"))
+    );
 }
 
 #[test]
@@ -74,7 +91,16 @@ fn ejecutar_usa_valores_por_omision() {
 
 #[test]
 fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
-    let o = interpretar(&v(&["ejecutar", "--traza", "m", "--limite", "50", "p", "--direccion", "0x2000"]));
+    let o = interpretar(&v(&[
+        "ejecutar",
+        "--traza",
+        "m",
+        "--limite",
+        "50",
+        "p",
+        "--direccion",
+        "0x2000",
+    ]));
     assert_eq!(
         o,
         Ok(Orden::Ejecutar {
@@ -102,7 +128,10 @@ fn los_numeros_admiten_hex_binario_y_separadores() {
 fn un_numero_invalido_cita_la_opcion_y_el_valor() {
     assert_eq!(
         interpretar(&v(&["ejecutar", "m", "p", "--limite", "mucho"])),
-        Err(ErrorUso::NumeroInvalido { opcion: "--limite".into(), valor: "mucho".into() })
+        Err(ErrorUso::NumeroInvalido {
+            opcion: "--limite".into(),
+            valor: "mucho".into()
+        })
     );
 }
 
@@ -124,7 +153,10 @@ fn una_opcion_desconocida_falla() {
 
 #[test]
 fn ejecutar_rechaza_un_tercer_posicional() {
-    assert_eq!(interpretar(&v(&["ejecutar", "m", "p", "q"])), Err(ErrorUso::Sobra("q".into())));
+    assert_eq!(
+        interpretar(&v(&["ejecutar", "m", "p", "q"])),
+        Err(ErrorUso::Sobra("q".into()))
+    );
 }
 
 #[test]

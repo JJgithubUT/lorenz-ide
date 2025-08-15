@@ -66,13 +66,17 @@ acceso = "rw"
 fn fallos(texto: &str) -> Vec<(Regla, String)> {
     match cargar(texto) {
         Ok(_) => Vec::new(),
-        Err(ErrorArquitectura::Validacion(f)) => f.into_iter().map(|x| (x.regla, x.detalle)).collect(),
+        Err(ErrorArquitectura::Validacion(f)) => {
+            f.into_iter().map(|x| (x.regla, x.detalle)).collect()
+        }
         Err(e) => panic!("{e}"),
     }
 }
 
 fn hay_semantica_invalida(texto: &str) -> bool {
-    fallos(texto).iter().any(|(r, _)| *r == Regla::SemanticaInvalida)
+    fallos(texto)
+        .iter()
+        .any(|(r, _)| *r == Regla::SemanticaInvalida)
 }
 
 #[test]
@@ -117,7 +121,10 @@ fn una_sintaxis_invalida_se_reporta_como_e_semant() {
 #[test]
 fn el_mensaje_nombra_la_instruccion_y_la_causa() {
     let f = fallos(&base("rd = "));
-    let (_, detalle) = f.iter().find(|(r, _)| *r == Regla::SemanticaInvalida).unwrap();
+    let (_, detalle) = f
+        .iter()
+        .find(|(r, _)| *r == Regla::SemanticaInvalida)
+        .unwrap();
     assert!(detalle.contains("'OP'"), "{detalle}");
     assert!(detalle.contains("se esperaba"), "{detalle}");
 }
@@ -217,7 +224,11 @@ fn e_semant_cita_el_requisito_correcto() {
 fn la_maquina_de_ejemplo_tiene_semantica_analizada_en_todas_sus_instrucciones() {
     let texto = std::fs::read_to_string("../../ejemplos/ejemplo-8/maquina.toml").unwrap();
     let m = cargar(&texto).unwrap();
-    let con_programa = m.instrucciones.iter().filter(|i| !i.programa.sentencias.is_empty()).count();
+    let con_programa = m
+        .instrucciones
+        .iter()
+        .filter(|i| !i.programa.sentencias.is_empty())
+        .count();
     // NOP no hace nada; las otras siete tienen cuerpo
     assert_eq!(con_programa, 7);
     assert!(m.instruccion("NOP").unwrap().programa.sentencias.is_empty());

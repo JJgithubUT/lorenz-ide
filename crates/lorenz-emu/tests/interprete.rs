@@ -54,20 +54,31 @@ fn producto_division_y_modulo() {
 #[test]
 fn dividir_entre_cero_da_error_con_el_mnemonico() {
     let mut b = banco("A = 1 / B");
-    assert_eq!(b.ejecutar(0, 0), Err(ErrorEjecucion::DivisionEntreCero { mnemonico: "X".into() }));
+    assert_eq!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::DivisionEntreCero {
+            mnemonico: "X".into()
+        })
+    );
 }
 
 #[test]
 fn modulo_entre_cero_tambien_da_error() {
     let mut b = banco("A = 1 % B");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::DivisionEntreCero { .. })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::DivisionEntreCero { .. })
+    ));
 }
 
 #[test]
 fn operaciones_de_bits() {
     let mut b = banco("A = 0b1100 & 0b1010; B = 0b1100 | 0b1010; C = 0b1100 ^ 0b1010; D = ~0");
     b.ejecutar(0, 0).unwrap();
-    assert_eq!((b.reg("A"), b.reg("B"), b.reg("C"), b.reg("D")), (0b1000, 0b1110, 0b0110, 0xFF));
+    assert_eq!(
+        (b.reg("A"), b.reg("B"), b.reg("C"), b.reg("D")),
+        (0b1000, 0b1110, 0b0110, 0xFF)
+    );
 }
 
 #[test]
@@ -88,7 +99,10 @@ fn un_desplazamiento_enorme_no_desborda() {
 fn comparaciones_dan_uno_o_cero() {
     let mut b = banco("A = 3 < 4; B = 3 >= 4; C = 3 == 3; D = 3 != 3");
     b.ejecutar(0, 0).unwrap();
-    assert_eq!((b.reg("A"), b.reg("B"), b.reg("C"), b.reg("D")), (1, 0, 1, 0));
+    assert_eq!(
+        (b.reg("A"), b.reg("B"), b.reg("C"), b.reg("D")),
+        (1, 0, 1, 0)
+    );
 }
 
 #[test]
@@ -145,19 +159,28 @@ fn escribir_memoria_trunca_a_una_palabra() {
 #[test]
 fn escribir_en_solo_lectura_da_error() {
     let mut b = banco("mem[0x100] = 1");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::EscrituraEnSoloLectura { .. })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::EscrituraEnSoloLectura { .. })
+    ));
 }
 
 #[test]
 fn leer_de_solo_escritura_da_error() {
     let mut b = banco("A = mem[0x200]");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::LecturaDeSoloEscritura { .. })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::LecturaDeSoloEscritura { .. })
+    ));
 }
 
 #[test]
 fn leer_fuera_de_las_regiones_da_error() {
     let mut b = banco("A = mem[0x800]");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::FueraDeRegion { direccion: 0x800 })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::FueraDeRegion { direccion: 0x800 })
+    ));
 }
 
 #[test]
@@ -262,13 +285,19 @@ fn entrada_y_salida_por_puertos() {
 #[test]
 fn un_puerto_no_declarado_da_error_al_leer() {
     let mut b = banco("A = in[9]");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })
+    ));
 }
 
 #[test]
 fn un_puerto_no_declarado_da_error_al_escribir() {
     let mut b = banco("out[9] = 1");
-    assert!(matches!(b.ejecutar(0, 0), Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })));
+    assert!(matches!(
+        b.ejecutar(0, 0),
+        Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })
+    ));
 }
 
 #[test]

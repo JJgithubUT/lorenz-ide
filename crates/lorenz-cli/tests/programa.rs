@@ -41,24 +41,46 @@ fn una_linea_solo_de_comentario_no_aporta_nada() {
 #[test]
 fn una_palabra_invalida_cita_la_linea_y_el_texto() {
     let e = leer_palabras("20\n05 zz\n", 8).unwrap_err();
-    assert_eq!(e, ErrorPrograma::PalabraInvalida { linea: 2, texto: "zz".into() });
+    assert_eq!(
+        e,
+        ErrorPrograma::PalabraInvalida {
+            linea: 2,
+            texto: "zz".into()
+        }
+    );
 }
 
 #[test]
 fn un_prefijo_sin_digitos_es_invalido() {
-    assert!(matches!(leer_palabras("0x", 8), Err(ErrorPrograma::PalabraInvalida { .. })));
-    assert!(matches!(leer_palabras("0b", 8), Err(ErrorPrograma::PalabraInvalida { .. })));
+    assert!(matches!(
+        leer_palabras("0x", 8),
+        Err(ErrorPrograma::PalabraInvalida { .. })
+    ));
+    assert!(matches!(
+        leer_palabras("0b", 8),
+        Err(ErrorPrograma::PalabraInvalida { .. })
+    ));
 }
 
 #[test]
 fn un_digito_binario_incorrecto_es_invalido() {
-    assert!(matches!(leer_palabras("0b102", 8), Err(ErrorPrograma::PalabraInvalida { .. })));
+    assert!(matches!(
+        leer_palabras("0b102", 8),
+        Err(ErrorPrograma::PalabraInvalida { .. })
+    ));
 }
 
 #[test]
 fn una_palabra_que_no_cabe_se_rechaza() {
     let e = leer_palabras("20\n1FF\n", 8).unwrap_err();
-    assert_eq!(e, ErrorPrograma::PalabraDemasiadoGrande { linea: 2, valor: 0x1FF, bits: 8 });
+    assert_eq!(
+        e,
+        ErrorPrograma::PalabraDemasiadoGrande {
+            linea: 2,
+            valor: 0x1FF,
+            bits: 8
+        }
+    );
 }
 
 #[test]
@@ -74,7 +96,10 @@ fn con_64_bits_cabe_cualquier_valor() {
 
 #[test]
 fn un_valor_mas_grande_que_64_bits_es_invalido() {
-    assert!(matches!(leer_palabras("1FFFFFFFFFFFFFFFF", 64), Err(ErrorPrograma::PalabraInvalida { .. })));
+    assert!(matches!(
+        leer_palabras("1FFFFFFFFFFFFFFFF", 64),
+        Err(ErrorPrograma::PalabraInvalida { .. })
+    ));
 }
 
 #[test]

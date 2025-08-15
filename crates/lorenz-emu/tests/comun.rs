@@ -160,7 +160,12 @@ impl Banco {
         let estado = Estado::nuevo(&maquina);
         let memoria = Memoria::nueva(&maquina).unwrap();
         let puertos = Puertos::nuevo(&maquina);
-        Banco { maquina, estado, memoria, puertos }
+        Banco {
+            maquina,
+            estado,
+            memoria,
+            puertos,
+        }
     }
 
     /// Ejecuta `X rd, rs` con los registros dados, como si el PC ya apuntara a la siguiente.
@@ -173,7 +178,11 @@ impl Banco {
             memoria: &mut self.memoria,
             puertos: &mut self.puertos,
         };
-        Interprete::nuevo(&self.maquina).ejecutar(&self.maquina.instrucciones[dec.indice], &dec, &mut entorno)
+        Interprete::nuevo(&self.maquina).ejecutar(
+            &self.maquina.instrucciones[dec.indice],
+            &dec,
+            &mut entorno,
+        )
     }
 
     pub fn reg(&self, nombre: &str) -> u64 {

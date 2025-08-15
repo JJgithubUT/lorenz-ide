@@ -88,7 +88,11 @@ impl Emulador {
     }
 
     /// Copia un programa a memoria sin mirar los permisos, por ejemplo dentro de una rom.
-    pub fn cargar_programa(&mut self, direccion: u64, palabras: &[u64]) -> Result<(), ErrorEjecucion> {
+    pub fn cargar_programa(
+        &mut self,
+        direccion: u64,
+        palabras: &[u64],
+    ) -> Result<(), ErrorEjecucion> {
         self.memoria.cargar_bloque(direccion, palabras)
     }
 
@@ -108,7 +112,8 @@ impl Emulador {
         }
         let direccion = self.estado.pc();
         let dec = self.decodificador.decodificar(&self.memoria, direccion)?;
-        self.estado.fijar_pc(direccion.wrapping_add(dec.longitud as u64));
+        self.estado
+            .fijar_pc(direccion.wrapping_add(dec.longitud as u64));
         let instruccion = &self.maquina.instrucciones[dec.indice];
         let mut entorno = Entorno {
             estado: &mut self.estado,
@@ -125,7 +130,11 @@ impl Emulador {
         let ciclos = match instruccion.ciclos {
             Ciclos::Fijo(n) => n,
             Ciclos::SegunSalto { tomado, no_tomado } => {
-                if resultado.salto { tomado } else { no_tomado }
+                if resultado.salto {
+                    tomado
+                } else {
+                    no_tomado
+                }
             }
         } as u64;
         self.estado.contar_instruccion(ciclos);
@@ -144,7 +153,10 @@ impl Emulador {
     /// El limite cuenta las instrucciones de esta llamada. Si se alcanza sin detenerse, devuelve
     /// `LimiteDeInstrucciones` (RF-EMU-017): un programa que no termina no cuelga al usuario.
     pub fn ejecutar(&mut self, limite: u64) -> Result<Resumen, ErrorEjecucion> {
-        let mut resumen = Resumen { instrucciones: 0, ciclos: 0 };
+        let mut resumen = Resumen {
+            instrucciones: 0,
+            ciclos: 0,
+        };
         while !self.estado.detenida() {
             if resumen.instrucciones >= limite {
                 return Err(ErrorEjecucion::LimiteDeInstrucciones { limite });

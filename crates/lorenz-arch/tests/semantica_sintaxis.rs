@@ -1,6 +1,8 @@
 //! Pruebas del analizador sintactico de la semantica (RF-ARQ-022).
 
-use lorenz_arch::semantica::{analizar, analizar_expresion, Destino, Expr, OpBinario, OpUnario, Sentencia};
+use lorenz_arch::semantica::{
+    analizar, analizar_expresion, Destino, Expr, OpBinario, OpUnario, Sentencia,
+};
 
 fn n(nombre: &str) -> Expr {
     Expr::Nombre(nombre.to_string())
@@ -30,12 +32,18 @@ fn analiza_un_nombre() {
 
 #[test]
 fn analiza_un_acceso_a_memoria() {
-    assert_eq!(analizar_expresion("mem[dir]").unwrap(), Expr::Mem(Box::new(n("dir"))));
+    assert_eq!(
+        analizar_expresion("mem[dir]").unwrap(),
+        Expr::Mem(Box::new(n("dir")))
+    );
 }
 
 #[test]
 fn analiza_una_entrada() {
-    assert_eq!(analizar_expresion("in[puerto]").unwrap(), Expr::Entrada(Box::new(n("puerto"))));
+    assert_eq!(
+        analizar_expresion("in[puerto]").unwrap(),
+        Expr::Entrada(Box::new(n("puerto")))
+    );
 }
 
 #[test]
@@ -124,7 +132,11 @@ fn el_unario_liga_mas_fuerte_que_el_binario() {
 fn el_producto_liga_mas_que_la_suma() {
     assert_eq!(
         analizar_expresion("a + b * c").unwrap(),
-        bin(OpBinario::Suma, n("a"), bin(OpBinario::Producto, n("b"), n("c")))
+        bin(
+            OpBinario::Suma,
+            n("a"),
+            bin(OpBinario::Producto, n("b"), n("c"))
+        )
     );
 }
 
@@ -132,7 +144,11 @@ fn el_producto_liga_mas_que_la_suma() {
 fn la_suma_es_asociativa_a_la_izquierda() {
     assert_eq!(
         analizar_expresion("a - b - c").unwrap(),
-        bin(OpBinario::Resta, bin(OpBinario::Resta, n("a"), n("b")), n("c"))
+        bin(
+            OpBinario::Resta,
+            bin(OpBinario::Resta, n("a"), n("b")),
+            n("c")
+        )
     );
 }
 
@@ -140,7 +156,11 @@ fn la_suma_es_asociativa_a_la_izquierda() {
 fn los_parentesis_cambian_la_agrupacion() {
     assert_eq!(
         analizar_expresion("(a + b) * c").unwrap(),
-        bin(OpBinario::Producto, bin(OpBinario::Suma, n("a"), n("b")), n("c"))
+        bin(
+            OpBinario::Producto,
+            bin(OpBinario::Suma, n("a"), n("b")),
+            n("c")
+        )
     );
 }
 
@@ -148,7 +168,11 @@ fn los_parentesis_cambian_la_agrupacion() {
 fn el_desplazamiento_liga_menos_que_la_suma() {
     assert_eq!(
         analizar_expresion("a << b + 1").unwrap(),
-        bin(OpBinario::DesplazaIzq, n("a"), bin(OpBinario::Suma, n("b"), lit(1)))
+        bin(
+            OpBinario::DesplazaIzq,
+            n("a"),
+            bin(OpBinario::Suma, n("b"), lit(1))
+        )
     );
 }
 
@@ -156,7 +180,11 @@ fn el_desplazamiento_liga_menos_que_la_suma() {
 fn el_and_de_bits_liga_menos_que_el_desplazamiento() {
     assert_eq!(
         analizar_expresion("a & b << 1").unwrap(),
-        bin(OpBinario::Y, n("a"), bin(OpBinario::DesplazaIzq, n("b"), lit(1)))
+        bin(
+            OpBinario::Y,
+            n("a"),
+            bin(OpBinario::DesplazaIzq, n("b"), lit(1))
+        )
     );
 }
 
@@ -197,7 +225,11 @@ fn el_y_logico_liga_menos_que_la_comparacion() {
 fn el_o_logico_es_el_de_menor_precedencia() {
     assert_eq!(
         analizar_expresion("a || b && c").unwrap(),
-        bin(OpBinario::OLogico, n("a"), bin(OpBinario::YLogico, n("b"), n("c")))
+        bin(
+            OpBinario::OLogico,
+            n("a"),
+            bin(OpBinario::YLogico, n("b"), n("c"))
+        )
     );
 }
 
@@ -212,19 +244,32 @@ fn reconoce_los_seis_operadores_de_comparacion() {
         ("a >= b", OpBinario::MayorIgual),
     ];
     for (texto, op) in casos {
-        assert_eq!(analizar_expresion(texto).unwrap(), bin(op, n("a"), n("b")), "{texto}");
+        assert_eq!(
+            analizar_expresion(texto).unwrap(),
+            bin(op, n("a"), n("b")),
+            "{texto}"
+        );
     }
 }
 
 #[test]
 fn reconoce_division_y_modulo() {
-    assert_eq!(analizar_expresion("a / b").unwrap(), bin(OpBinario::Division, n("a"), n("b")));
-    assert_eq!(analizar_expresion("a % b").unwrap(), bin(OpBinario::Modulo, n("a"), n("b")));
+    assert_eq!(
+        analizar_expresion("a / b").unwrap(),
+        bin(OpBinario::Division, n("a"), n("b"))
+    );
+    assert_eq!(
+        analizar_expresion("a % b").unwrap(),
+        bin(OpBinario::Modulo, n("a"), n("b"))
+    );
 }
 
 #[test]
 fn reconoce_el_desplazamiento_a_la_derecha() {
-    assert_eq!(analizar_expresion("a >> 2").unwrap(), bin(OpBinario::DesplazaDer, n("a"), lit(2)));
+    assert_eq!(
+        analizar_expresion("a >> 2").unwrap(),
+        bin(OpBinario::DesplazaDer, n("a"), lit(2))
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +306,10 @@ fn analiza_una_asignacion_con_aritmetica() {
 #[test]
 fn analiza_una_escritura_en_memoria() {
     let p = analizar("mem[dir] = rs").unwrap();
-    assert_eq!(p.sentencias, vec![Sentencia::Asignar(Destino::Mem(n("dir")), n("rs"))]);
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(Destino::Mem(n("dir")), n("rs"))]
+    );
 }
 
 #[test]
@@ -269,14 +317,20 @@ fn analiza_una_lectura_de_memoria() {
     let p = analizar("rd = mem[dir]").unwrap();
     assert_eq!(
         p.sentencias,
-        vec![Sentencia::Asignar(Destino::Nombre("rd".into()), Expr::Mem(Box::new(n("dir"))))]
+        vec![Sentencia::Asignar(
+            Destino::Nombre("rd".into()),
+            Expr::Mem(Box::new(n("dir")))
+        )]
     );
 }
 
 #[test]
 fn analiza_una_salida_a_puerto() {
     let p = analizar("out[puerto] = rs").unwrap();
-    assert_eq!(p.sentencias, vec![Sentencia::Asignar(Destino::Salida(n("puerto")), n("rs"))]);
+    assert_eq!(
+        p.sentencias,
+        vec![Sentencia::Asignar(Destino::Salida(n("puerto")), n("rs"))]
+    );
 }
 
 #[test]
@@ -293,7 +347,10 @@ fn analiza_una_entrada_desde_puerto() {
 
 #[test]
 fn analiza_detener() {
-    assert_eq!(analizar("detener").unwrap().sentencias, vec![Sentencia::Detener]);
+    assert_eq!(
+        analizar("detener").unwrap().sentencias,
+        vec![Sentencia::Detener]
+    );
 }
 
 #[test]
@@ -314,7 +371,11 @@ fn analiza_un_condicional_con_condicion_compuesta() {
     match &p.sentencias[0] {
         Sentencia::Si(cond, _) => assert_eq!(
             *cond,
-            bin(OpBinario::YLogico, n("Z"), Expr::Unario(OpUnario::NegacionLogica, Box::new(n("C"))))
+            bin(
+                OpBinario::YLogico,
+                n("Z"),
+                Expr::Unario(OpUnario::NegacionLogica, Box::new(n("C")))
+            )
         ),
         otro => panic!("se esperaba un condicional, hay {otro:?}"),
     }
@@ -469,7 +530,10 @@ fn ida_y_vuelta(texto: &str) {
     let primero = analizar(texto).unwrap();
     let impreso = primero.to_string();
     let segundo = analizar(&impreso).unwrap_or_else(|e| panic!("'{impreso}' no se analiza: {e}"));
-    assert_eq!(primero, segundo, "texto original: '{texto}', impreso: '{impreso}'");
+    assert_eq!(
+        primero, segundo,
+        "texto original: '{texto}', impreso: '{impreso}'"
+    );
 }
 
 #[test]

@@ -2,18 +2,27 @@
 
 use std::path::PathBuf;
 
-use lorenz_cli::{ejecutar_cli, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK};
+use lorenz_cli::{
+    ejecutar_cli, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
+};
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn maquina() -> String {
-    raiz().join("ejemplos/ejemplo-8/maquina.toml").to_string_lossy().into_owned()
+    raiz()
+        .join("ejemplos/ejemplo-8/maquina.toml")
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn programa_de_ejemplo(nombre: &str) -> String {
-    raiz().join("ejemplos/ejemplo-8/programas").join(nombre).to_string_lossy().into_owned()
+    raiz()
+        .join("ejemplos/ejemplo-8/programas")
+        .join(nombre)
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Escribe un archivo temporal unico para esta prueba y devuelve su ruta.
@@ -83,7 +92,10 @@ fn validar_un_archivo_inexistente_es_error_de_uso() {
 
 #[test]
 fn validar_una_arquitectura_rota_lista_los_fallos() {
-    let ruta = temporal("rota.toml", "[maquina]\nnombre = \"x\"\nformato = \"9.9\"\n");
+    let ruta = temporal(
+        "rota.toml",
+        "[maquina]\nnombre = \"x\"\nformato = \"9.9\"\n",
+    );
     let r = correr(&["validar", &ruta]);
     assert_eq!(r.codigo, SALIDA_ERROR_USO);
     assert!(!r.errores.is_empty());
@@ -102,7 +114,12 @@ fn ejecutar_la_suma_termina_bien_y_resume_el_estado() {
 
 #[test]
 fn la_traza_muestra_cada_instruccion() {
-    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("suma.hex"), "--traza"]);
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--traza",
+    ]);
     let lineas: Vec<&str> = r.salida.lines().take(4).collect();
     assert_eq!(lineas[0], "0000  LDI    2 ciclos");
     assert_eq!(lineas[2], "0004  ADD    2 ciclos");
@@ -117,7 +134,13 @@ fn sin_traza_no_hay_lineas_de_instruccion() {
 
 #[test]
 fn el_bucle_infinito_termina_con_el_codigo_de_limite() {
-    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("bucle.hex"), "--limite", "50"]);
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("bucle.hex"),
+        "--limite",
+        "50",
+    ]);
     assert_eq!(r.codigo, SALIDA_LIMITE);
     assert!(r.errores.contains("limite de 50 instrucciones"));
     assert!(r.salida.contains("instrucciones: 50"));
@@ -125,7 +148,14 @@ fn el_bucle_infinito_termina_con_el_codigo_de_limite() {
 
 #[test]
 fn el_salto_aparece_marcado_en_la_traza() {
-    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("bucle.hex"), "--limite", "3", "--traza"]);
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("bucle.hex"),
+        "--limite",
+        "3",
+        "--traza",
+    ]);
     assert!(r.salida.contains("JZ"));
     assert!(r.salida.contains("salto"));
 }
@@ -189,7 +219,12 @@ fn argumentos_mal_escritos_son_error_de_uso() {
 
 #[test]
 fn los_codigos_de_salida_son_distintos() {
-    let codigos = [SALIDA_OK, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE];
+    let codigos = [
+        SALIDA_OK,
+        SALIDA_ERROR_EJECUCION,
+        SALIDA_ERROR_USO,
+        SALIDA_LIMITE,
+    ];
     for (i, a) in codigos.iter().enumerate() {
         for b in &codigos[i + 1..] {
             assert_ne!(a, b);
@@ -199,7 +234,17 @@ fn los_codigos_de_salida_son_distintos() {
 
 #[test]
 fn la_misma_ejecucion_da_la_misma_salida() {
-    let a = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("suma.hex"), "--traza"]);
-    let b = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("suma.hex"), "--traza"]);
+    let a = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--traza",
+    ]);
+    let b = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--traza",
+    ]);
     assert_eq!(a.salida, b.salida);
 }

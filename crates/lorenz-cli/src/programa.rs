@@ -18,7 +18,11 @@ pub enum ErrorPrograma {
 
 /// Lee un programa de palabras de `bits` bits.
 pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> {
-    let mascara = if bits >= 64 { u64::MAX } else { (1u64 << bits) - 1 };
+    let mascara = if bits >= 64 {
+        u64::MAX
+    } else {
+        (1u64 << bits) - 1
+    };
     let mut palabras = Vec::new();
     for (n, linea) in texto.lines().enumerate() {
         let linea_numero = n + 1;
@@ -27,15 +31,28 @@ pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> 
             if token.is_empty() {
                 continue;
             }
-            let invalida = || ErrorPrograma::PalabraInvalida { linea: linea_numero, texto: token.to_string() };
-            let valor = if let Some(b) = token.strip_prefix("0b").or_else(|| token.strip_prefix("0B")) {
+            let invalida = || ErrorPrograma::PalabraInvalida {
+                linea: linea_numero,
+                texto: token.to_string(),
+            };
+            let valor = if let Some(b) = token
+                .strip_prefix("0b")
+                .or_else(|| token.strip_prefix("0B"))
+            {
                 u64::from_str_radix(b, 2).map_err(|_| invalida())?
             } else {
-                let h = token.strip_prefix("0x").or_else(|| token.strip_prefix("0X")).unwrap_or(token);
+                let h = token
+                    .strip_prefix("0x")
+                    .or_else(|| token.strip_prefix("0X"))
+                    .unwrap_or(token);
                 u64::from_str_radix(h, 16).map_err(|_| invalida())?
             };
             if valor & !mascara != 0 {
-                return Err(ErrorPrograma::PalabraDemasiadoGrande { linea: linea_numero, valor, bits });
+                return Err(ErrorPrograma::PalabraDemasiadoGrande {
+                    linea: linea_numero,
+                    valor,
+                    bits,
+                });
             }
             palabras.push(valor);
         }

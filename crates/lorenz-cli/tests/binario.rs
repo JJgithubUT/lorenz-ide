@@ -7,12 +7,22 @@ fn lorenz() -> Command {
 }
 
 fn ejemplo(ruta: &str) -> String {
-    format!("{}/../../ejemplos/ejemplo-8/{ruta}", env!("CARGO_MANIFEST_DIR"))
+    format!(
+        "{}/../../ejemplos/ejemplo-8/{ruta}",
+        env!("CARGO_MANIFEST_DIR")
+    )
 }
 
 #[test]
 fn el_proceso_devuelve_cero_cuando_la_maquina_se_detiene() {
-    let s = lorenz().args(["ejecutar", &ejemplo("maquina.toml"), &ejemplo("programas/suma.hex")]).output().unwrap();
+    let s = lorenz()
+        .args([
+            "ejecutar",
+            &ejemplo("maquina.toml"),
+            &ejemplo("programas/suma.hex"),
+        ])
+        .output()
+        .unwrap();
     assert_eq!(s.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&s.stdout).contains("A=0x2c"));
 }
@@ -20,7 +30,13 @@ fn el_proceso_devuelve_cero_cuando_la_maquina_se_detiene() {
 #[test]
 fn el_proceso_devuelve_tres_al_alcanzar_el_limite() {
     let s = lorenz()
-        .args(["ejecutar", &ejemplo("maquina.toml"), &ejemplo("programas/bucle.hex"), "--limite", "10"])
+        .args([
+            "ejecutar",
+            &ejemplo("maquina.toml"),
+            &ejemplo("programas/bucle.hex"),
+            "--limite",
+            "10",
+        ])
         .output()
         .unwrap();
     assert_eq!(s.status.code(), Some(3));

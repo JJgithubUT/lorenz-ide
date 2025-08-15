@@ -91,7 +91,10 @@ fn jz_tomado_cuesta_tres_ciclos_y_salta() {
 fn un_bucle_infinito_se_corta_con_el_limite() {
     // ADD A,B (Z) ; JZ 0x0001 (a si mismo)
     let mut e = con_programa(&[0x31, 0x60, 0x01, 0x00]);
-    assert_eq!(e.ejecutar(100), Err(ErrorEjecucion::LimiteDeInstrucciones { limite: 100 }));
+    assert_eq!(
+        e.ejecutar(100),
+        Err(ErrorEjecucion::LimiteDeInstrucciones { limite: 100 })
+    );
     assert_eq!(e.estado().instrucciones(), 100);
 }
 
@@ -106,7 +109,10 @@ fn el_limite_cuenta_por_llamada_y_se_puede_continuar() {
 #[test]
 fn un_limite_de_cero_no_ejecuta_nada() {
     let mut e = con_programa(&[0xF0]);
-    assert_eq!(e.ejecutar(0), Err(ErrorEjecucion::LimiteDeInstrucciones { limite: 0 }));
+    assert_eq!(
+        e.ejecutar(0),
+        Err(ErrorEjecucion::LimiteDeInstrucciones { limite: 0 })
+    );
     assert_eq!(e.estado().instrucciones(), 0);
 }
 
@@ -114,7 +120,10 @@ fn un_limite_de_cero_no_ejecuta_nada() {
 fn paso_a_paso_informa_de_cada_instruccion() {
     let mut e = con_programa(&[0x20, 5, 0xF0]);
     let p = e.paso().unwrap().unwrap();
-    assert_eq!((p.direccion, p.mnemonico.as_str(), p.longitud, p.ciclos), (0, "LDI", 2, 2));
+    assert_eq!(
+        (p.direccion, p.mnemonico.as_str(), p.longitud, p.ciclos),
+        (0, "LDI", 2, 2)
+    );
     assert!(!p.detenida && !p.salto);
     let p = e.paso().unwrap().unwrap();
     assert_eq!((p.direccion, p.mnemonico.as_str()), (2, "HLT"));
@@ -127,7 +136,13 @@ fn escribir_en_la_rom_falla_y_deja_el_pc_en_la_instruccion() {
     // LDI A,1 ; ST A,[0x0010]
     let mut e = con_programa(&[0x20, 1, 0x50, 0x10, 0x00, 0xF0]);
     let err = e.ejecutar(10).unwrap_err();
-    assert!(matches!(err, ErrorEjecucion::EscrituraEnSoloLectura { direccion: 0x10, .. }));
+    assert!(matches!(
+        err,
+        ErrorEjecucion::EscrituraEnSoloLectura {
+            direccion: 0x10,
+            ..
+        }
+    ));
     assert_eq!(e.estado().pc(), 2);
 }
 
@@ -135,7 +150,13 @@ fn escribir_en_la_rom_falla_y_deja_el_pc_en_la_instruccion() {
 fn una_instruccion_invalida_se_informa_con_su_direccion() {
     let mut e = con_programa(&[0x00, 0x70]);
     let err = e.ejecutar(10).unwrap_err();
-    assert_eq!(err, ErrorEjecucion::InstruccionInvalida { direccion: 1, palabra: 0x70 });
+    assert_eq!(
+        err,
+        ErrorEjecucion::InstruccionInvalida {
+            direccion: 1,
+            palabra: 0x70
+        }
+    );
     assert_eq!(e.estado().pc(), 1);
 }
 
@@ -169,8 +190,14 @@ fn dos_ejecuciones_iguales_dan_el_mismo_resultado() {
     let ra = a.ejecutar(50).unwrap();
     let rb = b.ejecutar(50).unwrap();
     assert_eq!(ra, rb);
-    assert_eq!(a.estado().registro("A").unwrap(), b.estado().registro("A").unwrap());
-    assert_eq!(a.memoria().volcar(0x2000, 4).unwrap(), b.memoria().volcar(0x2000, 4).unwrap());
+    assert_eq!(
+        a.estado().registro("A").unwrap(),
+        b.estado().registro("A").unwrap()
+    );
+    assert_eq!(
+        a.memoria().volcar(0x2000, 4).unwrap(),
+        b.memoria().volcar(0x2000, 4).unwrap()
+    );
 }
 
 #[test]
@@ -194,6 +221,9 @@ fn el_programa_puede_vivir_en_la_ram() {
 #[test]
 fn cargar_un_programa_fuera_de_las_regiones_falla_sin_escribir() {
     let mut e = Emulador::nuevo(ejemplo_8()).unwrap();
-    assert!(matches!(e.cargar_programa(0xF0FF, &[1, 2]), Err(ErrorEjecucion::BloqueFueraDeRegion { .. })));
+    assert!(matches!(
+        e.cargar_programa(0xF0FF, &[1, 2]),
+        Err(ErrorEjecucion::BloqueFueraDeRegion { .. })
+    ));
     assert_eq!(e.memoria().leer(0xF0FF).unwrap(), 0);
 }

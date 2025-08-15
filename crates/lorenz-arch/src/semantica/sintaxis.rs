@@ -27,7 +27,10 @@ type Resultado<T> = Result<T, ErrorSemantica>;
 
 impl Analizador {
     fn nuevo(texto: &str) -> Resultado<Self> {
-        Ok(Self { lexemas: tokenizar(texto)?, indice: 0 })
+        Ok(Self {
+            lexemas: tokenizar(texto)?,
+            indice: 0,
+        })
     }
 
     fn actual(&self) -> &Token {
@@ -51,7 +54,10 @@ impl Analizador {
         } else {
             Err(ErrorSemantica::nuevo(
                 self.posicion(),
-                format!("se esperaba {descripcion} y se encontro {}", describir(self.actual())),
+                format!(
+                    "se esperaba {descripcion} y se encontro {}",
+                    describir(self.actual())
+                ),
             ))
         }
     }
@@ -77,7 +83,10 @@ impl Analizador {
             }
             return Err(ErrorSemantica::nuevo(
                 self.posicion(),
-                format!("se esperaba ';' o el final y se encontro {}", describir(self.actual())),
+                format!(
+                    "se esperaba ';' o el final y se encontro {}",
+                    describir(self.actual())
+                ),
             ));
         }
         Ok(sentencias)
@@ -106,7 +115,10 @@ impl Analizador {
             Token::Ident(_) => self.asignacion(),
             otro => Err(ErrorSemantica::nuevo(
                 self.posicion(),
-                format!("se esperaba una sentencia y se encontro {}", describir(&otro)),
+                format!(
+                    "se esperaba una sentencia y se encontro {}",
+                    describir(&otro)
+                ),
             )),
         }
     }
@@ -118,18 +130,19 @@ impl Analizador {
         };
         self.avanzar();
 
-        let destino = if (nombre == "mem" || nombre == "out") && *self.actual() == Token::CorcheteAbre {
-            self.avanzar();
-            let interior = self.expresion()?;
-            self.esperar(Token::CorcheteCierra, "']'")?;
-            if nombre == "mem" {
-                Destino::Mem(interior)
+        let destino =
+            if (nombre == "mem" || nombre == "out") && *self.actual() == Token::CorcheteAbre {
+                self.avanzar();
+                let interior = self.expresion()?;
+                self.esperar(Token::CorcheteCierra, "']'")?;
+                if nombre == "mem" {
+                    Destino::Mem(interior)
+                } else {
+                    Destino::Salida(interior)
+                }
             } else {
-                Destino::Salida(interior)
-            }
-        } else {
-            Destino::Nombre(nombre)
-        };
+                Destino::Nombre(nombre)
+            };
 
         self.esperar(Token::Igual, "'=' en la asignacion")?;
         let valor = self.expresion()?;

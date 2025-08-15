@@ -212,12 +212,10 @@ impl Codificacion {
                     if texto_ancho.is_empty() {
                         return Err(ErrorBits::CampoSinAncho { nombre });
                     }
-                    let bits: u32 = texto_ancho
-                        .parse()
-                        .map_err(|_| ErrorBits::AnchoInvalido {
-                            nombre: nombre.clone(),
-                            texto: texto_ancho.clone(),
-                        })?;
+                    let bits: u32 = texto_ancho.parse().map_err(|_| ErrorBits::AnchoInvalido {
+                        nombre: nombre.clone(),
+                        texto: texto_ancho.clone(),
+                    })?;
                     if bits == 0 {
                         return Err(ErrorBits::AnchoCero { nombre });
                     }
@@ -231,7 +229,10 @@ impl Codificacion {
                     actual.piezas.push(Pieza::Campo { nombre, bits });
                 }
                 otro => {
-                    return Err(ErrorBits::CaracterInesperado { caracter: otro, posicion: i })
+                    return Err(ErrorBits::CaracterInesperado {
+                        caracter: otro,
+                        posicion: i,
+                    })
                 }
             }
         }
@@ -241,7 +242,10 @@ impl Codificacion {
         }
         palabras.push(actual);
 
-        Ok(Self { palabras, texto: texto.to_string() })
+        Ok(Self {
+            palabras,
+            texto: texto.to_string(),
+        })
     }
 
     pub fn palabras(&self) -> &[Palabra] {
