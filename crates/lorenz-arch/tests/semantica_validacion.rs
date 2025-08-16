@@ -258,3 +258,22 @@ fn nombres_leidos_y_escritos_de_add() {
     assert_eq!(p.nombres_leidos(), vec!["rd".to_string(), "rs".to_string()]);
     assert_eq!(p.nombres_escritos(), vec!["rd".to_string()]);
 }
+
+fn con_interrupciones(semantica: &str) -> String {
+    base(semantica).replace(
+        "[flags]",
+        "[maquina.interrupciones]\nvectores = { 0 = 0x0010 }\nhabilitadas_al_arrancar = false\n\n[flags]",
+    )
+}
+
+#[test]
+fn el_alias_ie_se_acepta_si_la_maquina_tiene_interrupciones() {
+    assert!(cargar(&con_interrupciones("ie = 1")).is_ok());
+    assert!(cargar(&con_interrupciones("si ie: ie = 0")).is_ok());
+}
+
+#[test]
+fn el_alias_ie_se_rechaza_si_la_maquina_no_tiene_interrupciones() {
+    assert!(hay_semantica_invalida(&base("ie = 1")));
+    assert!(hay_semantica_invalida(&base("si ie: rd = 1")));
+}
