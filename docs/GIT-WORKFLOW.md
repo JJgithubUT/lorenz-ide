@@ -96,15 +96,19 @@ diferencia. Se corre al empezar y al terminar cada bloque de trabajo.
 
 ### Reparto esperado por fase
 
-| Fase | Contenido | Commits estimados |
-| --- | --- | --- |
-| 1 | Nucleo, formato de arquitectura, emulador funcional | 180 |
-| 2 | Ensamblador, desensamblador, depurador de linea de comandos | 160 |
-| 3 | IDE, depuracion grafica, pruebas | 240 |
-| 4 | Lenguaje SGT y su compilador | 190 |
-| 5 | Ciclo a ciclo, pipeline, cache, metricas | 130 |
-| 6 | GPU, ecosistema, exportacion, version web | 150 |
-| — | **Total** | **1050** |
+| Fase | Contenido | Commits estimados | Dias |
+| --- | --- | --- | --- |
+| 1 | Nucleo, formato de arquitectura, emulador funcional, linea de comandos | 200 | 1 y 2 |
+| 2 | Ensamblador, desensamblador, depurador de linea de comandos | 170 | 2 y 3 |
+| 3 | IDE, depuracion grafica, pruebas | 220 | 3 a 5 |
+| 4 | Lenguaje SGT y su compilador | 190 | 5 y 6 |
+| 5 | Ciclo a ciclo, pipeline, cache, metricas | 110 | 6 y 7 |
+| 6 | GPU, ecosistema, exportacion, version web | 130 | 7 |
+| — | **Total** | **1020** | |
+
+El total supera 1000 a proposito: deja un margen de 20 commits por si alguna fase termina con menos
+cambios de los previstos. Las fases se solapan porque el calendario manda; cuando una fase se
+atrasa, se avanza en la siguiente en lugar de inflar commits.
 
 ## 2. Ramas permanentes
 
