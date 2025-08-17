@@ -46,12 +46,15 @@ Un nombre dentro de la semantica puede ser:
 2. Un **registro** por su nombre declarado (`A`, `SP`).
 3. Una **bandera** por su nombre declarado (`Z`, `C`); vale 1 si esta encendida.
 4. Los alias **`pc`** y **`sp`**, que apuntan al registro con ese rol, se llame como se llame.
+5. El alias **`ie`** (*interrupts enabled*), que vale 1 si las interrupciones estan habilitadas.
+   Asignarlo las habilita (cualquier valor distinto de cero) o las inhabilita (cero). Solo existe
+   si la maquina declara `[maquina.interrupciones]`.
 
 `mem`, `in` y `out` son palabras con significado propio solo cuando van seguidas de `[`.
 `si` y `detener` son palabras reservadas.
 
 Solo se puede asignar a un operando de tipo registro, a un registro que no sea de rol `fijo`, a una
-bandera, a `pc`, a `sp`, a `mem[...]` y a `out[...]`. El validador lo comprueba al cargar (`E-SEMANT`).
+bandera, a `pc`, a `sp`, a `ie`, a `mem[...]` y a `out[...]`. El validador lo comprueba al cargar (`E-SEMANT`).
 
 ## Aritmetica
 
@@ -85,4 +88,21 @@ si Z: pc = dir                    # salto condicional
 sp = sp - 1; mem[sp] = rs         # apilar
 out[puerto] = rs                  # salida a un puerto
 detener                           # parar la maquina
+```
+
+## Interrupciones (decision D-019)
+
+Cuando se atiende una interrupcion el emulador, antes de ejecutar la siguiente instruccion:
+
+1. apila el contador de programa en la pila (la pila crece hacia abajo; el puntero baja tantas
+   palabras como ocupe el contador y se escribe de la palabra menos significativa a la mas, en
+   el orden del `endianness` de la maquina),
+2. pone `ie` en 0, y
+3. salta a la direccion guardada en el vector de la linea (`vectores`): ese valor se lee de memoria
+   en las palabras que hagan falta para una direccion, con el mismo `endianness`.
+
+Una instruccion de retorno se escribe en la propia arquitectura. Para el ejemplo de 8 bits:
+
+```text
+pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1
 ```
