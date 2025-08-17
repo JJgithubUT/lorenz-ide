@@ -1,7 +1,9 @@
 //! El emulador completo: junta memoria, estado, puertos, decodificador e interprete y ejecuta
 //! programas instruccion por instruccion.
 
-use lorenz_arch::modelo::{Ciclos, Maquina};
+use std::collections::BTreeSet;
+
+use lorenz_arch::modelo::{Ciclos, Endianness, Maquina, SentidoPila};
 
 use crate::decodificador::Decodificador;
 use crate::error::ErrorEjecucion;
@@ -44,6 +46,7 @@ pub struct Emulador {
     estado: Estado,
     memoria: Memoria,
     puertos: Puertos,
+    pendientes: BTreeSet<u32>,
 }
 
 impl Emulador {
@@ -55,6 +58,7 @@ impl Emulador {
             estado: Estado::nuevo(&maquina),
             puertos: Puertos::nuevo(&maquina),
             memoria,
+            pendientes: BTreeSet::new(),
             maquina,
         })
     }
@@ -100,6 +104,97 @@ impl Emulador {
     pub fn reiniciar(&mut self) {
         self.estado.reiniciar();
         self.puertos.reiniciar();
+        self.pendientes.clear();
+    }
+
+    /// Levanta una linea de interrupcion. Se atiende antes de la siguiente instruccion si las
+    /// interrupciones estan habilitadas; mientras tanto queda pendiente.
+    ///
+    /// Si varias lineas esperan, se atiende primero la de numero menor (D-019).
+    pub fn levantar_interrupcion(&mut self, linea: u32) -> Result<(), ErrorEjecucion> {
+        let declarada = self
+            .maquina
+            .interrupciones
+            .as_ref()
+            .is_some_and(|i| i.vectores.contains_key(&linea));
+        if !declarada {
+            return Err(ErrorEjecucion::InterrupcionNoDeclarada { linea });
+        }
+        self.pendientes.insert(linea);
+        Ok(())
+    }
+
+    /// Lineas de interrupcion que esperan ser atendidas, de menor a mayor.
+    pub fn interrupciones_pendientes(&self) -> Vec<u32> {
+        self.pendientes.iter().copied().collect()
+    }
+
+    /// Palabras que hacen falta para guardar un valor de `bits` bits.
+    fn palabras_para(&self, bits: u32) -> u32 {
+        bits.div_ceil(self.maquina.bits_palabra)
+    }
+
+    /// Escribe `valor` en `palabras` palabras consecutivas desde `direccion`, en el orden del
+    /// `endianness` de la maquina.
+    fn escribir_valor(&mut self, direccion: u64, valor: u64, palabras: u32) -> Result<(), ErrorEjecucion> {
+        let bw = self.maquina.bits_palabra;
+        for i in 0..palabras {
+            let posicion = match self.maquina.endianness {
+                Endianness::Little => i,
+                Endianness::Big => palabras - 1 - i,
+            };
+            let palabra = valor.checked_shr(posicion * bw).unwrap_or(0);
+            self.memoria.escribir(direccion.wrapping_add(u64::from(i)), palabra)?;
+        }
+        Ok(())
+    }
+
+    /// Lee un valor de `palabras` palabras consecutivas desde `direccion`.
+    fn leer_valor(&self, direccion: u64, palabras: u32) -> Result<u64, ErrorEjecucion> {
+        let bw = self.maquina.bits_palabra;
+        let mut valor = 0u64;
+        for i in 0..palabras {
+            let palabra = self.memoria.leer(direccion.wrapping_add(u64::from(i)))?;
+            let posicion = match self.maquina.endianness {
+                Endianness::Little => i,
+                Endianness::Big => palabras - 1 - i,
+            };
+            valor |= palabra.checked_shl(posicion * bw).unwrap_or(0);
+        }
+        Ok(valor)
+    }
+
+    /// Atiende la interrupcion pendiente de menor numero, si hay y estan habilitadas.
+    fn atender_interrupcion(&mut self) -> Result<bool, ErrorEjecucion> {
+        if !self.estado.interrupciones_habilitadas() {
+            return Ok(false);
+        }
+        let Some(&linea) = self.pendientes.iter().next() else {
+            return Ok(false);
+        };
+        let vector = self.maquina.interrupciones.as_ref().and_then(|i| i.vectores.get(&linea)).copied();
+        let vector = vector.ok_or(ErrorEjecucion::InterrupcionNoDeclarada { linea })?;
+        let sp = self.estado.sp().ok_or(ErrorEjecucion::InterrupcionSinPila { linea })?;
+        let nombre_pc = self.estado.nombre_del_pc().to_string();
+        let palabras_pc = self.palabras_para(self.estado.mascara_de_registro(&nombre_pc)?.count_ones());
+        let palabras_dir = self.palabras_para(self.maquina.bits_direccion);
+        let pc = self.estado.pc();
+        let destino = self.leer_valor(vector, palabras_dir)?;
+        match self.maquina.pila {
+            SentidoPila::Descendente => {
+                let nuevo = sp.wrapping_sub(u64::from(palabras_pc));
+                self.escribir_valor(nuevo, pc, palabras_pc)?;
+                self.estado.fijar_sp(nuevo);
+            }
+            SentidoPila::Ascendente => {
+                self.escribir_valor(sp, pc, palabras_pc)?;
+                self.estado.fijar_sp(sp.wrapping_add(u64::from(palabras_pc)));
+            }
+        }
+        self.pendientes.remove(&linea);
+        self.estado.habilitar_interrupciones(false);
+        self.estado.fijar_pc(destino);
+        Ok(true)
     }
 
     /// Ejecuta una instruccion. Devuelve `None` si la maquina ya estaba detenida.
@@ -110,6 +205,7 @@ impl Emulador {
         if self.estado.detenida() {
             return Ok(None);
         }
+        self.atender_interrupcion()?;
         let direccion = self.estado.pc();
         let dec = self.decodificador.decodificar(&self.memoria, direccion)?;
         self.estado
