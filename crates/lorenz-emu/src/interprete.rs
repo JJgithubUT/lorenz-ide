@@ -108,6 +108,7 @@ impl Interprete {
         }
         match nombre {
             "pc" => Ok(entorno.estado.pc() as i128),
+            "ie" => Ok(i128::from(entorno.estado.interrupciones_habilitadas())),
             "sp" => entorno.estado.sp().map(|v| v as i128).ok_or_else(|| {
                 ErrorEjecucion::RegistroInexistente {
                     nombre: nombre.to_string(),
@@ -221,6 +222,10 @@ impl Interprete {
                 if entorno.estado.tiene_bandera(nombre) {
                     entorno.estado.fijar_bandera(nombre, valor != 0)?;
                     seg.explicitas.push(nombre.clone());
+                    return Ok(());
+                }
+                if nombre == "ie" {
+                    entorno.estado.habilitar_interrupciones(valor != 0);
                     return Ok(());
                 }
                 let alias = match nombre.as_str() {
