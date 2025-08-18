@@ -106,12 +106,12 @@ fn jz_y_hlt_se_reconocen() {
 
 #[test]
 fn un_codigo_sin_instruccion_es_invalido() {
-    let e = dec().decodificar_palabras(0x10, &[0x70]).unwrap_err();
+    let e = dec().decodificar_palabras(0x10, &[0x80]).unwrap_err();
     assert_eq!(
         e,
         ErrorEjecucion::InstruccionInvalida {
             direccion: 0x10,
-            palabra: 0x70
+            palabra: 0x80
         }
     );
 }
@@ -138,7 +138,7 @@ fn longitud_de_dice_cuantas_palabras_lee_cada_instruccion() {
     assert_eq!(d.longitud_de(0x00), Some(1));
     assert_eq!(d.longitud_de(0x20), Some(2));
     assert_eq!(d.longitud_de(0x40), Some(3));
-    assert_eq!(d.longitud_de(0x70), None);
+    assert_eq!(d.longitud_de(0x80), None);
 }
 
 #[test]
