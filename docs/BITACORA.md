@@ -17,6 +17,40 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Interrupciones del emulador
+
+**Hecho:**
+
+- `Emulador::levantar_interrupcion(linea)` deja la linea pendiente; se atiende antes de la siguiente
+  instruccion si las interrupciones estan habilitadas. Gana la linea de menor numero.
+- Atender una interrupcion apila el pc (sentido de pila y `endianness` de la maquina), inhabilita las
+  interrupciones y salta a la direccion guardada en el vector.
+- Alias `ie` en la semantica: se lee como 1 o 0 y asignarlo habilita o inhabilita. Solo existe si la
+  maquina declara interrupciones; el validador lo comprueba.
+- El estado arranca y reinicia con `habilitadas_al_arrancar`.
+- El ejemplo de 8 bits gana `RETI`, `EI` y `DI` (11 instrucciones). El codigo 0x80 pasa a ser el
+  de prueba para instrucciones invalidas.
+- Pruebas: 23 de interrupciones, 5 de `ie` en el interprete, 2 de arranque del estado, 2 de
+  validacion.
+
+**Decidido:**
+
+- **D-019** — El vector de una linea es la direccion de memoria donde la maquina guarda la direccion
+  del manejador (tantas palabras como pida una direccion, en su `endianness`). Motivo: en una
+  maquina de 8 bits una direccion de 16 bits no cabe en una palabra y la tabla de vectores es lo que
+  hacen las maquinas reales de ese tipo. Las reglas completas estan en `docs/SEMANTICA.md`.
+- **D-020** — Una maquina detenida no atiende interrupciones: `HLT` es definitivo hasta un
+  `reiniciar`. Motivo: mantiene la parada predecible para los programas de prueba.
+
+**Pendiente:** dispositivos de pantalla y teclado conectados a las regiones y los puertos
+(el teclado levanta su linea al recibir una tecla).
+
+**Requisitos:** RF-EMU-032 a RF-EMU-034, RF-ARQ-022.
+
+**Commits:** contador en 103 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Linea de comandos: validar y ejecutar
 
 **Hecho:**
