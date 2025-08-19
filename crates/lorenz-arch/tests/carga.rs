@@ -46,7 +46,7 @@ fn carga_la_maquina_de_ejemplo() {
     let m = cargar(&texto).expect("la maquina de ejemplo debe ser valida");
     assert_eq!(m.nombre, "ejemplo-8");
     assert_eq!(m.registros.len(), 7);
-    assert_eq!(m.instrucciones.len(), 8);
+    assert_eq!(m.instrucciones.len(), 11);
     assert_eq!(m.regiones.len(), 3);
     assert_eq!(m.dispositivos.len(), 2);
 }

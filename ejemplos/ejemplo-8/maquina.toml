@@ -160,6 +160,30 @@ descripcion = "Salta si la bandera Z esta encendida."
   tipo = "direccion"
 
 [[instruccion]]
+mnemonico = "RETI"
+sintaxis  = "RETI"
+codigo    = "0111 0000"
+semantica = "pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1"
+ciclos    = 4
+descripcion = "Vuelve de una interrupcion: recupera el pc de la pila y habilita las interrupciones."
+
+[[instruccion]]
+mnemonico = "EI"
+sintaxis  = "EI"
+codigo    = "0111 0001"
+semantica = "ie = 1"
+ciclos    = 1
+descripcion = "Habilita las interrupciones."
+
+[[instruccion]]
+mnemonico = "DI"
+sintaxis  = "DI"
+codigo    = "0111 0010"
+semantica = "ie = 0"
+ciclos    = 1
+descripcion = "Inhabilita las interrupciones."
+
+[[instruccion]]
 mnemonico = "HLT"
 sintaxis  = "HLT"
 codigo    = "1111 ...."

@@ -229,8 +229,8 @@ fn la_maquina_de_ejemplo_tiene_semantica_analizada_en_todas_sus_instrucciones() 
         .iter()
         .filter(|i| !i.programa.sentencias.is_empty())
         .count();
-    // NOP no hace nada; las otras siete tienen cuerpo
-    assert_eq!(con_programa, 7);
+    // NOP no hace nada; las otras diez tienen cuerpo
+    assert_eq!(con_programa, 10);
     assert!(m.instruccion("NOP").unwrap().programa.sentencias.is_empty());
 }
 
