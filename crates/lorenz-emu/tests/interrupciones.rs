@@ -203,3 +203,96 @@ fn una_maquina_detenida_no_atiende_interrupciones() {
     assert_eq!(e.paso().unwrap(), None);
     assert_eq!(e.interrupciones_pendientes(), [0]);
 }
+
+// --- Con las instrucciones EI, DI y RETI del ejemplo de 8 bits ---
+
+#[test]
+fn ei_y_di_habilitan_e_inhabilitan() {
+    let mut e = Emulador::nuevo(ejemplo_8()).unwrap();
+    e.cargar_programa(0, &[0x71, 0x72, 0xF0]).unwrap();
+    e.paso().unwrap();
+    assert!(e.estado().interrupciones_habilitadas());
+    e.paso().unwrap();
+    assert!(!e.estado().interrupciones_habilitadas());
+}
+
+#[test]
+fn ei_cuesta_un_ciclo_y_reti_cuatro() {
+    let mut e = Emulador::nuevo(ejemplo_8()).unwrap();
+    e.cargar_programa(0, &[0x71, 0x70]).unwrap();
+    e.estado_mut().fijar_sp(0x2000);
+    assert_eq!(e.paso().unwrap().unwrap().ciclos, 1);
+    assert_eq!(e.paso().unwrap().unwrap().ciclos, 4);
+}
+
+/// Un manejador que cambia C y vuelve con RETI.
+///
+/// - 0x0000: EI ; NOP ; NOP ; LDI A,1 ; HLT
+/// - 0x0100: LDI C,0x99 ; RETI
+fn con_reti() -> Emulador {
+    let mut e = Emulador::nuevo(ejemplo_8()).unwrap();
+    e.cargar_programa(0x0000, &[0x71, 0x00, 0x00, 0x20, 0x01, 0xF0]).unwrap();
+    e.cargar_programa(0x0100, &[0x28, 0x99, 0x70]).unwrap();
+    e.cargar_programa(0xEFF0, &[0x00, 0x01]).unwrap();
+    e
+}
+
+#[test]
+fn reti_devuelve_el_control_a_la_instruccion_interrumpida() {
+    let mut e = con_reti();
+    e.paso().unwrap(); // EI
+    e.paso().unwrap(); // NOP (pc = 2)
+    e.levantar_interrupcion(0).unwrap();
+    e.ejecutar(20).unwrap();
+    assert_eq!(e.estado().registro("C").unwrap(), 0x99);
+    assert_eq!(e.estado().registro("A").unwrap(), 1);
+    assert_eq!(e.estado().sp(), Some(0xEFFF));
+}
+
+#[test]
+fn reti_vuelve_a_habilitar_las_interrupciones() {
+    let mut e = con_reti();
+    e.paso().unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap(); // atiende y ejecuta LDI C
+    assert!(!e.estado().interrupciones_habilitadas());
+    e.paso().unwrap(); // RETI
+    assert!(e.estado().interrupciones_habilitadas());
+    assert_eq!(e.estado().pc(), 1);
+}
+
+#[test]
+fn una_segunda_interrupcion_espera_dentro_del_manejador_y_se_atiende_al_volver() {
+    let mut e = con_reti();
+    e.paso().unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap(); // dentro del manejador
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap(); // RETI
+    assert_eq!(e.interrupciones_pendientes(), [0]);
+    let p = e.paso().unwrap().unwrap();
+    assert_eq!(p.direccion, 0x0100);
+}
+
+#[test]
+fn las_interrupciones_no_cambian_el_resultado_del_programa_principal() {
+    let mut sin = con_reti();
+    sin.ejecutar(20).unwrap();
+    let mut con = con_reti();
+    con.paso().unwrap();
+    con.levantar_interrupcion(0).unwrap();
+    con.ejecutar(20).unwrap();
+    assert_eq!(sin.estado().registro("A").unwrap(), con.estado().registro("A").unwrap());
+}
+
+#[test]
+fn con_las_mismas_interrupciones_el_resultado_es_identico() {
+    let correr = || {
+        let mut e = con_reti();
+        e.paso().unwrap();
+        e.levantar_interrupcion(0).unwrap();
+        let r = e.ejecutar(20).unwrap();
+        (r, e.estado().ciclos(), e.estado().registro("C").unwrap())
+    };
+    assert_eq!(correr(), correr());
+}
