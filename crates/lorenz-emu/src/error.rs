@@ -57,4 +57,13 @@ pub enum ErrorEjecucion {
 
     #[error("no se puede atender la interrupcion {linea}: la maquina no tiene puntero de pila")]
     InterrupcionSinPila { linea: u32 },
+
+    #[error("la maquina no tiene un dispositivo llamado '{nombre}'")]
+    DispositivoInexistente { nombre: String },
+
+    #[error("el dispositivo '{nombre}' no es {esperado}")]
+    DispositivoIncorrecto { nombre: String, esperado: &'static str },
+
+    #[error("la pantalla '{nombre}' usa el formato '{formato}', que el emulador no sabe dibujar")]
+    FormatoDePantallaNoSoportado { nombre: String, formato: String },
 }

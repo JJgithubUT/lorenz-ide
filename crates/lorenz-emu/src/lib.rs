@@ -31,3 +31,7 @@ pub use interprete::{Entorno, Interprete, Resultado};
 pub mod emulador;
 
 pub use emulador::{Emulador, Paso, Resumen};
+
+pub mod pantalla;
+
+pub use pantalla::{leer_imagen, Imagen};

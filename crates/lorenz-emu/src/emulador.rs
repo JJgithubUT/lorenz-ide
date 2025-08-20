@@ -3,13 +3,14 @@
 
 use std::collections::BTreeSet;
 
-use lorenz_arch::modelo::{Ciclos, Endianness, Maquina, SentidoPila};
+use lorenz_arch::modelo::{Ciclos, Endianness, Maquina, SentidoPila, TipoDispositivo};
 
 use crate::decodificador::Decodificador;
 use crate::error::ErrorEjecucion;
 use crate::estado::Estado;
 use crate::interprete::{Entorno, Interprete};
 use crate::memoria::Memoria;
+use crate::pantalla::{leer_imagen, Imagen};
 use crate::puertos::Puertos;
 
 /// Que hizo una instruccion al ejecutarse.
@@ -105,6 +106,31 @@ impl Emulador {
         self.estado.reiniciar();
         self.puertos.reiniciar();
         self.pendientes.clear();
+    }
+
+    /// Imagen actual de la pantalla `nombre` (RF-EMU-036).
+    pub fn pantalla(&self, nombre: &str) -> Result<Imagen, ErrorEjecucion> {
+        leer_imagen(&self.maquina, &self.memoria, nombre)
+    }
+
+    /// Pulsa una tecla en el teclado `nombre`: deja el codigo en su puerto de datos y, si el
+    /// teclado declara una linea de interrupcion, la levanta (RF-EMU-035).
+    pub fn pulsar_tecla(&mut self, nombre: &str, codigo: u64) -> Result<(), ErrorEjecucion> {
+        let dispositivo = self
+            .maquina
+            .dispositivo(nombre)
+            .ok_or_else(|| ErrorEjecucion::DispositivoInexistente { nombre: nombre.to_string() })?;
+        let incorrecto = || ErrorEjecucion::DispositivoIncorrecto { nombre: nombre.to_string(), esperado: "un teclado" };
+        if dispositivo.tipo != TipoDispositivo::Teclado {
+            return Err(incorrecto());
+        }
+        let datos = *dispositivo.puertos.get("datos").ok_or_else(incorrecto)?;
+        let linea = dispositivo.interrupcion;
+        self.puertos.encolar_entrada(datos, codigo)?;
+        if let Some(linea) = linea {
+            self.levantar_interrupcion(linea)?;
+        }
+        Ok(())
     }
 
     /// Levanta una linea de interrupcion. Se atiende antes de la siguiente instruccion si las
