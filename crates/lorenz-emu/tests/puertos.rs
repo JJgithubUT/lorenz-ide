@@ -52,10 +52,45 @@ fn la_entrada_sale_en_el_orden_en_que_entro() {
 
 #[test]
 fn cada_puerto_tiene_su_propia_cola() {
-    let mut p = puertos();
+    let mut m = ejemplo_8();
+    m.dispositivos.retain(|d| d.nombre != "teclado");
+    // Dos puertos de un dispositivo generico, sin relacion de estado entre ellos.
+    m.dispositivos.push(lorenz_arch::modelo::Dispositivo {
+        nombre: "uart".into(),
+        tipo: lorenz_arch::modelo::TipoDispositivo::Uart,
+        puertos: [("a".to_string(), 1u64), ("b".to_string(), 2u64)].into_iter().collect(),
+        interrupcion: None,
+    });
+    let mut p = Puertos::nuevo(&m);
     p.encolar_entrada(1, 7).unwrap();
     assert_eq!(p.leer(2).unwrap(), 0);
     assert_eq!(p.leer(1).unwrap(), 7);
+}
+
+#[test]
+fn el_puerto_de_estado_del_teclado_dice_si_hay_una_tecla() {
+    let mut p = puertos();
+    assert_eq!(p.leer(2).unwrap(), 0);
+    p.encolar_entrada(1, 0x41).unwrap();
+    assert_eq!(p.leer(2).unwrap(), 1);
+}
+
+#[test]
+fn leer_el_estado_no_consume_la_tecla() {
+    let mut p = puertos();
+    p.encolar_entrada(1, 0x41).unwrap();
+    p.leer(2).unwrap();
+    p.leer(2).unwrap();
+    assert_eq!(p.pendientes(1).unwrap(), 1);
+    assert_eq!(p.leer(1).unwrap(), 0x41);
+}
+
+#[test]
+fn tras_leer_la_ultima_tecla_el_estado_vuelve_a_cero() {
+    let mut p = puertos();
+    p.encolar_entrada(1, 0x41).unwrap();
+    p.leer(1).unwrap();
+    assert_eq!(p.leer(2).unwrap(), 0);
 }
 
 #[test]
