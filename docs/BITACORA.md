@@ -30,7 +30,7 @@ Formato de una entrada:
 - El estado arranca y reinicia con `habilitadas_al_arrancar`.
 - El ejemplo de 8 bits gana `RETI`, `EI` y `DI` (11 instrucciones). El codigo 0x80 pasa a ser el
   de prueba para instrucciones invalidas.
-- Pruebas: 23 de interrupciones, 5 de `ie` en el interprete, 2 de arranque del estado, 2 de
+- Pruebas: 24 de interrupciones, 5 de `ie` en el interprete, 2 de arranque del estado, 2 de
   validacion.
 
 **Decidido:**
