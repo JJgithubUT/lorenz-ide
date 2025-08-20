@@ -159,3 +159,22 @@ fn reiniciar_restaura_registros_banderas_y_contadores() {
     assert!(!e.detenida());
     assert!(!e.interrupciones_habilitadas());
 }
+
+#[test]
+fn las_interrupciones_arrancan_como_dice_la_maquina() {
+    let mut m = ejemplo_8();
+    assert!(!Estado::nuevo(&m).interrupciones_habilitadas());
+    m.interrupciones.as_mut().unwrap().habilitadas_al_arrancar = true;
+    let mut e = Estado::nuevo(&m);
+    assert!(e.interrupciones_habilitadas());
+    e.habilitar_interrupciones(false);
+    e.reiniciar();
+    assert!(e.interrupciones_habilitadas());
+}
+
+#[test]
+fn una_maquina_sin_interrupciones_las_tiene_inhabilitadas() {
+    let mut m = ejemplo_8();
+    m.interrupciones = None;
+    assert!(!Estado::nuevo(&m).interrupciones_habilitadas());
+}

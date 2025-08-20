@@ -173,7 +173,7 @@ fn un_fallo_de_ejecucion_devuelve_su_codigo_y_la_direccion() {
 
 #[test]
 fn una_instruccion_invalida_es_un_fallo_de_ejecucion() {
-    let p = temporal("invalida.hex", "70");
+    let p = temporal("invalida.hex", "80");
     let r = correr(&["ejecutar", &maquina(), &p]);
     assert_eq!(r.codigo, SALIDA_ERROR_EJECUCION);
     assert!(r.errores.contains("ninguna instruccion"));

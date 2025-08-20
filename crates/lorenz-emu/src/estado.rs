@@ -31,6 +31,7 @@ pub struct Estado {
     ciclos: u64,
     detenida: bool,
     interrupciones_habilitadas: bool,
+    habilitadas_al_arrancar: bool,
     /// Nombre y posicion de cada bandera dentro del registro de banderas.
     banderas: Vec<(String, u32)>,
     arranque: u64,
@@ -58,6 +59,8 @@ impl Estado {
             .iter()
             .position(|r| *r == RolRegistro::ContadorPrograma)
             .expect("una maquina validada siempre tiene contador de programa");
+        let habilitadas_al_arrancar =
+            maquina.interrupciones.as_ref().is_some_and(|i| i.habilitadas_al_arrancar);
         let indice_sp = roles.iter().position(|r| *r == RolRegistro::PunteroPila);
         let indice_banderas = roles.iter().position(|r| *r == RolRegistro::Banderas);
         let banderas = maquina
@@ -78,7 +81,8 @@ impl Estado {
             instrucciones: 0,
             ciclos: 0,
             detenida: false,
-            interrupciones_habilitadas: false,
+            interrupciones_habilitadas: habilitadas_al_arrancar,
+            habilitadas_al_arrancar,
             banderas,
             arranque: maquina.arranque,
         };
@@ -191,7 +195,7 @@ impl Estado {
         self.instrucciones = 0;
         self.ciclos = 0;
         self.detenida = false;
-        self.interrupciones_habilitadas = false;
+        self.interrupciones_habilitadas = self.habilitadas_al_arrancar;
     }
 
     /// Instrucciones ejecutadas desde el ultimo reinicio.

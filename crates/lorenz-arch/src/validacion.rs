@@ -401,14 +401,16 @@ fn rangos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
 
 /// RF-ARQ-022: la semantica solo cita nombres que existen y solo asigna a lo asignable.
 ///
-/// Un nombre puede ser un operando de la instruccion, un registro, una bandera, o los alias `pc` y
-/// `sp` cuando existe un registro con ese rol.
+/// Un nombre puede ser un operando de la instruccion, un registro, una bandera, los alias `pc` y
+/// `sp` cuando existe un registro con ese rol, o `ie` (interrupciones habilitadas) cuando la
+/// maquina declara interrupciones.
 fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     for ins in &m.instrucciones {
         let es_operando = |n: &str| ins.operandos.iter().any(|o| o.nombre == n);
         let es_alias = |n: &str| match n {
             "pc" => m.registro_con_rol(RolRegistro::ContadorPrograma).is_some(),
             "sp" => m.registro_con_rol(RolRegistro::PunteroPila).is_some(),
+            "ie" => m.interrupciones.is_some(),
             _ => false,
         };
         let existe = |n: &str| {

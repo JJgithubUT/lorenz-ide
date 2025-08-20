@@ -329,3 +329,44 @@ fn asignar_cero_apaga_una_bandera() {
     b.ejecutar(0, 0).unwrap();
     assert!(!b.estado.bandera("Z").unwrap());
 }
+
+#[test]
+fn ie_se_lee_como_uno_o_cero() {
+    let mut b = banco("A = ie");
+    b.ejecutar(0, 0).unwrap();
+    assert_eq!(b.reg("A"), 0);
+    b.estado.habilitar_interrupciones(true);
+    b.ejecutar(0, 0).unwrap();
+    assert_eq!(b.reg("A"), 1);
+}
+
+#[test]
+fn asignar_ie_habilita_e_inhabilita() {
+    let mut b = banco("ie = 1");
+    b.ejecutar(0, 0).unwrap();
+    assert!(b.estado.interrupciones_habilitadas());
+    let mut b = banco("ie = 0");
+    b.estado.habilitar_interrupciones(true);
+    b.ejecutar(0, 0).unwrap();
+    assert!(!b.estado.interrupciones_habilitadas());
+}
+
+#[test]
+fn cualquier_valor_distinto_de_cero_habilita() {
+    let mut b = banco("ie = 7");
+    b.ejecutar(0, 0).unwrap();
+    assert!(b.estado.interrupciones_habilitadas());
+}
+
+#[test]
+fn asignar_ie_no_marca_el_pc_como_salto() {
+    let mut b = banco("ie = 1");
+    assert!(!b.ejecutar(0, 0).unwrap().salto);
+}
+
+#[test]
+fn asignar_ie_no_cuenta_como_ultimo_valor_para_las_banderas() {
+    let mut b = Banco::nuevo("A = 5; ie = 0", r#"["Z"]"#);
+    b.ejecutar(0, 0).unwrap();
+    assert!(!b.estado.bandera("Z").unwrap());
+}

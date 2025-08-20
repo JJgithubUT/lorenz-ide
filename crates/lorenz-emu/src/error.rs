@@ -51,4 +51,10 @@ pub enum ErrorEjecucion {
 
     #[error("se alcanzo el limite de {limite} instrucciones")]
     LimiteDeInstrucciones { limite: u64 },
+
+    #[error("la linea de interrupcion {linea} no tiene un vector declarado")]
+    InterrupcionNoDeclarada { linea: u32 },
+
+    #[error("no se puede atender la interrupcion {linea}: la maquina no tiene puntero de pila")]
+    InterrupcionSinPila { linea: u32 },
 }

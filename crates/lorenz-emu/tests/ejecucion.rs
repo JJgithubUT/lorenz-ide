@@ -148,13 +148,13 @@ fn escribir_en_la_rom_falla_y_deja_el_pc_en_la_instruccion() {
 
 #[test]
 fn una_instruccion_invalida_se_informa_con_su_direccion() {
-    let mut e = con_programa(&[0x00, 0x70]);
+    let mut e = con_programa(&[0x00, 0x80]);
     let err = e.ejecutar(10).unwrap_err();
     assert_eq!(
         err,
         ErrorEjecucion::InstruccionInvalida {
             direccion: 1,
-            palabra: 0x70
+            palabra: 0x80
         }
     );
     assert_eq!(e.estado().pc(), 1);

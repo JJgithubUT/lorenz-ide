@@ -72,6 +72,10 @@ bits_palabra = 8
 bits_direccion = 16
 arranque = 0x0000
 
+[maquina.interrupciones]
+vectores = {{ 0 = 0x0010 }}
+habilitadas_al_arrancar = false
+
 [flags]
 Z = {{ bit = 0, descripcion = "cero" }}
 C = {{ bit = 1, descripcion = "acarreo" }}

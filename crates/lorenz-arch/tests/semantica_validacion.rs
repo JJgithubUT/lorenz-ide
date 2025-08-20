@@ -229,8 +229,8 @@ fn la_maquina_de_ejemplo_tiene_semantica_analizada_en_todas_sus_instrucciones() 
         .iter()
         .filter(|i| !i.programa.sentencias.is_empty())
         .count();
-    // NOP no hace nada; las otras siete tienen cuerpo
-    assert_eq!(con_programa, 7);
+    // NOP no hace nada; las otras diez tienen cuerpo
+    assert_eq!(con_programa, 10);
     assert!(m.instruccion("NOP").unwrap().programa.sentencias.is_empty());
 }
 
@@ -257,4 +257,23 @@ fn nombres_leidos_y_escritos_de_add() {
     let p = &m.instruccion("ADD").unwrap().programa;
     assert_eq!(p.nombres_leidos(), vec!["rd".to_string(), "rs".to_string()]);
     assert_eq!(p.nombres_escritos(), vec!["rd".to_string()]);
+}
+
+fn con_interrupciones(semantica: &str) -> String {
+    base(semantica).replace(
+        "[flags]",
+        "[maquina.interrupciones]\nvectores = { 0 = 0x0010 }\nhabilitadas_al_arrancar = false\n\n[flags]",
+    )
+}
+
+#[test]
+fn el_alias_ie_se_acepta_si_la_maquina_tiene_interrupciones() {
+    assert!(cargar(&con_interrupciones("ie = 1")).is_ok());
+    assert!(cargar(&con_interrupciones("si ie: ie = 0")).is_ok());
+}
+
+#[test]
+fn el_alias_ie_se_rechaza_si_la_maquina_no_tiene_interrupciones() {
+    assert!(hay_semantica_invalida(&base("ie = 1")));
+    assert!(hay_semantica_invalida(&base("si ie: rd = 1")));
 }
