@@ -84,6 +84,8 @@ fn ejecutar_usa_valores_por_omision() {
             programa: "p".into(),
             limite: LIMITE_POR_OMISION,
             traza: false,
+            pantalla: false,
+            teclas: None,
             direccion: None
         })
     );
@@ -108,6 +110,8 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             programa: "p".into(),
             limite: 50,
             traza: true,
+            pantalla: false,
+            teclas: None,
             direccion: Some(0x2000)
         })
     );
@@ -162,4 +166,36 @@ fn ejecutar_rechaza_un_tercer_posicional() {
 #[test]
 fn los_mensajes_de_uso_estan_en_espanol() {
     assert!(ErrorUso::SinOrden.to_string().contains("falta la orden"));
+}
+
+#[test]
+fn pantalla_y_teclas_son_opciones_de_ejecutar() {
+    let o = interpretar(&v(&[
+        "ejecutar",
+        "m",
+        "p",
+        "--pantalla",
+        "--teclas",
+        "hola",
+    ]));
+    assert_eq!(
+        o,
+        Ok(Orden::Ejecutar {
+            maquina: "m".into(),
+            programa: "p".into(),
+            limite: LIMITE_POR_OMISION,
+            traza: false,
+            pantalla: true,
+            teclas: Some("hola".into()),
+            direccion: None
+        })
+    );
+}
+
+#[test]
+fn teclas_necesita_un_valor() {
+    assert_eq!(
+        interpretar(&v(&["ejecutar", "m", "p", "--teclas"])),
+        Err(ErrorUso::OpcionSinValor("--teclas".into()))
+    );
 }
