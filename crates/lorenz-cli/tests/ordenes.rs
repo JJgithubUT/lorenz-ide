@@ -248,3 +248,40 @@ fn la_misma_ejecucion_da_la_misma_salida() {
     ]);
     assert_eq!(a.salida, b.salida);
 }
+
+#[test]
+fn pantalla_dibuja_lo_que_el_programa_escribio_en_video() {
+    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("pantalla.hex"), "--pantalla"]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    let lineas: Vec<&str> = r.salida.lines().skip_while(|l| !l.starts_with("pantalla pantalla:")).collect();
+    assert_eq!(lineas[1], format!("########{}", ".".repeat(56)));
+    assert_eq!(lineas[2], format!("#{}", ".".repeat(63)));
+    assert_eq!(lineas[5], ".".repeat(64));
+    assert_eq!(lineas.len(), 1 + 32);
+}
+
+#[test]
+fn sin_la_opcion_pantalla_no_se_dibuja_nada() {
+    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("pantalla.hex")]);
+    assert!(!r.salida.contains("pantalla pantalla:"));
+}
+
+#[test]
+fn teclas_pulsa_en_el_primer_teclado() {
+    // Lee el estado con un programa que no hace nada, pero la tecla queda esperando.
+    let p = temporal("espera.hex", "F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--teclas", "ab"]);
+    assert_eq!(r.codigo, SALIDA_OK);
+}
+
+#[test]
+fn teclas_en_una_maquina_sin_teclado_es_error_de_uso() {
+    let texto = std::fs::read_to_string(maquina()).unwrap();
+    let inicio = texto.find("[[dispositivo]]\nnombre       = \"teclado\"").unwrap();
+    let sin_teclado = &texto[..inicio];
+    let m = temporal("sin_teclado.toml", sin_teclado);
+    let p = temporal("espera2.hex", "F0");
+    let r = correr(&["ejecutar", &m, &p, "--teclas", "a"]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no tiene teclado"));
+}
