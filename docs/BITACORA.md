@@ -17,6 +17,38 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Pantalla y teclado
+
+**Hecho:**
+
+- `Emulador::pantalla(nombre)` convierte la region de video en una `Imagen`: formato `indice1` (un
+  bit por pixel, el bit mas significativo primero) e `indice8` (una palabra por pixel). Lo que la
+  region no cubre se dibuja apagado. `Imagen::a_texto` la dibuja con `#` y `.`.
+- `Emulador::pulsar_tecla(nombre, codigo)` deja la tecla en el puerto de datos y levanta la linea de
+  interrupcion del teclado si la declara.
+- El puerto de estado de un teclado vale 1 si hay una tecla esperando y no consume nada.
+- `lorenz ejecutar` gana `--pantalla` (dibuja las pantallas al terminar) y `--teclas TEXTO`.
+- Programa de ejemplo `pantalla.hex`.
+- Pruebas: 12 de pantalla, 10 de teclado (una con un manejador real que lee la tecla por
+  interrupcion), 3 nuevas de puertos y 6 nuevas de la CLI.
+- El asistente de commits ejecuta rustfmt antes de cada commit, para que no se acumulen commits de
+  solo formato.
+
+**Decidido:**
+
+- **D-021** — El puerto `estado` de un teclado se deduce del tipo de dispositivo: no hay que
+  declararlo en la semantica. Motivo: es lo que toda maquina con teclado necesita y evita que cada
+  arquitectura reinvente el mismo protocolo.
+
+**Pendiente:** temporizador, UART y dispositivos de bloques (tipos ya aceptados por el formato pero
+sin comportamiento); cerrar la fase 1 con una revision de requisitos RF-EMU contra lo implementado.
+
+**Requisitos:** RF-EMU-035, RF-EMU-036, RF-CLI-006.
+
+**Commits:** contador en 114 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Interrupciones del emulador
 
 **Hecho:**
