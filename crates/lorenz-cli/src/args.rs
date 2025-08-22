@@ -20,6 +20,10 @@ pub enum Orden {
         programa: String,
         limite: u64,
         traza: bool,
+        /// Dibujar las pantallas de la maquina al terminar.
+        pantalla: bool,
+        /// Teclas que se pulsan en el primer teclado antes de empezar, una por caracter.
+        teclas: Option<String>,
         /// Direccion donde se carga el programa; por omision, la de arranque de la maquina.
         direccion: Option<u64>,
     },
@@ -95,12 +99,22 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut posicionales: Vec<String> = Vec::new();
     let mut limite = LIMITE_POR_OMISION;
     let mut traza = false;
+    let mut pantalla = false;
+    let mut teclas = None;
     let mut direccion = None;
     let mut i = 0;
     while i < resto.len() {
         let a = &resto[i];
         match a.as_str() {
             "--traza" => traza = true,
+            "--pantalla" => pantalla = true,
+            "--teclas" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                teclas = Some(valor.clone());
+            }
             "--limite" | "--direccion" => {
                 i += 1;
                 let valor = resto
@@ -129,6 +143,8 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         programa,
         limite,
         traza,
+        pantalla,
+        teclas,
         direccion,
     })
 }

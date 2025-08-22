@@ -3,13 +3,14 @@
 
 use std::collections::BTreeSet;
 
-use lorenz_arch::modelo::{Ciclos, Endianness, Maquina, SentidoPila};
+use lorenz_arch::modelo::{Ciclos, Endianness, Maquina, SentidoPila, TipoDispositivo};
 
 use crate::decodificador::Decodificador;
 use crate::error::ErrorEjecucion;
 use crate::estado::Estado;
 use crate::interprete::{Entorno, Interprete};
 use crate::memoria::Memoria;
+use crate::pantalla::{leer_imagen, Imagen};
 use crate::puertos::Puertos;
 
 /// Que hizo una instruccion al ejecutarse.
@@ -107,6 +108,35 @@ impl Emulador {
         self.pendientes.clear();
     }
 
+    /// Imagen actual de la pantalla `nombre` (RF-EMU-036).
+    pub fn pantalla(&self, nombre: &str) -> Result<Imagen, ErrorEjecucion> {
+        leer_imagen(&self.maquina, &self.memoria, nombre)
+    }
+
+    /// Pulsa una tecla en el teclado `nombre`: deja el codigo en su puerto de datos y, si el
+    /// teclado declara una linea de interrupcion, la levanta (RF-EMU-035).
+    pub fn pulsar_tecla(&mut self, nombre: &str, codigo: u64) -> Result<(), ErrorEjecucion> {
+        let dispositivo = self.maquina.dispositivo(nombre).ok_or_else(|| {
+            ErrorEjecucion::DispositivoInexistente {
+                nombre: nombre.to_string(),
+            }
+        })?;
+        let incorrecto = || ErrorEjecucion::DispositivoIncorrecto {
+            nombre: nombre.to_string(),
+            esperado: "un teclado",
+        };
+        if dispositivo.tipo != TipoDispositivo::Teclado {
+            return Err(incorrecto());
+        }
+        let datos = *dispositivo.puertos.get("datos").ok_or_else(incorrecto)?;
+        let linea = dispositivo.interrupcion;
+        self.puertos.encolar_entrada(datos, codigo)?;
+        if let Some(linea) = linea {
+            self.levantar_interrupcion(linea)?;
+        }
+        Ok(())
+    }
+
     /// Levanta una linea de interrupcion. Se atiende antes de la siguiente instruccion si las
     /// interrupciones estan habilitadas; mientras tanto queda pendiente.
     ///
@@ -136,7 +166,12 @@ impl Emulador {
 
     /// Escribe `valor` en `palabras` palabras consecutivas desde `direccion`, en el orden del
     /// `endianness` de la maquina.
-    fn escribir_valor(&mut self, direccion: u64, valor: u64, palabras: u32) -> Result<(), ErrorEjecucion> {
+    fn escribir_valor(
+        &mut self,
+        direccion: u64,
+        valor: u64,
+        palabras: u32,
+    ) -> Result<(), ErrorEjecucion> {
         let bw = self.maquina.bits_palabra;
         for i in 0..palabras {
             let posicion = match self.maquina.endianness {
@@ -144,7 +179,8 @@ impl Emulador {
                 Endianness::Big => palabras - 1 - i,
             };
             let palabra = valor.checked_shr(posicion * bw).unwrap_or(0);
-            self.memoria.escribir(direccion.wrapping_add(u64::from(i)), palabra)?;
+            self.memoria
+                .escribir(direccion.wrapping_add(u64::from(i)), palabra)?;
         }
         Ok(())
     }
@@ -172,11 +208,20 @@ impl Emulador {
         let Some(&linea) = self.pendientes.iter().next() else {
             return Ok(false);
         };
-        let vector = self.maquina.interrupciones.as_ref().and_then(|i| i.vectores.get(&linea)).copied();
+        let vector = self
+            .maquina
+            .interrupciones
+            .as_ref()
+            .and_then(|i| i.vectores.get(&linea))
+            .copied();
         let vector = vector.ok_or(ErrorEjecucion::InterrupcionNoDeclarada { linea })?;
-        let sp = self.estado.sp().ok_or(ErrorEjecucion::InterrupcionSinPila { linea })?;
+        let sp = self
+            .estado
+            .sp()
+            .ok_or(ErrorEjecucion::InterrupcionSinPila { linea })?;
         let nombre_pc = self.estado.nombre_del_pc().to_string();
-        let palabras_pc = self.palabras_para(self.estado.mascara_de_registro(&nombre_pc)?.count_ones());
+        let palabras_pc =
+            self.palabras_para(self.estado.mascara_de_registro(&nombre_pc)?.count_ones());
         let palabras_dir = self.palabras_para(self.maquina.bits_direccion);
         let pc = self.estado.pc();
         let destino = self.leer_valor(vector, palabras_dir)?;
@@ -188,7 +233,8 @@ impl Emulador {
             }
             SentidoPila::Ascendente => {
                 self.escribir_valor(sp, pc, palabras_pc)?;
-                self.estado.fijar_sp(sp.wrapping_add(u64::from(palabras_pc)));
+                self.estado
+                    .fijar_sp(sp.wrapping_add(u64::from(palabras_pc)));
             }
         }
         self.pendientes.remove(&linea);

@@ -59,8 +59,10 @@ impl Estado {
             .iter()
             .position(|r| *r == RolRegistro::ContadorPrograma)
             .expect("una maquina validada siempre tiene contador de programa");
-        let habilitadas_al_arrancar =
-            maquina.interrupciones.as_ref().is_some_and(|i| i.habilitadas_al_arrancar);
+        let habilitadas_al_arrancar = maquina
+            .interrupciones
+            .as_ref()
+            .is_some_and(|i| i.habilitadas_al_arrancar);
         let indice_sp = roles.iter().position(|r| *r == RolRegistro::PunteroPila);
         let indice_banderas = roles.iter().position(|r| *r == RolRegistro::Banderas);
         let banderas = maquina

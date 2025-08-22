@@ -28,7 +28,10 @@ fn emulador_de(m: lorenz_arch::modelo::Maquina) -> Emulador {
 #[test]
 fn levantar_una_linea_sin_vector_da_error() {
     let mut e = emulador();
-    assert_eq!(e.levantar_interrupcion(7), Err(ErrorEjecucion::InterrupcionNoDeclarada { linea: 7 }));
+    assert_eq!(
+        e.levantar_interrupcion(7),
+        Err(ErrorEjecucion::InterrupcionNoDeclarada { linea: 7 })
+    );
     assert!(e.interrupciones_pendientes().is_empty());
 }
 
@@ -37,7 +40,10 @@ fn una_maquina_sin_interrupciones_no_acepta_ninguna_linea() {
     let mut m = ejemplo_8();
     m.interrupciones = None;
     let mut e = Emulador::nuevo(m).unwrap();
-    assert!(matches!(e.levantar_interrupcion(0), Err(ErrorEjecucion::InterrupcionNoDeclarada { .. })));
+    assert!(matches!(
+        e.levantar_interrupcion(0),
+        Err(ErrorEjecucion::InterrupcionNoDeclarada { .. })
+    ));
 }
 
 #[test]
@@ -163,17 +169,27 @@ fn sin_puntero_de_pila_no_se_puede_atender() {
     let mut e = emulador_de(m);
     e.estado_mut().habilitar_interrupciones(true);
     e.levantar_interrupcion(0).unwrap();
-    assert_eq!(e.paso(), Err(ErrorEjecucion::InterrupcionSinPila { linea: 0 }));
+    assert_eq!(
+        e.paso(),
+        Err(ErrorEjecucion::InterrupcionSinPila { linea: 0 })
+    );
 }
 
 #[test]
 fn si_el_vector_cae_fuera_de_las_regiones_se_informa() {
     let mut m = ejemplo_8();
-    m.interrupciones.as_mut().unwrap().vectores.insert(2, 0xF800);
+    m.interrupciones
+        .as_mut()
+        .unwrap()
+        .vectores
+        .insert(2, 0xF800);
     let mut e = emulador_de(m);
     e.estado_mut().habilitar_interrupciones(true);
     e.levantar_interrupcion(2).unwrap();
-    assert!(matches!(e.paso(), Err(ErrorEjecucion::FueraDeRegion { direccion: 0xF800 })));
+    assert!(matches!(
+        e.paso(),
+        Err(ErrorEjecucion::FueraDeRegion { direccion: 0xF800 })
+    ));
 }
 
 #[test]
@@ -182,7 +198,10 @@ fn si_la_pila_cae_en_solo_lectura_el_fallo_no_cambia_el_pc() {
     e.estado_mut().fijar_sp(0x0100);
     e.estado_mut().habilitar_interrupciones(true);
     e.levantar_interrupcion(0).unwrap();
-    assert!(matches!(e.paso(), Err(ErrorEjecucion::EscrituraEnSoloLectura { .. })));
+    assert!(matches!(
+        e.paso(),
+        Err(ErrorEjecucion::EscrituraEnSoloLectura { .. })
+    ));
     assert_eq!(e.estado().pc(), 0);
 }
 
@@ -231,7 +250,8 @@ fn ei_cuesta_un_ciclo_y_reti_cuatro() {
 /// - 0x0100: LDI C,0x99 ; RETI
 fn con_reti() -> Emulador {
     let mut e = Emulador::nuevo(ejemplo_8()).unwrap();
-    e.cargar_programa(0x0000, &[0x71, 0x00, 0x00, 0x20, 0x01, 0xF0]).unwrap();
+    e.cargar_programa(0x0000, &[0x71, 0x00, 0x00, 0x20, 0x01, 0xF0])
+        .unwrap();
     e.cargar_programa(0x0100, &[0x28, 0x99, 0x70]).unwrap();
     e.cargar_programa(0xEFF0, &[0x00, 0x01]).unwrap();
     e
@@ -282,7 +302,10 @@ fn las_interrupciones_no_cambian_el_resultado_del_programa_principal() {
     con.paso().unwrap();
     con.levantar_interrupcion(0).unwrap();
     con.ejecutar(20).unwrap();
-    assert_eq!(sin.estado().registro("A").unwrap(), con.estado().registro("A").unwrap());
+    assert_eq!(
+        sin.estado().registro("A").unwrap(),
+        con.estado().registro("A").unwrap()
+    );
 }
 
 #[test]

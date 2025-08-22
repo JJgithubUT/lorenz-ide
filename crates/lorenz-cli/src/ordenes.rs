@@ -2,6 +2,7 @@
 
 use std::io::Write;
 
+use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
 use crate::args::{interpretar, Orden};
@@ -22,6 +23,7 @@ Lorenz: emulador de maquinas definidas por el usuario
 Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
+                  [--pantalla] [--teclas TEXTO]
   lorenz ayuda
   lorenz version
 
@@ -61,10 +63,19 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             programa,
             limite,
             traza,
+            pantalla,
+            teclas,
             direccion,
-        } => ejecutar(
-            &maquina, &programa, limite, traza, direccion, salida, errores,
-        ),
+        } => {
+            let opciones = Opciones {
+                limite,
+                traza,
+                pantalla,
+                teclas,
+                direccion,
+            };
+            ejecutar(&maquina, &programa, &opciones, salida, errores)
+        }
     }
 }
 
@@ -89,15 +100,28 @@ fn validar(ruta: &str, salida: &mut dyn Write, errores: &mut dyn Write) -> i32 {
     }
 }
 
+/// Opciones de `lorenz ejecutar`.
+struct Opciones {
+    limite: u64,
+    traza: bool,
+    pantalla: bool,
+    teclas: Option<String>,
+    direccion: Option<u64>,
+}
+
 fn ejecutar(
     ruta_maquina: &str,
     ruta_programa: &str,
-    limite: u64,
-    traza: bool,
-    direccion: Option<u64>,
+    opciones: &Opciones,
     salida: &mut dyn Write,
     errores: &mut dyn Write,
 ) -> i32 {
+    let Opciones {
+        limite,
+        traza,
+        direccion,
+        ..
+    } = *opciones;
     let maquina = match lorenz_arch::cargar_archivo(ruta_maquina) {
         Ok(m) => m,
         Err(e) => {
@@ -133,6 +157,27 @@ fn ejecutar(
         return SALIDA_ERROR_USO;
     }
     emulador.estado_mut().fijar_pc(inicio);
+    if let Some(teclas) = &opciones.teclas {
+        let teclado = emulador
+            .maquina()
+            .dispositivos
+            .iter()
+            .find(|d| d.tipo == TipoDispositivo::Teclado)
+            .map(|d| d.nombre.clone());
+        let Some(teclado) = teclado else {
+            escribir(
+                errores,
+                "error: la maquina no tiene teclado para --teclas\n",
+            );
+            return SALIDA_ERROR_USO;
+        };
+        for byte in teclas.bytes() {
+            if let Err(e) = emulador.pulsar_tecla(&teclado, u64::from(byte)) {
+                escribir(errores, &format!("error: {e}\n"));
+                return SALIDA_ERROR_USO;
+            }
+        }
+    }
 
     let mut ejecutadas = 0u64;
     let codigo = loop {
@@ -176,7 +221,26 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
+    if opciones.pantalla {
+        dibujar_pantallas(&emulador, salida);
+    }
     codigo
+}
+
+fn dibujar_pantallas(emulador: &Emulador, salida: &mut dyn Write) {
+    let nombres: Vec<String> = emulador
+        .maquina()
+        .dispositivos
+        .iter()
+        .filter(|d| matches!(d.tipo, TipoDispositivo::Pantalla { .. }))
+        .map(|d| d.nombre.clone())
+        .collect();
+    for nombre in nombres {
+        match emulador.pantalla(&nombre) {
+            Ok(imagen) => escribir(salida, &format!("pantalla {nombre}:\n{}", imagen.a_texto())),
+            Err(e) => escribir(salida, &format!("pantalla {nombre}: {e}\n")),
+        }
+    }
 }
 
 fn resumen(emulador: &mut Emulador, digitos: usize, salida: &mut dyn Write) {
