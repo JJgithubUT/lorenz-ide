@@ -63,7 +63,9 @@ fn una_tecla_se_trunca_al_ancho_de_palabra() {
 fn pulsar_en_un_dispositivo_inexistente_da_error() {
     assert_eq!(
         emulador().pulsar_tecla("raton", 1),
-        Err(ErrorEjecucion::DispositivoInexistente { nombre: "raton".into() })
+        Err(ErrorEjecucion::DispositivoInexistente {
+            nombre: "raton".into()
+        })
     );
 }
 
@@ -71,7 +73,10 @@ fn pulsar_en_un_dispositivo_inexistente_da_error() {
 fn pulsar_en_un_dispositivo_que_no_es_teclado_da_error() {
     assert!(matches!(
         emulador().pulsar_tecla("pantalla", 1),
-        Err(ErrorEjecucion::DispositivoIncorrecto { esperado: "un teclado", .. })
+        Err(ErrorEjecucion::DispositivoIncorrecto {
+            esperado: "un teclado",
+            ..
+        })
     ));
 }
 
@@ -112,9 +117,11 @@ mnemonico = "HLT""#,
     let m = lorenz_arch::cargar(&con_in).expect("la maquina con IN debe cargar");
     let mut e = Emulador::nuevo(m).unwrap();
     // 0x0000: EI ; NOP ; NOP ; HLT
-    e.cargar_programa(0x0000, &[0x71, 0x00, 0x00, 0xF0]).unwrap();
+    e.cargar_programa(0x0000, &[0x71, 0x00, 0x00, 0xF0])
+        .unwrap();
     // 0x0100: IN B ; ST B,[0x2000] ; RETI
-    e.cargar_programa(0x0100, &[0b1000_0100, 0x54, 0x00, 0x20, 0x70]).unwrap();
+    e.cargar_programa(0x0100, &[0b1000_0100, 0x54, 0x00, 0x20, 0x70])
+        .unwrap();
     e.cargar_programa(0xEFF2, &[0x00, 0x01]).unwrap();
     e.paso().unwrap(); // EI
     e.pulsar_tecla("teclado", b'k' as u64).unwrap();

@@ -62,7 +62,10 @@ pub enum ErrorEjecucion {
     DispositivoInexistente { nombre: String },
 
     #[error("el dispositivo '{nombre}' no es {esperado}")]
-    DispositivoIncorrecto { nombre: String, esperado: &'static str },
+    DispositivoIncorrecto {
+        nombre: String,
+        esperado: &'static str,
+    },
 
     #[error("la pantalla '{nombre}' usa el formato '{formato}', que el emulador no sabe dibujar")]
     FormatoDePantallaNoSoportado { nombre: String, formato: String },

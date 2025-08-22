@@ -38,17 +38,40 @@ impl Imagen {
 ///
 /// Formatos admitidos: `indice1` (un bit por pixel, el bit mas significativo de cada palabra
 /// primero) e `indice8` (una palabra por pixel). Lo que la region no cubra se dibuja apagado.
-pub fn leer_imagen(maquina: &Maquina, memoria: &Memoria, nombre: &str) -> Result<Imagen, ErrorEjecucion> {
-    let dispositivo = maquina
-        .dispositivo(nombre)
-        .ok_or_else(|| ErrorEjecucion::DispositivoInexistente { nombre: nombre.to_string() })?;
-    let TipoDispositivo::Pantalla { ancho, alto, formato } = &dispositivo.tipo else {
-        return Err(ErrorEjecucion::DispositivoIncorrecto { nombre: nombre.to_string(), esperado: "una pantalla" });
+pub fn leer_imagen(
+    maquina: &Maquina,
+    memoria: &Memoria,
+    nombre: &str,
+) -> Result<Imagen, ErrorEjecucion> {
+    let dispositivo =
+        maquina
+            .dispositivo(nombre)
+            .ok_or_else(|| ErrorEjecucion::DispositivoInexistente {
+                nombre: nombre.to_string(),
+            })?;
+    let TipoDispositivo::Pantalla {
+        ancho,
+        alto,
+        formato,
+    } = &dispositivo.tipo
+    else {
+        return Err(ErrorEjecucion::DispositivoIncorrecto {
+            nombre: nombre.to_string(),
+            esperado: "una pantalla",
+        });
     };
     let total = (*ancho as usize) * (*alto as usize);
     let mut pixeles = vec![0u8; total];
-    let Some(region) = maquina.regiones.iter().find(|r| r.dispositivo.as_deref() == Some(nombre)) else {
-        return Ok(Imagen { ancho: *ancho, alto: *alto, pixeles });
+    let Some(region) = maquina
+        .regiones
+        .iter()
+        .find(|r| r.dispositivo.as_deref() == Some(nombre))
+    else {
+        return Ok(Imagen {
+            ancho: *ancho,
+            alto: *alto,
+            pixeles,
+        });
     };
     let bits = maquina.bits_palabra as usize;
     match formato.as_str() {
@@ -79,5 +102,9 @@ pub fn leer_imagen(maquina: &Maquina, memoria: &Memoria, nombre: &str) -> Result
             })
         }
     }
-    Ok(Imagen { ancho: *ancho, alto: *alto, pixeles })
+    Ok(Imagen {
+        ancho: *ancho,
+        alto: *alto,
+        pixeles,
+    })
 }

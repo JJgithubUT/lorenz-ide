@@ -34,7 +34,9 @@ impl Puertos {
             }
             // Un teclado informa por `estado` de si hay una tecla esperando en `datos`.
             if d.tipo == TipoDispositivo::Teclado {
-                if let (Some(datos), Some(estado)) = (d.puertos.get("datos"), d.puertos.get("estado")) {
+                if let (Some(datos), Some(estado)) =
+                    (d.puertos.get("datos"), d.puertos.get("estado"))
+                {
                     if let Some(p) = puertos.get_mut(estado) {
                         p.estado_de = Some(*datos);
                     }
@@ -71,7 +73,10 @@ impl Puertos {
     /// puerto de datos y 0 si no.
     pub fn leer(&mut self, numero: u64) -> Result<u64, ErrorEjecucion> {
         if let Some(datos) = self.puerto(numero)?.estado_de {
-            let hay = self.puertos.get(&datos).is_some_and(|p| !p.entrada.is_empty());
+            let hay = self
+                .puertos
+                .get(&datos)
+                .is_some_and(|p| !p.entrada.is_empty());
             return Ok(u64::from(hay));
         }
         Ok(self.puerto(numero)?.entrada.pop_front().unwrap_or(0))

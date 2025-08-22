@@ -57,7 +57,8 @@ fn un_pixel_fuera_de_la_imagen_no_existe() {
 fn un_programa_dibuja_en_la_pantalla() {
     // LDI A,0xFF ; ST A,[0xF000] ; HLT
     let mut e = emulador();
-    e.cargar_programa(0, &[0x20, 0xFF, 0x50, 0x00, 0xF0, 0xF0]).unwrap();
+    e.cargar_programa(0, &[0x20, 0xFF, 0x50, 0x00, 0xF0, 0xF0])
+        .unwrap();
     e.ejecutar(10).unwrap();
     let img = e.pantalla("pantalla").unwrap();
     assert!((0..8).all(|x| img.pixel(x, 0) == Some(1)));
@@ -79,7 +80,9 @@ fn el_texto_dibuja_almohadillas_y_puntos() {
 fn un_dispositivo_inexistente_da_error() {
     assert_eq!(
         emulador().pantalla("monitor"),
-        Err(ErrorEjecucion::DispositivoInexistente { nombre: "monitor".into() })
+        Err(ErrorEjecucion::DispositivoInexistente {
+            nombre: "monitor".into()
+        })
     );
 }
 
@@ -87,7 +90,10 @@ fn un_dispositivo_inexistente_da_error() {
 fn un_dispositivo_que_no_es_pantalla_da_error() {
     assert!(matches!(
         emulador().pantalla("teclado"),
-        Err(ErrorEjecucion::DispositivoIncorrecto { esperado: "una pantalla", .. })
+        Err(ErrorEjecucion::DispositivoIncorrecto {
+            esperado: "una pantalla",
+            ..
+        })
     ));
 }
 
@@ -95,7 +101,12 @@ fn un_dispositivo_que_no_es_pantalla_da_error() {
 fn indice8_usa_una_palabra_por_pixel() {
     let mut m = ejemplo_8();
     for d in &mut m.dispositivos {
-        if let lorenz_arch::modelo::TipoDispositivo::Pantalla { formato, ancho, alto } = &mut d.tipo {
+        if let lorenz_arch::modelo::TipoDispositivo::Pantalla {
+            formato,
+            ancho,
+            alto,
+        } = &mut d.tipo
+        {
             *formato = "indice8".into();
             *ancho = 16;
             *alto = 4;
@@ -117,7 +128,10 @@ fn un_formato_desconocido_da_error() {
         }
     }
     let e = Emulador::nuevo(m).unwrap();
-    assert!(matches!(e.pantalla("pantalla"), Err(ErrorEjecucion::FormatoDePantallaNoSoportado { .. })));
+    assert!(matches!(
+        e.pantalla("pantalla"),
+        Err(ErrorEjecucion::FormatoDePantallaNoSoportado { .. })
+    ));
 }
 
 #[test]

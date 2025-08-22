@@ -58,7 +58,9 @@ fn cada_puerto_tiene_su_propia_cola() {
     m.dispositivos.push(lorenz_arch::modelo::Dispositivo {
         nombre: "uart".into(),
         tipo: lorenz_arch::modelo::TipoDispositivo::Uart,
-        puertos: [("a".to_string(), 1u64), ("b".to_string(), 2u64)].into_iter().collect(),
+        puertos: [("a".to_string(), 1u64), ("b".to_string(), 2u64)]
+            .into_iter()
+            .collect(),
         interrupcion: None,
     });
     let mut p = Puertos::nuevo(&m);
