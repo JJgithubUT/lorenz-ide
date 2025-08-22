@@ -251,9 +251,18 @@ fn la_misma_ejecucion_da_la_misma_salida() {
 
 #[test]
 fn pantalla_dibuja_lo_que_el_programa_escribio_en_video() {
-    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("pantalla.hex"), "--pantalla"]);
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("pantalla.hex"),
+        "--pantalla",
+    ]);
     assert_eq!(r.codigo, SALIDA_OK);
-    let lineas: Vec<&str> = r.salida.lines().skip_while(|l| !l.starts_with("pantalla pantalla:")).collect();
+    let lineas: Vec<&str> = r
+        .salida
+        .lines()
+        .skip_while(|l| !l.starts_with("pantalla pantalla:"))
+        .collect();
     assert_eq!(lineas[1], format!("########{}", ".".repeat(56)));
     assert_eq!(lineas[2], format!("#{}", ".".repeat(63)));
     assert_eq!(lineas[5], ".".repeat(64));
@@ -277,7 +286,9 @@ fn teclas_pulsa_en_el_primer_teclado() {
 #[test]
 fn teclas_en_una_maquina_sin_teclado_es_error_de_uso() {
     let texto = std::fs::read_to_string(maquina()).unwrap();
-    let inicio = texto.find("[[dispositivo]]\nnombre       = \"teclado\"").unwrap();
+    let inicio = texto
+        .find("[[dispositivo]]\nnombre       = \"teclado\"")
+        .unwrap();
     let sin_teclado = &texto[..inicio];
     let m = temporal("sin_teclado.toml", sin_teclado);
     let p = temporal("espera2.hex", "F0");
