@@ -38,6 +38,17 @@ pub struct Resumen {
     pub ciclos: u64,
 }
 
+/// Estado de un temporizador: cuantos ciclos lleva acumulados y cuantos periodos completo.
+#[derive(Debug, Clone)]
+struct Temporizador {
+    periodo: u64,
+    acumulado: u64,
+    ticks: u64,
+    linea: Option<u32>,
+    /// Puerto `cuenta`, donde se publica el numero de periodos completados.
+    puerto_cuenta: Option<u64>,
+}
+
 /// Una maquina emulada lista para ejecutar.
 #[derive(Debug, Clone)]
 pub struct Emulador {
@@ -48,12 +59,28 @@ pub struct Emulador {
     memoria: Memoria,
     puertos: Puertos,
     pendientes: BTreeSet<u32>,
+    temporizadores: Vec<Temporizador>,
 }
 
 impl Emulador {
     pub fn nuevo(maquina: Maquina) -> Result<Self, ErrorEjecucion> {
         let memoria = Memoria::nueva(&maquina)?;
+        let temporizadores = maquina
+            .dispositivos
+            .iter()
+            .filter_map(|d| match d.tipo {
+                TipoDispositivo::Temporizador { periodo } => Some(Temporizador {
+                    periodo,
+                    acumulado: 0,
+                    ticks: 0,
+                    linea: d.interrupcion,
+                    puerto_cuenta: d.puertos.get("cuenta").copied(),
+                }),
+                _ => None,
+            })
+            .collect();
         Ok(Emulador {
+            temporizadores,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
             estado: Estado::nuevo(&maquina),
@@ -106,6 +133,10 @@ impl Emulador {
         self.estado.reiniciar();
         self.puertos.reiniciar();
         self.pendientes.clear();
+        for t in &mut self.temporizadores {
+            t.acumulado = 0;
+            t.ticks = 0;
+        }
     }
 
     /// Imagen actual de la pantalla `nombre` (RF-EMU-036).
@@ -200,6 +231,43 @@ impl Emulador {
         Ok(valor)
     }
 
+    /// Suma `ciclos` a cada temporizador: por cada periodo completo cuenta un tick, lo publica en
+    /// su puerto `cuenta` y levanta su linea de interrupcion (RF-EMU-037).
+    fn avanzar_temporizadores(&mut self, ciclos: u64) -> Result<(), ErrorEjecucion> {
+        let mut lineas = Vec::new();
+        for t in &mut self.temporizadores {
+            t.acumulado += ciclos;
+            let completos = t.acumulado / t.periodo;
+            if completos == 0 {
+                continue;
+            }
+            t.acumulado %= t.periodo;
+            t.ticks = t.ticks.wrapping_add(completos);
+            if let Some(puerto) = t.puerto_cuenta {
+                self.puertos.publicar(puerto, t.ticks)?;
+            }
+            lineas.extend(t.linea);
+        }
+        for linea in lineas {
+            self.levantar_interrupcion(linea)?;
+        }
+        Ok(())
+    }
+
+    /// Periodos completos que lleva contados el temporizador `nombre`.
+    pub fn ticks_de(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        let posicion = self
+            .maquina
+            .dispositivos
+            .iter()
+            .filter(|d| matches!(d.tipo, TipoDispositivo::Temporizador { .. }))
+            .position(|d| d.nombre == nombre)
+            .ok_or_else(|| ErrorEjecucion::DispositivoInexistente {
+                nombre: nombre.to_string(),
+            })?;
+        Ok(self.temporizadores[posicion].ticks)
+    }
+
     /// Atiende la interrupcion pendiente de menor numero, si hay y estan habilitadas.
     fn atender_interrupcion(&mut self) -> Result<bool, ErrorEjecucion> {
         if !self.estado.interrupciones_habilitadas() {
@@ -279,10 +347,12 @@ impl Emulador {
                 }
             }
         } as u64;
+        let mnemonico = instruccion.mnemonico.clone();
         self.estado.contar_instruccion(ciclos);
+        self.avanzar_temporizadores(ciclos)?;
         Ok(Some(Paso {
             direccion,
-            mnemonico: instruccion.mnemonico.clone(),
+            mnemonico,
             longitud: dec.longitud,
             ciclos,
             salto: resultado.salto,
