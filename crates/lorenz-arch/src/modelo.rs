@@ -181,7 +181,10 @@ pub enum TipoDispositivo {
     },
     Teclado,
     Uart,
-    Temporizador,
+    /// Cuenta ciclos y levanta su linea cada `periodo` ciclos.
+    Temporizador {
+        periodo: u64,
+    },
     Bloques {
         tamano_bloque: u32,
     },

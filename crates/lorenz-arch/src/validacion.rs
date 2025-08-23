@@ -282,6 +282,18 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         }
     }
 
+    for dispositivo in &m.dispositivos {
+        if let TipoDispositivo::Temporizador { periodo: 0 } = dispositivo.tipo {
+            fallos.push(fallo(
+                Regla::ValorFueraDeRango,
+                format!(
+                    "el temporizador '{}' tiene periodo 0; debe ser de al menos 1 ciclo",
+                    dispositivo.nombre
+                ),
+            ));
+        }
+    }
+
     if let Some(int) = &m.interrupciones {
         for dispositivo in &m.dispositivos {
             if let Some(linea) = dispositivo.interrupcion {
