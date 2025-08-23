@@ -13,6 +13,8 @@ struct Puerto {
     salida: Vec<u64>,
     /// Si es el puerto de estado de un teclado: el puerto de datos del que informa.
     estado_de: Option<u64>,
+    /// Valor que un dispositivo publica en el puerto; leerlo no lo consume.
+    publicado: Option<u64>,
 }
 
 /// Colas de entrada y registro de salida de cada puerto.
@@ -72,6 +74,9 @@ impl Puertos {
     /// El puerto de estado de un teclado no consume nada: vale 1 si hay una tecla esperando en el
     /// puerto de datos y 0 si no.
     pub fn leer(&mut self, numero: u64) -> Result<u64, ErrorEjecucion> {
+        if let Some(valor) = self.puerto(numero)?.publicado {
+            return Ok(valor);
+        }
         if let Some(datos) = self.puerto(numero)?.estado_de {
             let hay = self
                 .puertos
@@ -99,11 +104,21 @@ impl Puertos {
         Ok(&self.puerto(numero)?.salida)
     }
 
+    /// Un dispositivo deja un valor en el puerto; cada lectura lo devuelve sin consumirlo.
+    pub fn publicar(&mut self, numero: u64, valor: u64) -> Result<(), ErrorEjecucion> {
+        let mascara = self.mascara;
+        self.puerto(numero)?.publicado = Some(valor & mascara);
+        Ok(())
+    }
+
     /// Vacia todas las colas y registros.
     pub fn reiniciar(&mut self) {
         for p in self.puertos.values_mut() {
             p.entrada.clear();
             p.salida.clear();
+            if p.publicado.is_some() {
+                p.publicado = Some(0);
+            }
         }
     }
 }
