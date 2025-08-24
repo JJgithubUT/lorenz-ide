@@ -11,8 +11,9 @@ use crate::estado::mascara_de;
 struct Puerto {
     entrada: VecDeque<u64>,
     salida: Vec<u64>,
-    /// Si es el puerto de estado de un teclado: el puerto de datos del que informa.
-    estado_de: Option<u64>,
+    /// Si es el puerto de estado de un teclado o una UART: el puerto de datos del que informa y
+    /// los bits que siempre estan encendidos.
+    estado_de: Option<(u64, u64)>,
     /// Valor que un dispositivo publica en el puerto; leerlo no lo consume.
     publicado: Option<u64>,
 }
@@ -34,14 +35,18 @@ impl Puertos {
             for numero in d.puertos.values() {
                 puertos.insert(*numero, Puerto::default());
             }
-            // Un teclado informa por `estado` de si hay una tecla esperando en `datos`.
-            if d.tipo == TipoDispositivo::Teclado {
-                if let (Some(datos), Some(estado)) =
-                    (d.puertos.get("datos"), d.puertos.get("estado"))
-                {
-                    if let Some(p) = puertos.get_mut(estado) {
-                        p.estado_de = Some(*datos);
-                    }
+            // Un teclado informa por `estado` de si hay una tecla esperando en `datos`; una UART
+            // ademas tiene siempre encendido el bit 1 (lista para transmitir).
+            let fijos = match d.tipo {
+                TipoDispositivo::Teclado => Some(0),
+                TipoDispositivo::Uart => Some(2),
+                _ => None,
+            };
+            if let (Some(fijos), Some(datos), Some(estado)) =
+                (fijos, d.puertos.get("datos"), d.puertos.get("estado"))
+            {
+                if let Some(p) = puertos.get_mut(estado) {
+                    p.estado_de = Some((*datos, fijos));
                 }
             }
         }
@@ -72,17 +77,17 @@ impl Puertos {
     /// Lee el siguiente valor de entrada; 0 si no hay ninguno.
     ///
     /// El puerto de estado de un teclado no consume nada: vale 1 si hay una tecla esperando en el
-    /// puerto de datos y 0 si no.
+    /// puerto de datos y 0 si no. El de una UART es igual, con el bit 1 siempre encendido.
     pub fn leer(&mut self, numero: u64) -> Result<u64, ErrorEjecucion> {
         if let Some(valor) = self.puerto(numero)?.publicado {
             return Ok(valor);
         }
-        if let Some(datos) = self.puerto(numero)?.estado_de {
+        if let Some((datos, fijos)) = self.puerto(numero)?.estado_de {
             let hay = self
                 .puertos
                 .get(&datos)
                 .is_some_and(|p| !p.entrada.is_empty());
-            return Ok(u64::from(hay));
+            return Ok(u64::from(hay) | fijos);
         }
         Ok(self.puerto(numero)?.entrada.pop_front().unwrap_or(0))
     }
