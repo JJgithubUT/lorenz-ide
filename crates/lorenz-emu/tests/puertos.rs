@@ -120,3 +120,34 @@ fn reiniciar_vacia_entradas_y_salidas() {
     assert_eq!(p.pendientes(1).unwrap(), 0);
     assert!(p.salida(2).unwrap().is_empty());
 }
+
+#[test]
+fn un_valor_publicado_se_lee_sin_consumirse() {
+    let mut p = puertos();
+    p.publicar(1, 0x33).unwrap();
+    assert_eq!(p.leer(1).unwrap(), 0x33);
+    assert_eq!(p.leer(1).unwrap(), 0x33);
+}
+
+#[test]
+fn publicar_trunca_al_ancho_de_palabra() {
+    let mut p = puertos();
+    p.publicar(1, 0x1FF).unwrap();
+    assert_eq!(p.leer(1).unwrap(), 0xFF);
+}
+
+#[test]
+fn publicar_en_un_puerto_no_declarado_da_error() {
+    assert!(matches!(
+        puertos().publicar(9, 1),
+        Err(ErrorEjecucion::PuertoNoDeclarado { puerto: 9 })
+    ));
+}
+
+#[test]
+fn reiniciar_pone_a_cero_un_valor_publicado() {
+    let mut p = puertos();
+    p.publicar(1, 5).unwrap();
+    p.reiniciar();
+    assert_eq!(p.leer(1).unwrap(), 0);
+}

@@ -153,6 +153,8 @@ struct DispositivoCrudo {
     tamano_bloque: Option<u32>,
     #[serde(default)]
     script: Option<String>,
+    #[serde(default)]
+    periodo: Option<u64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -395,7 +397,9 @@ fn convertir(
                 },
                 "teclado" => TipoDispositivo::Teclado,
                 "uart" => TipoDispositivo::Uart,
-                "temporizador" => TipoDispositivo::Temporizador,
+                "temporizador" => TipoDispositivo::Temporizador {
+                    periodo: d.periodo.unwrap_or(1000),
+                },
                 "bloques" => TipoDispositivo::Bloques {
                     tamano_bloque: d.tamano_bloque.unwrap_or(512),
                 },
