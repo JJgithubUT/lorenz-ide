@@ -17,6 +17,32 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Temporizador
+
+**Hecho:**
+
+- El formato acepta `periodo` (en ciclos, 1000 por omision) en los dispositivos de tipo
+  `temporizador`; el validador rechaza el periodo 0.
+- Despues de cada instruccion el emulador suma sus ciclos a cada temporizador; cada periodo completo
+  cuenta un tick, lo publica en el puerto `cuenta` y levanta la linea de interrupcion si la declara.
+  El resto de ciclos no se pierde y una instruccion larga puede completar varios periodos.
+- `Puertos::publicar` deja un valor que se lee sin consumirse; `Emulador::ticks_de(nombre)`.
+- Pruebas: 14 del temporizador, 4 de puertos publicados, 8 de declaracion de dispositivos.
+
+**Decidido:**
+
+- **D-022** — El periodo del temporizador se mide en ciclos de la maquina, no en tiempo real. Motivo:
+  la ejecucion debe ser determinista y repetible; el tiempo real depende de la velocidad del equipo.
+
+**Pendiente:** salida de texto de la UART, dispositivos de bloques, y revisar los requisitos RF-EMU
+contra lo implementado.
+
+**Requisitos:** RF-EMU-037, RF-EMU-038, RF-ARQ-030, RF-ARQ-031.
+
+**Commits:** contador en 120 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Pantalla y teclado
 
 **Hecho:**
