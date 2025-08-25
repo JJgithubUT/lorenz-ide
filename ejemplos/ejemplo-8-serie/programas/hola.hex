@@ -1,0 +1,10 @@
+# Transmite 'Hola' por la UART.
+20 48      # LDI A, 'H'
+90         # OUT A
+20 6F      # LDI A, 'o'
+90         # OUT A
+20 6C      # LDI A, 'l'
+90         # OUT A
+20 61      # LDI A, 'a'
+90         # OUT A
+F0         # HLT
