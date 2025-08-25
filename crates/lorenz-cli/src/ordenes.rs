@@ -23,7 +23,7 @@ Lorenz: emulador de maquinas definidas por el usuario
 Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
-                  [--pantalla] [--teclas TEXTO]
+                  [--pantalla] [--teclas TEXTO] [--serie TEXTO]
   lorenz ayuda
   lorenz version
 
@@ -65,6 +65,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             traza,
             pantalla,
             teclas,
+            serie,
             direccion,
         } => {
             let opciones = Opciones {
@@ -72,6 +73,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 traza,
                 pantalla,
                 teclas,
+                serie,
                 direccion,
             };
             ejecutar(&maquina, &programa, &opciones, salida, errores)
@@ -106,6 +108,7 @@ struct Opciones {
     traza: bool,
     pantalla: bool,
     teclas: Option<String>,
+    serie: Option<String>,
     direccion: Option<u64>,
 }
 
@@ -179,6 +182,23 @@ fn ejecutar(
         }
     }
 
+    if let Some(texto) = &opciones.serie {
+        let uart = emulador
+            .maquina()
+            .dispositivos
+            .iter()
+            .find(|d| d.tipo == TipoDispositivo::Uart)
+            .map(|d| d.nombre.clone());
+        let Some(uart) = uart else {
+            escribir(errores, "error: la maquina no tiene UART para --serie\n");
+            return SALIDA_ERROR_USO;
+        };
+        if let Err(e) = emulador.recibir_en_uart(&uart, texto.as_bytes()) {
+            escribir(errores, &format!("error: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
+    }
+
     let mut ejecutadas = 0u64;
     let codigo = loop {
         if emulador.estado().detenida() {
@@ -221,10 +241,30 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
+    texto_de_uarts(&mut emulador, salida);
     if opciones.pantalla {
         dibujar_pantallas(&emulador, salida);
     }
     codigo
+}
+
+/// Imprime lo que cada UART transmitio, si transmitio algo.
+fn texto_de_uarts(emulador: &mut Emulador, salida: &mut dyn Write) {
+    let nombres: Vec<String> = emulador
+        .maquina()
+        .dispositivos
+        .iter()
+        .filter(|d| d.tipo == TipoDispositivo::Uart)
+        .map(|d| d.nombre.clone())
+        .collect();
+    for nombre in nombres {
+        if let Ok(texto) = emulador.texto_de_uart(&nombre) {
+            if !texto.is_empty() {
+                let final_de_linea = if texto.ends_with('\n') { "" } else { "\n" };
+                escribir(salida, &format!("uart {nombre}:\n{texto}{final_de_linea}"));
+            }
+        }
+    }
 }
 
 fn dibujar_pantallas(emulador: &Emulador, salida: &mut dyn Write) {

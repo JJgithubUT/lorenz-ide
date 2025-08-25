@@ -296,3 +296,67 @@ fn teclas_en_una_maquina_sin_teclado_es_error_de_uso() {
     assert_eq!(r.codigo, SALIDA_ERROR_USO);
     assert!(r.errores.contains("no tiene teclado"));
 }
+
+fn serie() -> String {
+    raiz()
+        .join("ejemplos/ejemplo-8-serie/maquina.toml")
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn programa_serie(nombre: &str) -> String {
+    raiz()
+        .join("ejemplos/ejemplo-8-serie/programas")
+        .join(nombre)
+        .to_string_lossy()
+        .into_owned()
+}
+
+#[test]
+fn la_maquina_con_uart_es_valida() {
+    let r = correr(&["validar", &serie()]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("ejemplo-8-serie"));
+}
+
+#[test]
+fn hola_imprime_el_texto_transmitido_por_la_uart() {
+    let r = correr(&["ejecutar", &serie(), &programa_serie("hola.hex")]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("uart serie:\nHola\n"));
+}
+
+#[test]
+fn una_maquina_sin_transmision_no_imprime_la_seccion_uart() {
+    let r = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("suma.hex")]);
+    assert!(!r.salida.contains("uart"));
+}
+
+#[test]
+fn eco_devuelve_el_byte_entregado_con_serie() {
+    let r = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--serie",
+        "Q",
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("uart serie:\nQ\n"));
+}
+
+#[test]
+fn serie_en_una_maquina_sin_uart_es_error_de_uso() {
+    let p = temporal("espera3.hex", "F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--serie", "x"]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no tiene UART"));
+}
+
+#[test]
+fn un_texto_con_salto_de_linea_no_agrega_otro() {
+    let p = temporal("eco2.hex", "80 90 F0");
+    let r = correr(&["ejecutar", &serie(), &p, "--serie", "\n"]);
+    assert!(r.salida.contains("uart serie:\n\n"));
+    assert!(!r.salida.contains("uart serie:\n\n\n"));
+}

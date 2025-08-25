@@ -86,6 +86,7 @@ fn ejecutar_usa_valores_por_omision() {
             traza: false,
             pantalla: false,
             teclas: None,
+            serie: None,
             direccion: None
         })
     );
@@ -112,6 +113,7 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             traza: true,
             pantalla: false,
             teclas: None,
+            serie: None,
             direccion: Some(0x2000)
         })
     );
@@ -187,6 +189,7 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             traza: false,
             pantalla: true,
             teclas: Some("hola".into()),
+            serie: None,
             direccion: None
         })
     );
@@ -197,5 +200,31 @@ fn teclas_necesita_un_valor() {
     assert_eq!(
         interpretar(&v(&["ejecutar", "m", "p", "--teclas"])),
         Err(ErrorUso::OpcionSinValor("--teclas".into()))
+    );
+}
+
+#[test]
+fn serie_es_una_opcion_de_ejecutar() {
+    let o = interpretar(&v(&["ejecutar", "m", "p", "--serie", "hola"]));
+    assert_eq!(
+        o,
+        Ok(Orden::Ejecutar {
+            maquina: "m".into(),
+            programa: "p".into(),
+            limite: LIMITE_POR_OMISION,
+            traza: false,
+            pantalla: false,
+            teclas: None,
+            serie: Some("hola".into()),
+            direccion: None
+        })
+    );
+}
+
+#[test]
+fn serie_necesita_un_valor() {
+    assert_eq!(
+        interpretar(&v(&["ejecutar", "m", "p", "--serie"])),
+        Err(ErrorUso::OpcionSinValor("--serie".into()))
     );
 }
