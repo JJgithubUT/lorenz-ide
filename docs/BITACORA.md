@@ -17,6 +17,36 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — UART y segundo ejemplo
+
+**Hecho:**
+
+- `Emulador::recibir_en_uart` y `texto_de_uart`; el puerto de estado de una UART tiene el bit 0 si
+  hay un byte recibido y el bit 1 siempre encendido.
+- `lorenz ejecutar` imprime lo que cada UART transmitio y gana `--serie TEXTO`.
+- Nuevo ejemplo `ejemplos/ejemplo-8-serie` (ejemplo-8 mas `IN`, `OUT` y una UART) con los programas
+  `hola.hex` y `eco.hex`.
+- Pruebas: 14 de UART, 6 de la CLI y 2 de argumentos.
+
+**Corregido:** los identificadores de requisito que cite en los commits de dispositivos,
+interrupciones y linea de comandos (desde la rama `feat/emu-estado` hasta aqui) usaban una numeracion
+provisional que no coincide con la ERS: no existen `RF-CLI-*`, y las interrupciones son
+RF-EMU-036 a 040, la pantalla es RF-EMU-030, el teclado 031, la consola serie 032 y el temporizador
+033. No se reescribe el historial (D-004); la tabla correcta esta en `docs/TRAZABILIDAD.md` y desde
+este bloque los commits citan la numeracion de la ERS.
+
+**Decidido:**
+
+- **D-023** — Cada commit cita requisitos que existen en la ERS. Motivo: la trazabilidad solo sirve
+  si el identificador lleva a un requisito real; `docs/TRAZABILIDAD.md` lleva la cuenta de cuales
+  estan hechos.
+
+**Requisitos:** RF-EMU-032, RF-EMU-042.
+
+**Commits:** contador en 126 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Temporizador
 
 **Hecho:**
