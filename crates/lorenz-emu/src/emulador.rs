@@ -410,6 +410,25 @@ impl Emulador {
         }))
     }
 
+    /// Ejecuta como mucho `cantidad` instrucciones y devuelve el control, se haya detenido la
+    /// maquina o no (RF-EMU-010). Es lo que usa un depurador para avanzar de a poco.
+    pub fn avanzar(&mut self, cantidad: u64) -> Result<Resumen, ErrorEjecucion> {
+        let mut resumen = Resumen {
+            instrucciones: 0,
+            ciclos: 0,
+        };
+        while resumen.instrucciones < cantidad {
+            match self.paso()? {
+                Some(paso) => {
+                    resumen.instrucciones += 1;
+                    resumen.ciclos += paso.ciclos;
+                }
+                None => break,
+            }
+        }
+        Ok(resumen)
+    }
+
     /// Ejecuta hasta que la maquina se detenga o se agote el limite de instrucciones.
     ///
     /// El limite cuenta las instrucciones de esta llamada. Si se alcanza sin detenerse, devuelve
