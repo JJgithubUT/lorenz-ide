@@ -24,6 +24,8 @@ pub enum Orden {
         pantalla: bool,
         /// Teclas que se pulsan en el primer teclado antes de empezar, una por caracter.
         teclas: Option<String>,
+        /// Texto que se entrega a la primera UART antes de empezar.
+        serie: Option<String>,
         /// Direccion donde se carga el programa; por omision, la de arranque de la maquina.
         direccion: Option<u64>,
     },
@@ -101,6 +103,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut traza = false;
     let mut pantalla = false;
     let mut teclas = None;
+    let mut serie = None;
     let mut direccion = None;
     let mut i = 0;
     while i < resto.len() {
@@ -108,6 +111,13 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         match a.as_str() {
             "--traza" => traza = true,
             "--pantalla" => pantalla = true,
+            "--serie" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                serie = Some(valor.clone());
+            }
             "--teclas" => {
                 i += 1;
                 let valor = resto
@@ -145,6 +155,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         traza,
         pantalla,
         teclas,
+        serie,
         direccion,
     })
 }

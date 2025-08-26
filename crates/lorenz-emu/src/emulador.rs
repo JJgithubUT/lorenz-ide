@@ -168,6 +168,56 @@ impl Emulador {
         Ok(())
     }
 
+    fn puerto_datos_de(
+        &self,
+        nombre: &str,
+        tipo: TipoDispositivo,
+        esperado: &'static str,
+    ) -> Result<(u64, Option<u32>), ErrorEjecucion> {
+        let dispositivo = self.maquina.dispositivo(nombre).ok_or_else(|| {
+            ErrorEjecucion::DispositivoInexistente {
+                nombre: nombre.to_string(),
+            }
+        })?;
+        let incorrecto = || ErrorEjecucion::DispositivoIncorrecto {
+            nombre: nombre.to_string(),
+            esperado,
+        };
+        if dispositivo.tipo != tipo {
+            return Err(incorrecto());
+        }
+        let datos = *dispositivo.puertos.get("datos").ok_or_else(incorrecto)?;
+        Ok((datos, dispositivo.interrupcion))
+    }
+
+    /// Entrega bytes a la UART `nombre` como si llegaran por su linea serie. Si la UART declara una
+    /// linea de interrupcion, la levanta (RF-EMU-039).
+    pub fn recibir_en_uart(&mut self, nombre: &str, bytes: &[u8]) -> Result<(), ErrorEjecucion> {
+        let (datos, linea) = self.puerto_datos_de(nombre, TipoDispositivo::Uart, "una UART")?;
+        for b in bytes {
+            self.puertos.encolar_entrada(datos, u64::from(*b))?;
+        }
+        if let (Some(linea), false) = (linea, bytes.is_empty()) {
+            self.levantar_interrupcion(linea)?;
+        }
+        Ok(())
+    }
+
+    /// Todo lo que el programa transmitio por la UART `nombre`, como texto (RF-EMU-039).
+    ///
+    /// Cada palabra escrita en el puerto de datos es un byte; los que no son UTF-8 valido se
+    /// sustituyen por el caracter de reemplazo.
+    pub fn texto_de_uart(&mut self, nombre: &str) -> Result<String, ErrorEjecucion> {
+        let (datos, _) = self.puerto_datos_de(nombre, TipoDispositivo::Uart, "una UART")?;
+        let bytes: Vec<u8> = self
+            .puertos
+            .salida(datos)?
+            .iter()
+            .map(|v| (*v & 0xFF) as u8)
+            .collect();
+        Ok(String::from_utf8_lossy(&bytes).into_owned())
+    }
+
     /// Levanta una linea de interrupcion. Se atiende antes de la siguiente instruccion si las
     /// interrupciones estan habilitadas; mientras tanto queda pendiente.
     ///

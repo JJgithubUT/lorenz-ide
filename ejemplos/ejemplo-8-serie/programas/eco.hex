@@ -1,0 +1,4 @@
+# Eco: lee un byte recibido por la UART y lo transmite de vuelta.
+80         # IN A
+90         # OUT A
+F0         # HLT
