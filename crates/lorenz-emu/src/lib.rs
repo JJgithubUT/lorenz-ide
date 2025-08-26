@@ -30,7 +30,7 @@ pub use interprete::{Entorno, Interprete, Resultado};
 
 pub mod emulador;
 
-pub use emulador::{Emulador, Paso, Resumen};
+pub use emulador::{Emulador, InterrupcionAtendida, Paso, Resumen, MAX_INTERRUPCIONES_REGISTRADAS};
 
 pub mod pantalla;
 

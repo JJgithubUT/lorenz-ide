@@ -29,6 +29,24 @@ pub struct Paso {
     pub detenida: bool,
 }
 
+/// Cuantas interrupciones atendidas se recuerdan como maximo; las siguientes solo se cuentan.
+pub const MAX_INTERRUPCIONES_REGISTRADAS: usize = 65_536;
+
+/// Una interrupcion que la maquina atendio (RF-EMU-039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterrupcionAtendida {
+    /// Linea que la origino.
+    pub linea: u32,
+    /// Instante: ciclos consumidos hasta ese momento.
+    pub ciclo: u64,
+    /// Instrucciones ejecutadas hasta ese momento.
+    pub instruccion: u64,
+    /// Direccion de la instruccion que iba a ejecutarse y quedo interrumpida.
+    pub pc_interrumpido: u64,
+    /// Direccion del manejador al que se salto.
+    pub manejador: u64,
+}
+
 /// Resumen de una ejecucion hasta detenerse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Resumen {
@@ -60,6 +78,8 @@ pub struct Emulador {
     puertos: Puertos,
     pendientes: BTreeSet<u32>,
     temporizadores: Vec<Temporizador>,
+    atendidas: Vec<InterrupcionAtendida>,
+    atendidas_sin_registrar: u64,
 }
 
 impl Emulador {
@@ -81,6 +101,8 @@ impl Emulador {
             .collect();
         Ok(Emulador {
             temporizadores,
+            atendidas: Vec::new(),
+            atendidas_sin_registrar: 0,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
             estado: Estado::nuevo(&maquina),
@@ -133,6 +155,8 @@ impl Emulador {
         self.estado.reiniciar();
         self.puertos.reiniciar();
         self.pendientes.clear();
+        self.atendidas.clear();
+        self.atendidas_sin_registrar = 0;
         for t in &mut self.temporizadores {
             t.acumulado = 0;
             t.ticks = 0;
@@ -233,6 +257,16 @@ impl Emulador {
         }
         self.pendientes.insert(linea);
         Ok(())
+    }
+
+    /// Interrupciones atendidas desde el ultimo reinicio, en orden (RF-EMU-039).
+    pub fn interrupciones_atendidas(&self) -> &[InterrupcionAtendida] {
+        &self.atendidas
+    }
+
+    /// Cuantas interrupciones se atendieron sin guardarse por haber llegado al maximo.
+    pub fn interrupciones_sin_registrar(&self) -> u64 {
+        self.atendidas_sin_registrar
     }
 
     /// Lineas de interrupcion que esperan ser atendidas, de menor a mayor.
@@ -356,6 +390,17 @@ impl Emulador {
             }
         }
         self.pendientes.remove(&linea);
+        if self.atendidas.len() < MAX_INTERRUPCIONES_REGISTRADAS {
+            self.atendidas.push(InterrupcionAtendida {
+                linea,
+                ciclo: self.estado.ciclos(),
+                instruccion: self.estado.instrucciones(),
+                pc_interrumpido: pc,
+                manejador: destino,
+            });
+        } else {
+            self.atendidas_sin_registrar += 1;
+        }
         self.estado.habilitar_interrupciones(false);
         self.estado.fijar_pc(destino);
         Ok(true)
