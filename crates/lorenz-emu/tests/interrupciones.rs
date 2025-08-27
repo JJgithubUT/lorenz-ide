@@ -319,3 +319,62 @@ fn con_las_mismas_interrupciones_el_resultado_es_identico() {
     };
     assert_eq!(correr(), correr());
 }
+
+// --- Registro de interrupciones atendidas (RF-EMU-039) ---
+
+#[test]
+fn al_principio_no_hay_interrupciones_atendidas() {
+    assert!(emulador().interrupciones_atendidas().is_empty());
+}
+
+#[test]
+fn atender_una_interrupcion_la_registra_con_su_contexto() {
+    let mut e = emulador();
+    e.paso().unwrap(); // NOP: 1 ciclo, pc = 1
+    e.estado_mut().habilitar_interrupciones(true);
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap();
+    let r = e.interrupciones_atendidas();
+    assert_eq!(r.len(), 1);
+    assert_eq!(r[0].linea, 0);
+    assert_eq!(r[0].ciclo, 1);
+    assert_eq!(r[0].instruccion, 1);
+    assert_eq!(r[0].pc_interrumpido, 1);
+    assert_eq!(r[0].manejador, 0x0100);
+}
+
+#[test]
+fn las_interrupciones_se_registran_en_el_orden_en_que_se_atienden() {
+    let mut e = emulador();
+    e.estado_mut().habilitar_interrupciones(true);
+    e.levantar_interrupcion(1).unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap();
+    e.estado_mut().habilitar_interrupciones(true);
+    e.paso().unwrap();
+    let lineas: Vec<u32> = e
+        .interrupciones_atendidas()
+        .iter()
+        .map(|r| r.linea)
+        .collect();
+    assert_eq!(lineas, [0, 1]);
+}
+
+#[test]
+fn una_linea_pendiente_no_se_registra_hasta_atenderse() {
+    let mut e = emulador();
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap();
+    assert!(e.interrupciones_atendidas().is_empty());
+}
+
+#[test]
+fn reiniciar_borra_el_registro() {
+    let mut e = emulador();
+    e.estado_mut().habilitar_interrupciones(true);
+    e.levantar_interrupcion(0).unwrap();
+    e.paso().unwrap();
+    e.reiniciar();
+    assert!(e.interrupciones_atendidas().is_empty());
+    assert_eq!(e.interrupciones_sin_registrar(), 0);
+}
