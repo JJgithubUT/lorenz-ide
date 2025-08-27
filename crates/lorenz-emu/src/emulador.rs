@@ -47,6 +47,34 @@ pub struct InterrupcionAtendida {
     pub manejador: u64,
 }
 
+/// Copia completa del estado de una maquina en un instante (RF-EMU-017, RF-EMU-018).
+///
+/// Incluye registros, banderas, contadores, memoria, puertos, temporizadores e interrupciones. No
+/// incluye la descripcion de la maquina: solo se puede restaurar sobre la misma.
+#[derive(Debug, Clone)]
+pub struct Instantanea {
+    maquina: String,
+    estado: Estado,
+    memoria: Memoria,
+    puertos: Puertos,
+    pendientes: BTreeSet<u32>,
+    temporizadores: Vec<Temporizador>,
+    atendidas: Vec<InterrupcionAtendida>,
+    atendidas_sin_registrar: u64,
+}
+
+impl Instantanea {
+    /// Registros, banderas y contadores en el momento de la copia.
+    pub fn estado(&self) -> &Estado {
+        &self.estado
+    }
+
+    /// Memoria en el momento de la copia.
+    pub fn memoria(&self) -> &Memoria {
+        &self.memoria
+    }
+}
+
 /// Resumen de una ejecucion hasta detenerse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Resumen {
@@ -161,6 +189,40 @@ impl Emulador {
             t.acumulado = 0;
             t.ticks = 0;
         }
+    }
+
+    /// Copia el estado completo de la maquina.
+    pub fn instantanea(&self) -> Instantanea {
+        Instantanea {
+            maquina: self.maquina.nombre.clone(),
+            estado: self.estado.clone(),
+            memoria: self.memoria.clone(),
+            puertos: self.puertos.clone(),
+            pendientes: self.pendientes.clone(),
+            temporizadores: self.temporizadores.clone(),
+            atendidas: self.atendidas.clone(),
+            atendidas_sin_registrar: self.atendidas_sin_registrar,
+        }
+    }
+
+    /// Vuelve al estado de una instantanea tomada de esta misma maquina.
+    ///
+    /// Si la instantanea es de otra maquina no se cambia nada.
+    pub fn restaurar(&mut self, instantanea: &Instantanea) -> Result<(), ErrorEjecucion> {
+        if instantanea.maquina != self.maquina.nombre {
+            return Err(ErrorEjecucion::InstantaneaIncompatible {
+                instantanea: instantanea.maquina.clone(),
+                maquina: self.maquina.nombre.clone(),
+            });
+        }
+        self.estado = instantanea.estado.clone();
+        self.memoria = instantanea.memoria.clone();
+        self.puertos = instantanea.puertos.clone();
+        self.pendientes = instantanea.pendientes.clone();
+        self.temporizadores = instantanea.temporizadores.clone();
+        self.atendidas = instantanea.atendidas.clone();
+        self.atendidas_sin_registrar = instantanea.atendidas_sin_registrar;
+        Ok(())
     }
 
     /// Imagen actual de la pantalla `nombre` (RF-EMU-036).
