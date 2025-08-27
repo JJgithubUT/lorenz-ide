@@ -107,3 +107,44 @@ fn los_mensajes_de_error_hablan_de_la_linea() {
     let e = leer_palabras("zz", 8).unwrap_err();
     assert!(e.to_string().contains("linea 1"));
 }
+
+use lorenz_cli::programa::escribir_palabras;
+
+#[test]
+fn escribir_usa_tantos_digitos_como_pide_el_ancho() {
+    assert_eq!(escribir_palabras(&[0x5, 0xAB], 8, 16), "05 AB\n");
+    assert_eq!(escribir_palabras(&[0x5], 12, 16), "005\n");
+    assert_eq!(escribir_palabras(&[0x5], 16, 16), "0005\n");
+}
+
+#[test]
+fn escribir_parte_en_lineas_del_tamano_pedido() {
+    assert_eq!(
+        escribir_palabras(&[1, 2, 3, 4, 5], 8, 2),
+        "01 02\n03 04\n05\n"
+    );
+}
+
+#[test]
+fn escribir_sin_palabras_no_escribe_nada() {
+    assert_eq!(escribir_palabras(&[], 8, 16), "");
+}
+
+#[test]
+fn escribir_trata_una_linea_de_cero_como_una_por_linea() {
+    assert_eq!(escribir_palabras(&[1, 2], 8, 0), "01\n02\n");
+}
+
+#[test]
+fn lo_escrito_se_puede_volver_a_leer() {
+    let palabras: Vec<u64> = (0..40).map(|i| (i * 7) % 256).collect();
+    let texto = escribir_palabras(&palabras, 8, 16);
+    assert_eq!(leer_palabras(&texto, 8).unwrap(), palabras);
+}
+
+#[test]
+fn lo_escrito_en_64_bits_se_puede_volver_a_leer() {
+    let palabras = [u64::MAX, 0, 0x0123_4567_89AB_CDEF];
+    let texto = escribir_palabras(&palabras, 64, 4);
+    assert_eq!(leer_palabras(&texto, 64).unwrap(), palabras);
+}
