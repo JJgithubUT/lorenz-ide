@@ -5,6 +5,15 @@ use thiserror::Error;
 /// Limite de instrucciones por omision de `lorenz ejecutar`.
 pub const LIMITE_POR_OMISION: u64 = 1_000_000;
 
+/// Un rango de memoria que se vuelca al terminar (RF-EMU-024).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Volcado {
+    pub desde: u64,
+    pub cantidad: u64,
+    /// Archivo donde escribirlo; si falta, se imprime.
+    pub archivo: Option<String>,
+}
+
 /// Lo que el usuario pidio hacer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Orden {
@@ -26,6 +35,8 @@ pub enum Orden {
         teclas: Option<String>,
         /// Texto que se entrega a la primera UART antes de empezar.
         serie: Option<String>,
+        /// Rangos de memoria que se vuelcan al terminar.
+        volcados: Vec<Volcado>,
         /// Direccion donde se carga el programa; por omision, la de arranque de la maquina.
         direccion: Option<u64>,
     },
@@ -46,6 +57,8 @@ pub enum ErrorUso {
     OpcionDesconocida(String),
     #[error("la opcion '{0}' necesita un valor")]
     OpcionSinValor(String),
+    #[error("'{0}' no es un volcado valido; se espera DESDE:CANTIDAD o DESDE:CANTIDAD:ARCHIVO")]
+    VolcadoInvalido(String),
     #[error("'{valor}' no es un numero valido para {opcion}")]
     NumeroInvalido { opcion: String, valor: String },
 }
@@ -104,6 +117,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut pantalla = false;
     let mut teclas = None;
     let mut serie = None;
+    let mut volcados = Vec::new();
     let mut direccion = None;
     let mut i = 0;
     while i < resto.len() {
@@ -111,6 +125,13 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         match a.as_str() {
             "--traza" => traza = true,
             "--pantalla" => pantalla = true,
+            "--volcar" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                volcados.push(interpretar_volcado(valor)?);
+            }
             "--serie" => {
                 i += 1;
                 let valor = resto
@@ -156,6 +177,29 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         pantalla,
         teclas,
         serie,
+        volcados,
         direccion,
+    })
+}
+
+fn interpretar_volcado(texto: &str) -> Result<Volcado, ErrorUso> {
+    let invalido = || ErrorUso::VolcadoInvalido(texto.to_string());
+    let mut partes = texto.splitn(3, ':');
+    let desde = partes
+        .next()
+        .filter(|p| !p.is_empty())
+        .ok_or_else(invalido)?;
+    let cantidad = partes
+        .next()
+        .filter(|p| !p.is_empty())
+        .ok_or_else(invalido)?;
+    let archivo = partes.next().map(str::to_string);
+    if archivo.as_deref() == Some("") {
+        return Err(invalido());
+    }
+    Ok(Volcado {
+        desde: numero("--volcar", desde)?,
+        cantidad: numero("--volcar", cantidad)?,
+        archivo,
     })
 }

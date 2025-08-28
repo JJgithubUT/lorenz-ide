@@ -5,8 +5,8 @@ use std::io::Write;
 use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
-use crate::args::{interpretar, Orden};
-use crate::programa::leer_palabras;
+use crate::args::{interpretar, Orden, Volcado};
+use crate::programa::{escribir_palabras, leer_palabras};
 
 /// El programa termino bien: la maquina se detuvo.
 pub const SALIDA_OK: i32 = 0;
@@ -24,6 +24,7 @@ Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
                   [--pantalla] [--teclas TEXTO] [--serie TEXTO]
+                  [--volcar DESDE:CANTIDAD[:ARCHIVO]]
   lorenz ayuda
   lorenz version
 
@@ -66,6 +67,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             pantalla,
             teclas,
             serie,
+            volcados,
             direccion,
         } => {
             let opciones = Opciones {
@@ -74,6 +76,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 pantalla,
                 teclas,
                 serie,
+                volcados,
                 direccion,
             };
             ejecutar(&maquina, &programa, &opciones, salida, errores)
@@ -109,6 +112,7 @@ struct Opciones {
     pantalla: bool,
     teclas: Option<String>,
     serie: Option<String>,
+    volcados: Vec<Volcado>,
     direccion: Option<u64>,
 }
 
@@ -242,10 +246,55 @@ fn ejecutar(
     };
     resumen(&mut emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
+    for volcado in &opciones.volcados {
+        if let Err(codigo) = volcar(&emulador, volcado, salida, errores) {
+            return codigo;
+        }
+    }
     if opciones.pantalla {
         dibujar_pantallas(&emulador, salida);
     }
     codigo
+}
+
+/// Vuelca un rango de memoria a la salida o a un archivo, en el formato que `lorenz ejecutar`
+/// sabe volver a cargar.
+fn volcar(
+    emulador: &Emulador,
+    volcado: &Volcado,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> Result<(), i32> {
+    let cantidad = usize::try_from(volcado.cantidad).unwrap_or(usize::MAX);
+    let palabras = match emulador.memoria().volcar(volcado.desde, cantidad) {
+        Ok(p) => p,
+        Err(e) => {
+            escribir(errores, &format!("error al volcar: {e}\n"));
+            return Err(SALIDA_ERROR_USO);
+        }
+    };
+    let bits = emulador.maquina().bits_palabra;
+    let texto = escribir_palabras(&palabras, bits, 16);
+    match &volcado.archivo {
+        Some(ruta) => {
+            if let Err(e) = std::fs::write(ruta, &texto) {
+                escribir(errores, &format!("{ruta}: no se pudo escribir: {e}\n"));
+                return Err(SALIDA_ERROR_USO);
+            }
+        }
+        None => {
+            let digitos = (emulador.maquina().bits_direccion as usize).div_ceil(4);
+            escribir(
+                salida,
+                &format!(
+                    "volcado desde {:0digitos$x}, {} palabras:\n{texto}",
+                    volcado.desde,
+                    palabras.len()
+                ),
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Imprime lo que cada UART transmitio, si transmitio algo.
