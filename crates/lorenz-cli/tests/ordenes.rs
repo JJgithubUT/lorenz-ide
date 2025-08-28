@@ -360,3 +360,111 @@ fn un_texto_con_salto_de_linea_no_agrega_otro() {
     assert!(r.salida.contains("uart serie:\n\n"));
     assert!(!r.salida.contains("uart serie:\n\n\n"));
 }
+
+// --- Volcado de memoria (RF-EMU-024) ---
+
+#[test]
+fn volcar_imprime_el_rango_pedido() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        "0:6",
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r
+        .salida
+        .contains("volcado desde 0000, 6 palabras:\n20 C8 24 64 31 F0\n"));
+}
+
+#[test]
+fn volcar_a_un_archivo_lo_escribe_en_formato_cargable() {
+    let destino = temporal("volcado.hex", "");
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        &format!("0:6:{destino}"),
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(!r.salida.contains("volcado desde"));
+    let contenido = std::fs::read_to_string(&destino).unwrap();
+    assert_eq!(contenido, "20 C8 24 64 31 F0\n");
+    // Y ese archivo se puede ejecutar de nuevo con el mismo resultado.
+    let otra = correr(&["ejecutar", &maquina(), &destino]);
+    assert_eq!(otra.codigo, SALIDA_OK);
+    assert!(otra.salida.contains("A=0x2c"));
+}
+
+#[test]
+fn volcar_lo_que_el_programa_escribio_en_la_ram() {
+    let p = temporal("escribe.hex", "20 42 50 00 20 F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--volcar", "0x2000:2"]);
+    assert!(r
+        .salida
+        .contains("volcado desde 2000, 2 palabras:\n42 00\n"));
+}
+
+#[test]
+fn volcar_fuera_de_las_regiones_es_error_de_uso() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        "0xF800:4",
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("error al volcar"));
+}
+
+#[test]
+fn volcar_a_una_ruta_imposible_es_error_de_uso() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        "0:2:/no/existe/dir/x.hex",
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no se pudo escribir"));
+}
+
+#[test]
+fn se_vuelcan_varios_rangos_en_el_orden_pedido() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        "4:2",
+        "--volcar",
+        "0:1",
+    ]);
+    let a = r.salida.find("volcado desde 0004").unwrap();
+    let b = r.salida.find("volcado desde 0000").unwrap();
+    assert!(a < b);
+}
+
+#[test]
+fn un_volcado_largo_se_parte_en_lineas_de_dieciseis() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--volcar",
+        "0:40",
+    ]);
+    let lineas: Vec<&str> = r
+        .salida
+        .lines()
+        .skip_while(|l| !l.starts_with("volcado"))
+        .skip(1)
+        .collect();
+    assert_eq!(lineas.len(), 3);
+    assert_eq!(lineas[0].split(' ').count(), 16);
+    assert_eq!(lineas[2].split(' ').count(), 8);
+}
