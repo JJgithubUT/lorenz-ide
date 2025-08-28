@@ -14,6 +14,14 @@ pub struct Volcado {
     pub archivo: Option<String>,
 }
 
+/// Una interrupcion que se dispara a mano durante la ejecucion (RF-EMU-040).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Disparo {
+    pub linea: u32,
+    /// Se levanta justo antes de ejecutar la instruccion con este numero de orden (0 es la primera).
+    pub instruccion: u64,
+}
+
 /// Lo que el usuario pidio hacer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Orden {
@@ -37,6 +45,8 @@ pub enum Orden {
         serie: Option<String>,
         /// Rangos de memoria que se vuelcan al terminar.
         volcados: Vec<Volcado>,
+        /// Interrupciones que se disparan a mano.
+        disparos: Vec<Disparo>,
         /// Direccion donde se carga el programa; por omision, la de arranque de la maquina.
         direccion: Option<u64>,
     },
@@ -59,6 +69,8 @@ pub enum ErrorUso {
     OpcionSinValor(String),
     #[error("'{0}' no es un volcado valido; se espera DESDE:CANTIDAD o DESDE:CANTIDAD:ARCHIVO")]
     VolcadoInvalido(String),
+    #[error("'{0}' no es un disparo valido; se espera LINEA@INSTRUCCION")]
+    DisparoInvalido(String),
     #[error("'{valor}' no es un numero valido para {opcion}")]
     NumeroInvalido { opcion: String, valor: String },
 }
@@ -118,6 +130,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut teclas = None;
     let mut serie = None;
     let mut volcados = Vec::new();
+    let mut disparos = Vec::new();
     let mut direccion = None;
     let mut i = 0;
     while i < resto.len() {
@@ -125,6 +138,13 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         match a.as_str() {
             "--traza" => traza = true,
             "--pantalla" => pantalla = true,
+            "--interrumpir" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                disparos.push(interpretar_disparo(valor)?);
+            }
             "--volcar" => {
                 i += 1;
                 let valor = resto
@@ -178,6 +198,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         teclas,
         serie,
         volcados,
+        disparos,
         direccion,
     })
 }
@@ -201,5 +222,18 @@ fn interpretar_volcado(texto: &str) -> Result<Volcado, ErrorUso> {
         desde: numero("--volcar", desde)?,
         cantidad: numero("--volcar", cantidad)?,
         archivo,
+    })
+}
+
+fn interpretar_disparo(texto: &str) -> Result<Disparo, ErrorUso> {
+    let invalido = || ErrorUso::DisparoInvalido(texto.to_string());
+    let (linea, instruccion) = texto.split_once('@').ok_or_else(invalido)?;
+    if linea.is_empty() || instruccion.is_empty() {
+        return Err(invalido());
+    }
+    let linea = numero("--interrumpir", linea)?;
+    Ok(Disparo {
+        linea: u32::try_from(linea).map_err(|_| invalido())?,
+        instruccion: numero("--interrumpir", instruccion)?,
     })
 }

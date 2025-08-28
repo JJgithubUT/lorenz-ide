@@ -5,7 +5,7 @@ use std::io::Write;
 use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
-use crate::args::{interpretar, Orden, Volcado};
+use crate::args::{interpretar, Disparo, Orden, Volcado};
 use crate::programa::{escribir_palabras, leer_palabras};
 
 /// El programa termino bien: la maquina se detuvo.
@@ -24,7 +24,7 @@ Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
                   [--pantalla] [--teclas TEXTO] [--serie TEXTO]
-                  [--volcar DESDE:CANTIDAD[:ARCHIVO]]
+                  [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
   lorenz ayuda
   lorenz version
 
@@ -68,6 +68,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             teclas,
             serie,
             volcados,
+            disparos,
             direccion,
         } => {
             let opciones = Opciones {
@@ -77,6 +78,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 teclas,
                 serie,
                 volcados,
+                disparos,
                 direccion,
             };
             ejecutar(&maquina, &programa, &opciones, salida, errores)
@@ -113,6 +115,7 @@ struct Opciones {
     teclas: Option<String>,
     serie: Option<String>,
     volcados: Vec<Volcado>,
+    disparos: Vec<Disparo>,
     direccion: Option<u64>,
 }
 
@@ -203,8 +206,11 @@ fn ejecutar(
         }
     }
 
+    let mut disparos = opciones.disparos.clone();
+    disparos.sort_by_key(|d| d.instruccion);
+    let mut siguiente_disparo = 0;
     let mut ejecutadas = 0u64;
-    let codigo = loop {
+    let codigo = 'ejecucion: loop {
         if emulador.estado().detenida() {
             break SALIDA_OK;
         }
@@ -212,6 +218,16 @@ fn ejecutar(
             let e = ErrorEjecucion::LimiteDeInstrucciones { limite };
             escribir(errores, &format!("error: {e}\n"));
             break SALIDA_LIMITE;
+        }
+        while siguiente_disparo < disparos.len()
+            && disparos[siguiente_disparo].instruccion <= ejecutadas
+        {
+            let linea = disparos[siguiente_disparo].linea;
+            if let Err(e) = emulador.levantar_interrupcion(linea) {
+                escribir(errores, &format!("error: {e}\n"));
+                break 'ejecucion SALIDA_ERROR_USO;
+            }
+            siguiente_disparo += 1;
         }
         match emulador.paso() {
             Ok(Some(p)) => {
