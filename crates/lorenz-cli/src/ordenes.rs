@@ -261,6 +261,7 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
+    interrupciones_atendidas(&emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
     for volcado in &opciones.volcados {
         if let Err(codigo) = volcar(&emulador, volcado, salida, errores) {
@@ -311,6 +312,26 @@ fn volcar(
         }
     }
     Ok(())
+}
+
+/// Lista las interrupciones que la maquina atendio, una por linea (RF-EMU-039).
+fn interrupciones_atendidas(emulador: &Emulador, digitos: usize, salida: &mut dyn Write) {
+    for r in emulador.interrupciones_atendidas() {
+        escribir(
+            salida,
+            &format!(
+                "interrupcion: linea {} en el ciclo {} (instruccion {}), interrumpio {:0digitos$x}, manejador {:0digitos$x}\n",
+                r.linea, r.ciclo, r.instruccion, r.pc_interrumpido, r.manejador
+            ),
+        );
+    }
+    let perdidas = emulador.interrupciones_sin_registrar();
+    if perdidas > 0 {
+        escribir(
+            salida,
+            &format!("interrupciones sin registrar: {perdidas}\n"),
+        );
+    }
 }
 
 /// Imprime lo que cada UART transmitio, si transmitio algo.
