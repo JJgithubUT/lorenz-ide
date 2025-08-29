@@ -17,6 +17,34 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Control de la ejecucion, instantaneas y volcado
+
+**Hecho:**
+
+- `Emulador::avanzar(n)` ejecuta como mucho n instrucciones y devuelve el control; llegar a n no es
+  un error (RF-EMU-010).
+- `Emulador::instantanea` y `restaurar` guardan y recuperan registros, banderas, contadores, memoria,
+  puertos, temporizadores e interrupciones; restaurar sobre otra maquina falla sin cambiar nada
+  (RF-EMU-017, RF-EMU-018).
+- Registro de interrupciones atendidas con instante, linea, direccion interrumpida y manejador, con
+  tope de 65536 entradas y un contador de las que no caben (RF-EMU-039).
+- CLI: `--volcar DESDE:CANTIDAD[:ARCHIVO]` (el archivo se puede volver a cargar como programa) y
+  `--interrumpir LINEA@INSTRUCCION`; el resumen lista las interrupciones atendidas.
+- Programa de ejemplo `interrupcion.hex`.
+- Pruebas: 6 de `avanzar`, 5 del registro de interrupciones, 10 de instantaneas, 6 de escritura de
+  palabras, 9 + 8 de argumentos nuevos y 13 de la CLI.
+
+**Pendiente:** ver `docs/TRAZABILIDAD.md`: frecuencia en hercios y pausa (RF-EMU-011, 013), ultima
+escritura y memoria no inicializada (025, 026), dispositivo de bloques (034), dispositivos con
+script (035), prioridad declarada de las lineas (036), entrada grabada (041), traza en formato de
+maquina (045) y comparacion de dos implementaciones (046).
+
+**Requisitos:** RF-EMU-010, RF-EMU-017, RF-EMU-018, RF-EMU-024, RF-EMU-039, RF-EMU-040.
+
+**Commits:** contador en 141 al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — UART y segundo ejemplo
 
 **Hecho:**
