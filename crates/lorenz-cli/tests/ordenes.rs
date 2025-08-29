@@ -468,3 +468,85 @@ fn un_volcado_largo_se_parte_en_lineas_de_dieciseis() {
     assert_eq!(lineas[0].split(' ').count(), 16);
     assert_eq!(lineas[2].split(' ').count(), 8);
 }
+
+// --- Interrupciones disparadas a mano (RF-EMU-040) y su registro (RF-EMU-039) ---
+
+#[test]
+fn interrumpir_ejecuta_el_manejador_y_vuelve() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--interrumpir",
+        "0@8",
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("C=0x99"));
+    assert!(r.salida.contains("SP=0xefff"));
+}
+
+#[test]
+fn sin_interrumpir_el_manejador_no_se_ejecuta() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("C=0x0"));
+    assert!(!r.salida.contains("interrupcion:"));
+}
+
+#[test]
+fn el_resumen_lista_la_interrupcion_atendida() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--interrumpir",
+        "0@8",
+    ]);
+    assert!(r.salida.contains("interrupcion: linea 0 en el ciclo"));
+    assert!(r.salida.contains("manejador 0010"));
+}
+
+#[test]
+fn interrumpir_una_linea_sin_vector_es_error_de_uso() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--interrumpir",
+        "7@0",
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("linea de interrupcion 7"));
+}
+
+#[test]
+fn un_disparo_despues_del_final_no_se_levanta() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--interrumpir",
+        "0@100",
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(!r.salida.contains("interrupcion:"));
+}
+
+#[test]
+fn los_disparos_se_aplican_en_orden_de_instruccion_aunque_se_den_al_reves() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--interrumpir",
+        "0@9",
+        "--interrumpir",
+        "0@8",
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert_eq!(r.salida.matches("interrupcion: linea 0").count(), 2);
+}
