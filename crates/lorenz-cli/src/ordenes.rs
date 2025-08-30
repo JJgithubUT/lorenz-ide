@@ -23,7 +23,7 @@ Lorenz: emulador de maquinas definidas por el usuario
 Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
-                  [--pantalla] [--teclas TEXTO] [--serie TEXTO]
+                  [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
   lorenz ayuda
   lorenz version
@@ -65,6 +65,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             limite,
             traza,
             pantalla,
+            vigilar,
             teclas,
             serie,
             volcados,
@@ -75,6 +76,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 limite,
                 traza,
                 pantalla,
+                vigilar,
                 teclas,
                 serie,
                 volcados,
@@ -112,6 +114,7 @@ struct Opciones {
     limite: u64,
     traza: bool,
     pantalla: bool,
+    vigilar: bool,
     teclas: Option<String>,
     serie: Option<String>,
     volcados: Vec<Volcado>,
@@ -162,6 +165,9 @@ fn ejecutar(
             return SALIDA_ERROR_USO;
         }
     };
+    if opciones.vigilar {
+        emulador.memoria_mut().activar_seguimiento();
+    }
     if let Err(e) = emulador.cargar_programa(inicio, &palabras) {
         escribir(errores, &format!("{ruta_programa}: {e}\n"));
         return SALIDA_ERROR_USO;
@@ -261,6 +267,7 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
+    lecturas_sin_inicializar(&emulador, digitos, salida);
     interrupciones_atendidas(&emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
     for volcado in &opciones.volcados {
@@ -312,6 +319,19 @@ fn volcar(
         }
     }
     Ok(())
+}
+
+/// Avisa de las lecturas de memoria que nadie habia escrito (RF-EMU-026).
+fn lecturas_sin_inicializar(emulador: &Emulador, digitos: usize, salida: &mut dyn Write) {
+    for l in emulador.memoria().lecturas_sin_inicializar() {
+        escribir(
+            salida,
+            &format!(
+                "aviso: la instruccion en {:0digitos$x} leyo {:0digitos$x}, que nadie habia escrito\n",
+                l.pc, l.direccion
+            ),
+        );
+    }
 }
 
 /// Lista las interrupciones que la maquina atendio, una por linea (RF-EMU-039).

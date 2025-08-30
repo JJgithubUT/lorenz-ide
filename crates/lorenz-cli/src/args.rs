@@ -39,6 +39,8 @@ pub enum Orden {
         traza: bool,
         /// Dibujar las pantallas de la maquina al terminar.
         pantalla: bool,
+        /// Avisar de las lecturas de memoria que nadie habia escrito.
+        vigilar: bool,
         /// Teclas que se pulsan en el primer teclado antes de empezar, una por caracter.
         teclas: Option<String>,
         /// Texto que se entrega a la primera UART antes de empezar.
@@ -127,6 +129,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut limite = LIMITE_POR_OMISION;
     let mut traza = false;
     let mut pantalla = false;
+    let mut vigilar = false;
     let mut teclas = None;
     let mut serie = None;
     let mut volcados = Vec::new();
@@ -138,6 +141,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         match a.as_str() {
             "--traza" => traza = true,
             "--pantalla" => pantalla = true,
+            "--vigilar" => vigilar = true,
             "--interrumpir" => {
                 i += 1;
                 let valor = resto
@@ -195,6 +199,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         limite,
         traza,
         pantalla,
+        vigilar,
         teclas,
         serie,
         volcados,
