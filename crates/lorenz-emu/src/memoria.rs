@@ -21,6 +21,32 @@ struct RegionMem {
     acceso: Acceso,
     dispositivo: Option<String>,
     celdas: Vec<u64>,
+    /// Quien escribio cada celda por ultima vez; vacio mientras el seguimiento esta apagado.
+    origen: Vec<u64>,
+}
+
+const SIN_ESCRIBIR: u64 = 0;
+const CARGADA: u64 = 1;
+const DESDE_INSTRUCCION: u64 = 2;
+
+/// Cuantas lecturas de memoria sin inicializar se recuerdan como maximo.
+pub const MAX_LECTURAS_SIN_INICIALIZAR: usize = 4096;
+
+/// Quien escribio una celda por ultima vez (RF-EMU-025).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Escritura {
+    /// Se cargo con un programa o la modifico el depurador.
+    Carga,
+    /// La escribio la instruccion que estaba en esta direccion.
+    Instruccion { pc: u64 },
+}
+
+/// Una lectura de una celda que nadie habia escrito (RF-EMU-026).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LecturaSinInicializar {
+    pub direccion: u64,
+    /// Direccion de la instruccion que la leyo.
+    pub pc: u64,
 }
 
 /// El espacio de memoria completo de una maquina.
@@ -29,6 +55,9 @@ pub struct Memoria {
     /// Ordenadas por direccion inicial y sin solaparse, para localizar por busqueda binaria.
     regiones: Vec<RegionMem>,
     mascara_palabra: u64,
+    seguimiento: bool,
+    instruccion_actual: u64,
+    sin_inicializar: Vec<LecturaSinInicializar>,
 }
 
 impl Memoria {
@@ -51,12 +80,16 @@ impl Memoria {
                 acceso: r.acceso,
                 dispositivo: r.dispositivo.clone(),
                 celdas: vec![0; celdas as usize],
+                origen: Vec::new(),
             });
         }
         regiones.sort_by_key(|r| r.desde);
         Ok(Self {
             regiones,
             mascara_palabra: maquina.palabra_maxima(),
+            seguimiento: false,
+            instruccion_actual: 0,
+            sin_inicializar: Vec::new(),
         })
     }
 
@@ -132,7 +165,11 @@ impl Memoria {
                 region: r.nombre.clone(),
             });
         }
-        r.celdas[(direccion - r.desde) as usize] = valor & mascara;
+        let celda = (direccion - r.desde) as usize;
+        r.celdas[celda] = valor & mascara;
+        if self.seguimiento {
+            r.origen[celda] = DESDE_INSTRUCCION + self.instruccion_actual;
+        }
         Ok(())
     }
 
@@ -157,7 +194,11 @@ impl Memoria {
             .localizar(direccion)
             .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &mut self.regiones[i];
-        r.celdas[(direccion - r.desde) as usize] = valor & mascara;
+        let celda = (direccion - r.desde) as usize;
+        r.celdas[celda] = valor & mascara;
+        if self.seguimiento {
+            r.origen[celda] = CARGADA;
+        }
         Ok(())
     }
 
@@ -199,5 +240,87 @@ impl Memoria {
                 self.leer_privilegiado(d)
             })
             .collect()
+    }
+
+    // --- Seguimiento de escrituras y lecturas sin inicializar (RF-EMU-025, RF-EMU-026) ---
+
+    /// Empieza a recordar quien escribe cada celda y a avisar de las lecturas sin inicializar.
+    ///
+    /// Las celdas que ya valen distinto de cero se dan por cargadas; las que valen cero se dan por
+    /// no escritas. Por eso conviene activarlo antes de cargar el programa.
+    pub fn activar_seguimiento(&mut self) {
+        if self.seguimiento {
+            return;
+        }
+        for r in &mut self.regiones {
+            r.origen = r
+                .celdas
+                .iter()
+                .map(|c| if *c == 0 { SIN_ESCRIBIR } else { CARGADA })
+                .collect();
+        }
+        self.seguimiento = true;
+    }
+
+    pub fn seguimiento_activo(&self) -> bool {
+        self.seguimiento
+    }
+
+    /// Dice cual es la instruccion que esta ejecutandose, para atribuirle sus escrituras.
+    pub fn fijar_instruccion_actual(&mut self, pc: u64) {
+        self.instruccion_actual = pc;
+    }
+
+    /// Como `leer`, pero anota si la celda nunca se habia escrito.
+    pub fn leer_vigilada(&mut self, direccion: u64) -> Result<u64, ErrorEjecucion> {
+        let valor = self.leer(direccion)?;
+        if self.seguimiento
+            && self.origen_de(direccion) == Some(SIN_ESCRIBIR)
+            && self.sin_inicializar.len() < MAX_LECTURAS_SIN_INICIALIZAR
+        {
+            self.sin_inicializar.push(LecturaSinInicializar {
+                direccion,
+                pc: self.instruccion_actual,
+            });
+        }
+        Ok(valor)
+    }
+
+    fn origen_de(&self, direccion: u64) -> Option<u64> {
+        let r = &self.regiones[self.localizar(direccion)?];
+        r.origen.get((direccion - r.desde) as usize).copied()
+    }
+
+    /// Quien escribio la celda por ultima vez, o `None` si nadie la escribio o el seguimiento esta
+    /// apagado.
+    pub fn ultima_escritura(&self, direccion: u64) -> Result<Option<Escritura>, ErrorEjecucion> {
+        if !self.es_valida(direccion) {
+            return Err(ErrorEjecucion::FueraDeRegion { direccion });
+        }
+        Ok(match self.origen_de(direccion) {
+            Some(CARGADA) => Some(Escritura::Carga),
+            Some(n) if n >= DESDE_INSTRUCCION => Some(Escritura::Instruccion {
+                pc: n - DESDE_INSTRUCCION,
+            }),
+            _ => None,
+        })
+    }
+
+    /// Si alguien escribio la celda. Con el seguimiento apagado todas se dan por inicializadas.
+    pub fn esta_inicializada(&self, direccion: u64) -> Result<bool, ErrorEjecucion> {
+        if !self.es_valida(direccion) {
+            return Err(ErrorEjecucion::FueraDeRegion { direccion });
+        }
+        Ok(!self.seguimiento || self.origen_de(direccion) != Some(SIN_ESCRIBIR))
+    }
+
+    /// Lecturas de celdas sin inicializar desde que se activo el seguimiento.
+    pub fn lecturas_sin_inicializar(&self) -> &[LecturaSinInicializar] {
+        &self.sin_inicializar
+    }
+
+    /// Olvida las lecturas sin inicializar anotadas.
+    pub fn olvidar_lecturas_sin_inicializar(&mut self) {
+        self.sin_inicializar.clear();
     }
 }
