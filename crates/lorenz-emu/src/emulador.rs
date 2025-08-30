@@ -29,6 +29,52 @@ pub struct Paso {
     pub detenida: bool,
 }
 
+/// Cuantas interrupciones atendidas se recuerdan como maximo; las siguientes solo se cuentan.
+pub const MAX_INTERRUPCIONES_REGISTRADAS: usize = 65_536;
+
+/// Una interrupcion que la maquina atendio (RF-EMU-039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterrupcionAtendida {
+    /// Linea que la origino.
+    pub linea: u32,
+    /// Instante: ciclos consumidos hasta ese momento.
+    pub ciclo: u64,
+    /// Instrucciones ejecutadas hasta ese momento.
+    pub instruccion: u64,
+    /// Direccion de la instruccion que iba a ejecutarse y quedo interrumpida.
+    pub pc_interrumpido: u64,
+    /// Direccion del manejador al que se salto.
+    pub manejador: u64,
+}
+
+/// Copia completa del estado de una maquina en un instante (RF-EMU-017, RF-EMU-018).
+///
+/// Incluye registros, banderas, contadores, memoria, puertos, temporizadores e interrupciones. No
+/// incluye la descripcion de la maquina: solo se puede restaurar sobre la misma.
+#[derive(Debug, Clone)]
+pub struct Instantanea {
+    maquina: String,
+    estado: Estado,
+    memoria: Memoria,
+    puertos: Puertos,
+    pendientes: BTreeSet<u32>,
+    temporizadores: Vec<Temporizador>,
+    atendidas: Vec<InterrupcionAtendida>,
+    atendidas_sin_registrar: u64,
+}
+
+impl Instantanea {
+    /// Registros, banderas y contadores en el momento de la copia.
+    pub fn estado(&self) -> &Estado {
+        &self.estado
+    }
+
+    /// Memoria en el momento de la copia.
+    pub fn memoria(&self) -> &Memoria {
+        &self.memoria
+    }
+}
+
 /// Resumen de una ejecucion hasta detenerse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Resumen {
@@ -60,6 +106,8 @@ pub struct Emulador {
     puertos: Puertos,
     pendientes: BTreeSet<u32>,
     temporizadores: Vec<Temporizador>,
+    atendidas: Vec<InterrupcionAtendida>,
+    atendidas_sin_registrar: u64,
 }
 
 impl Emulador {
@@ -81,6 +129,8 @@ impl Emulador {
             .collect();
         Ok(Emulador {
             temporizadores,
+            atendidas: Vec::new(),
+            atendidas_sin_registrar: 0,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
             estado: Estado::nuevo(&maquina),
@@ -133,10 +183,46 @@ impl Emulador {
         self.estado.reiniciar();
         self.puertos.reiniciar();
         self.pendientes.clear();
+        self.atendidas.clear();
+        self.atendidas_sin_registrar = 0;
         for t in &mut self.temporizadores {
             t.acumulado = 0;
             t.ticks = 0;
         }
+    }
+
+    /// Copia el estado completo de la maquina.
+    pub fn instantanea(&self) -> Instantanea {
+        Instantanea {
+            maquina: self.maquina.nombre.clone(),
+            estado: self.estado.clone(),
+            memoria: self.memoria.clone(),
+            puertos: self.puertos.clone(),
+            pendientes: self.pendientes.clone(),
+            temporizadores: self.temporizadores.clone(),
+            atendidas: self.atendidas.clone(),
+            atendidas_sin_registrar: self.atendidas_sin_registrar,
+        }
+    }
+
+    /// Vuelve al estado de una instantanea tomada de esta misma maquina.
+    ///
+    /// Si la instantanea es de otra maquina no se cambia nada.
+    pub fn restaurar(&mut self, instantanea: &Instantanea) -> Result<(), ErrorEjecucion> {
+        if instantanea.maquina != self.maquina.nombre {
+            return Err(ErrorEjecucion::InstantaneaIncompatible {
+                instantanea: instantanea.maquina.clone(),
+                maquina: self.maquina.nombre.clone(),
+            });
+        }
+        self.estado = instantanea.estado.clone();
+        self.memoria = instantanea.memoria.clone();
+        self.puertos = instantanea.puertos.clone();
+        self.pendientes = instantanea.pendientes.clone();
+        self.temporizadores = instantanea.temporizadores.clone();
+        self.atendidas = instantanea.atendidas.clone();
+        self.atendidas_sin_registrar = instantanea.atendidas_sin_registrar;
+        Ok(())
     }
 
     /// Imagen actual de la pantalla `nombre` (RF-EMU-036).
@@ -233,6 +319,16 @@ impl Emulador {
         }
         self.pendientes.insert(linea);
         Ok(())
+    }
+
+    /// Interrupciones atendidas desde el ultimo reinicio, en orden (RF-EMU-039).
+    pub fn interrupciones_atendidas(&self) -> &[InterrupcionAtendida] {
+        &self.atendidas
+    }
+
+    /// Cuantas interrupciones se atendieron sin guardarse por haber llegado al maximo.
+    pub fn interrupciones_sin_registrar(&self) -> u64 {
+        self.atendidas_sin_registrar
     }
 
     /// Lineas de interrupcion que esperan ser atendidas, de menor a mayor.
@@ -356,6 +452,17 @@ impl Emulador {
             }
         }
         self.pendientes.remove(&linea);
+        if self.atendidas.len() < MAX_INTERRUPCIONES_REGISTRADAS {
+            self.atendidas.push(InterrupcionAtendida {
+                linea,
+                ciclo: self.estado.ciclos(),
+                instruccion: self.estado.instrucciones(),
+                pc_interrumpido: pc,
+                manejador: destino,
+            });
+        } else {
+            self.atendidas_sin_registrar += 1;
+        }
         self.estado.habilitar_interrupciones(false);
         self.estado.fijar_pc(destino);
         Ok(true)
@@ -408,6 +515,25 @@ impl Emulador {
             salto: resultado.salto,
             detenida: resultado.detenida,
         }))
+    }
+
+    /// Ejecuta como mucho `cantidad` instrucciones y devuelve el control, se haya detenido la
+    /// maquina o no (RF-EMU-010). Es lo que usa un depurador para avanzar de a poco.
+    pub fn avanzar(&mut self, cantidad: u64) -> Result<Resumen, ErrorEjecucion> {
+        let mut resumen = Resumen {
+            instrucciones: 0,
+            ciclos: 0,
+        };
+        while resumen.instrucciones < cantidad {
+            match self.paso()? {
+                Some(paso) => {
+                    resumen.instrucciones += 1;
+                    resumen.ciclos += paso.ciclos;
+                }
+                None => break,
+            }
+        }
+        Ok(resumen)
     }
 
     /// Ejecuta hasta que la maquina se detenga o se agote el limite de instrucciones.

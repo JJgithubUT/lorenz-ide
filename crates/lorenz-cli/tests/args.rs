@@ -1,6 +1,6 @@
 //! Pruebas de la interpretacion de argumentos.
 
-use lorenz_cli::args::{interpretar, ErrorUso, Orden, LIMITE_POR_OMISION};
+use lorenz_cli::args::{interpretar, Disparo, ErrorUso, Orden, Volcado, LIMITE_POR_OMISION};
 
 fn v(args: &[&str]) -> Vec<String> {
     args.iter().map(|s| s.to_string()).collect()
@@ -87,6 +87,8 @@ fn ejecutar_usa_valores_por_omision() {
             pantalla: false,
             teclas: None,
             serie: None,
+            volcados: vec![],
+            disparos: vec![],
             direccion: None
         })
     );
@@ -114,6 +116,8 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             pantalla: false,
             teclas: None,
             serie: None,
+            volcados: vec![],
+            disparos: vec![],
             direccion: Some(0x2000)
         })
     );
@@ -190,6 +194,8 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             pantalla: true,
             teclas: Some("hola".into()),
             serie: None,
+            volcados: vec![],
+            disparos: vec![],
             direccion: None
         })
     );
@@ -216,6 +222,8 @@ fn serie_es_una_opcion_de_ejecutar() {
             pantalla: false,
             teclas: None,
             serie: Some("hola".into()),
+            volcados: vec![],
+            disparos: vec![],
             direccion: None
         })
     );
@@ -226,5 +234,192 @@ fn serie_necesita_un_valor() {
     assert_eq!(
         interpretar(&v(&["ejecutar", "m", "p", "--serie"])),
         Err(ErrorUso::OpcionSinValor("--serie".into()))
+    );
+}
+
+fn volcados(args: &[&str]) -> Result<Vec<Volcado>, ErrorUso> {
+    let mut todos = vec!["ejecutar", "m", "p"];
+    todos.extend_from_slice(args);
+    match interpretar(&v(&todos))? {
+        Orden::Ejecutar { volcados, .. } => Ok(volcados),
+        otra => panic!("se esperaba ejecutar, salio {otra:?}"),
+    }
+}
+
+#[test]
+fn volcar_acepta_desde_y_cantidad() {
+    assert_eq!(
+        volcados(&["--volcar", "0x2000:16"]),
+        Ok(vec![Volcado {
+            desde: 0x2000,
+            cantidad: 16,
+            archivo: None
+        }])
+    );
+}
+
+#[test]
+fn volcar_acepta_un_archivo_de_destino() {
+    assert_eq!(
+        volcados(&["--volcar", "0:4:salida.hex"]),
+        Ok(vec![Volcado {
+            desde: 0,
+            cantidad: 4,
+            archivo: Some("salida.hex".into())
+        }])
+    );
+}
+
+#[test]
+fn el_archivo_de_volcado_puede_contener_dos_puntos() {
+    assert_eq!(
+        volcados(&["--volcar", "0:4:C:/tmp/x.hex"]),
+        Ok(vec![Volcado {
+            desde: 0,
+            cantidad: 4,
+            archivo: Some("C:/tmp/x.hex".into())
+        }])
+    );
+}
+
+#[test]
+fn volcar_se_puede_repetir() {
+    let v = volcados(&["--volcar", "0:1", "--volcar", "0x10:2"]).unwrap();
+    assert_eq!(v.len(), 2);
+    assert_eq!(v[1].desde, 0x10);
+}
+
+#[test]
+fn volcar_sin_cantidad_es_invalido() {
+    assert_eq!(
+        volcados(&["--volcar", "0x2000"]),
+        Err(ErrorUso::VolcadoInvalido("0x2000".into()))
+    );
+    assert_eq!(
+        volcados(&["--volcar", "0x2000:"]),
+        Err(ErrorUso::VolcadoInvalido("0x2000:".into()))
+    );
+}
+
+#[test]
+fn volcar_sin_desde_es_invalido() {
+    assert_eq!(
+        volcados(&["--volcar", ":4"]),
+        Err(ErrorUso::VolcadoInvalido(":4".into()))
+    );
+}
+
+#[test]
+fn volcar_con_archivo_vacio_es_invalido() {
+    assert_eq!(
+        volcados(&["--volcar", "0:4:"]),
+        Err(ErrorUso::VolcadoInvalido("0:4:".into()))
+    );
+}
+
+#[test]
+fn volcar_con_un_numero_malo_cita_la_opcion() {
+    assert_eq!(
+        volcados(&["--volcar", "ab:4"]),
+        Err(ErrorUso::NumeroInvalido {
+            opcion: "--volcar".into(),
+            valor: "ab".into()
+        })
+    );
+}
+
+#[test]
+fn volcar_sin_valor_falla() {
+    assert_eq!(
+        volcados(&["--volcar"]),
+        Err(ErrorUso::OpcionSinValor("--volcar".into()))
+    );
+}
+
+fn disparos(args: &[&str]) -> Result<Vec<Disparo>, ErrorUso> {
+    let mut todos = vec!["ejecutar", "m", "p"];
+    todos.extend_from_slice(args);
+    match interpretar(&v(&todos))? {
+        Orden::Ejecutar { disparos, .. } => Ok(disparos),
+        otra => panic!("se esperaba ejecutar, salio {otra:?}"),
+    }
+}
+
+#[test]
+fn interrumpir_acepta_linea_e_instruccion() {
+    assert_eq!(
+        disparos(&["--interrumpir", "1@25"]),
+        Ok(vec![Disparo {
+            linea: 1,
+            instruccion: 25
+        }])
+    );
+}
+
+#[test]
+fn interrumpir_acepta_numeros_en_hexadecimal() {
+    assert_eq!(
+        disparos(&["--interrumpir", "0x2@0x10"]),
+        Ok(vec![Disparo {
+            linea: 2,
+            instruccion: 16
+        }])
+    );
+}
+
+#[test]
+fn interrumpir_se_puede_repetir() {
+    assert_eq!(
+        disparos(&["--interrumpir", "0@1", "--interrumpir", "1@2"])
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[test]
+fn interrumpir_sin_arroba_es_invalido() {
+    assert_eq!(
+        disparos(&["--interrumpir", "1"]),
+        Err(ErrorUso::DisparoInvalido("1".into()))
+    );
+}
+
+#[test]
+fn interrumpir_con_partes_vacias_es_invalido() {
+    assert_eq!(
+        disparos(&["--interrumpir", "@3"]),
+        Err(ErrorUso::DisparoInvalido("@3".into()))
+    );
+    assert_eq!(
+        disparos(&["--interrumpir", "1@"]),
+        Err(ErrorUso::DisparoInvalido("1@".into()))
+    );
+}
+
+#[test]
+fn interrumpir_con_una_linea_demasiado_grande_es_invalido() {
+    assert_eq!(
+        disparos(&["--interrumpir", "99999999999@1"]),
+        Err(ErrorUso::DisparoInvalido("99999999999@1".into()))
+    );
+}
+
+#[test]
+fn interrumpir_con_un_numero_malo_cita_la_opcion() {
+    assert_eq!(
+        disparos(&["--interrumpir", "x@1"]),
+        Err(ErrorUso::NumeroInvalido {
+            opcion: "--interrumpir".into(),
+            valor: "x".into()
+        })
+    );
+}
+
+#[test]
+fn interrumpir_sin_valor_falla() {
+    assert_eq!(
+        disparos(&["--interrumpir"]),
+        Err(ErrorUso::OpcionSinValor("--interrumpir".into()))
     );
 }

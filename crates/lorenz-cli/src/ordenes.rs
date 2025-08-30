@@ -5,8 +5,8 @@ use std::io::Write;
 use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
-use crate::args::{interpretar, Orden};
-use crate::programa::leer_palabras;
+use crate::args::{interpretar, Disparo, Orden, Volcado};
+use crate::programa::{escribir_palabras, leer_palabras};
 
 /// El programa termino bien: la maquina se detuvo.
 pub const SALIDA_OK: i32 = 0;
@@ -24,6 +24,7 @@ Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
                   [--pantalla] [--teclas TEXTO] [--serie TEXTO]
+                  [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
   lorenz ayuda
   lorenz version
 
@@ -66,6 +67,8 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             pantalla,
             teclas,
             serie,
+            volcados,
+            disparos,
             direccion,
         } => {
             let opciones = Opciones {
@@ -74,6 +77,8 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 pantalla,
                 teclas,
                 serie,
+                volcados,
+                disparos,
                 direccion,
             };
             ejecutar(&maquina, &programa, &opciones, salida, errores)
@@ -109,6 +114,8 @@ struct Opciones {
     pantalla: bool,
     teclas: Option<String>,
     serie: Option<String>,
+    volcados: Vec<Volcado>,
+    disparos: Vec<Disparo>,
     direccion: Option<u64>,
 }
 
@@ -199,8 +206,11 @@ fn ejecutar(
         }
     }
 
+    let mut disparos = opciones.disparos.clone();
+    disparos.sort_by_key(|d| d.instruccion);
+    let mut siguiente_disparo = 0;
     let mut ejecutadas = 0u64;
-    let codigo = loop {
+    let codigo = 'ejecucion: loop {
         if emulador.estado().detenida() {
             break SALIDA_OK;
         }
@@ -208,6 +218,16 @@ fn ejecutar(
             let e = ErrorEjecucion::LimiteDeInstrucciones { limite };
             escribir(errores, &format!("error: {e}\n"));
             break SALIDA_LIMITE;
+        }
+        while siguiente_disparo < disparos.len()
+            && disparos[siguiente_disparo].instruccion <= ejecutadas
+        {
+            let linea = disparos[siguiente_disparo].linea;
+            if let Err(e) = emulador.levantar_interrupcion(linea) {
+                escribir(errores, &format!("error: {e}\n"));
+                break 'ejecucion SALIDA_ERROR_USO;
+            }
+            siguiente_disparo += 1;
         }
         match emulador.paso() {
             Ok(Some(p)) => {
@@ -241,11 +261,77 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
+    interrupciones_atendidas(&emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
+    for volcado in &opciones.volcados {
+        if let Err(codigo) = volcar(&emulador, volcado, salida, errores) {
+            return codigo;
+        }
+    }
     if opciones.pantalla {
         dibujar_pantallas(&emulador, salida);
     }
     codigo
+}
+
+/// Vuelca un rango de memoria a la salida o a un archivo, en el formato que `lorenz ejecutar`
+/// sabe volver a cargar.
+fn volcar(
+    emulador: &Emulador,
+    volcado: &Volcado,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> Result<(), i32> {
+    let cantidad = usize::try_from(volcado.cantidad).unwrap_or(usize::MAX);
+    let palabras = match emulador.memoria().volcar(volcado.desde, cantidad) {
+        Ok(p) => p,
+        Err(e) => {
+            escribir(errores, &format!("error al volcar: {e}\n"));
+            return Err(SALIDA_ERROR_USO);
+        }
+    };
+    let bits = emulador.maquina().bits_palabra;
+    let texto = escribir_palabras(&palabras, bits, 16);
+    match &volcado.archivo {
+        Some(ruta) => {
+            if let Err(e) = std::fs::write(ruta, &texto) {
+                escribir(errores, &format!("{ruta}: no se pudo escribir: {e}\n"));
+                return Err(SALIDA_ERROR_USO);
+            }
+        }
+        None => {
+            let digitos = (emulador.maquina().bits_direccion as usize).div_ceil(4);
+            escribir(
+                salida,
+                &format!(
+                    "volcado desde {:0digitos$x}, {} palabras:\n{texto}",
+                    volcado.desde,
+                    palabras.len()
+                ),
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Lista las interrupciones que la maquina atendio, una por linea (RF-EMU-039).
+fn interrupciones_atendidas(emulador: &Emulador, digitos: usize, salida: &mut dyn Write) {
+    for r in emulador.interrupciones_atendidas() {
+        escribir(
+            salida,
+            &format!(
+                "interrupcion: linea {} en el ciclo {} (instruccion {}), interrumpio {:0digitos$x}, manejador {:0digitos$x}\n",
+                r.linea, r.ciclo, r.instruccion, r.pc_interrumpido, r.manejador
+            ),
+        );
+    }
+    let perdidas = emulador.interrupciones_sin_registrar();
+    if perdidas > 0 {
+        escribir(
+            salida,
+            &format!("interrupciones sin registrar: {perdidas}\n"),
+        );
+    }
 }
 
 /// Imprime lo que cada UART transmitio, si transmitio algo.

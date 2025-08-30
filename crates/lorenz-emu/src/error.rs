@@ -69,4 +69,10 @@ pub enum ErrorEjecucion {
 
     #[error("la pantalla '{nombre}' usa el formato '{formato}', que el emulador no sabe dibujar")]
     FormatoDePantallaNoSoportado { nombre: String, formato: String },
+
+    #[error("la instantanea es de la maquina '{instantanea}' y esta es '{maquina}'")]
+    InstantaneaIncompatible {
+        instantanea: String,
+        maquina: String,
+    },
 }

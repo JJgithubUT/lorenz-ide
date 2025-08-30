@@ -59,3 +59,17 @@ pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> 
     }
     Ok(palabras)
 }
+
+/// Escribe palabras de `bits` bits como texto hexadecimal, `por_linea` por linea, con la misma
+/// sintaxis que `leer_palabras` entiende (RF-EMU-024).
+pub fn escribir_palabras(palabras: &[u64], bits: u32, por_linea: usize) -> String {
+    let digitos = (bits as usize).div_ceil(4);
+    let por_linea = por_linea.max(1);
+    let mut texto = String::new();
+    for fila in palabras.chunks(por_linea) {
+        let fila: Vec<String> = fila.iter().map(|p| format!("{p:0digitos$X}")).collect();
+        texto.push_str(&fila.join(" "));
+        texto.push('\n');
+    }
+    texto
+}

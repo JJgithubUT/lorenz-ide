@@ -227,3 +227,60 @@ fn cargar_un_programa_fuera_de_las_regiones_falla_sin_escribir() {
     ));
     assert_eq!(e.memoria().leer(0xF0FF).unwrap(), 0);
 }
+
+#[test]
+fn avanzar_ejecuta_exactamente_la_cantidad_pedida() {
+    let mut e = con_programa(&[0x00, 0x00, 0x00, 0xF0]);
+    let r = e.avanzar(2).unwrap();
+    assert_eq!((r.instrucciones, r.ciclos), (2, 2));
+    assert_eq!(e.estado().pc(), 2);
+    assert!(!e.estado().detenida());
+}
+
+#[test]
+fn avanzar_cero_no_ejecuta_nada() {
+    let mut e = con_programa(&[0xF0]);
+    let r = e.avanzar(0).unwrap();
+    assert_eq!(r.instrucciones, 0);
+    assert_eq!(e.estado().pc(), 0);
+}
+
+#[test]
+fn avanzar_se_detiene_si_la_maquina_se_detiene_antes() {
+    let mut e = con_programa(&[0x00, 0xF0]);
+    let r = e.avanzar(10).unwrap();
+    assert_eq!(r.instrucciones, 2);
+    assert!(e.estado().detenida());
+}
+
+#[test]
+fn avanzar_sobre_una_maquina_detenida_no_hace_nada() {
+    let mut e = con_programa(&[0xF0]);
+    e.ejecutar(10).unwrap();
+    assert_eq!(e.avanzar(5).unwrap().instrucciones, 0);
+}
+
+#[test]
+fn avanzar_en_varias_llamadas_equivale_a_ejecutar() {
+    let programa = [0x20, 200, 0x24, 100, 0x31, 0xF0];
+    let mut a = con_programa(&programa);
+    let mut b = con_programa(&programa);
+    a.ejecutar(10).unwrap();
+    while !b.estado().detenida() {
+        b.avanzar(1).unwrap();
+    }
+    assert_eq!(
+        a.estado().registro("A").unwrap(),
+        b.estado().registro("A").unwrap()
+    );
+    assert_eq!(a.estado().ciclos(), b.estado().ciclos());
+}
+
+#[test]
+fn avanzar_propaga_los_errores_de_ejecucion() {
+    let mut e = con_programa(&[0x00, 0x80]);
+    assert!(matches!(
+        e.avanzar(5),
+        Err(ErrorEjecucion::InstruccionInvalida { .. })
+    ));
+}
