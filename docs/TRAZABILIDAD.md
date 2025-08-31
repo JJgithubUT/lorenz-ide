@@ -33,8 +33,8 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-022 | Leer y escribir desde fuera del programa | Hecho | `leer_privilegiado`, `escribir_privilegiado` |
 | RF-EMU-023 | Cargar un binario en una direccion | Hecho | `cargar_bloque`, `cargar_programa` |
 | RF-EMU-024 | Volcar un rango a un archivo | Hecho | `--volcar` escribe en pantalla o en archivo, y se vuelve a cargar |
-| RF-EMU-025 | Ultima instruccion que escribio cada direccion | Pendiente | |
-| RF-EMU-026 | Marcar memoria no inicializada | Pendiente | |
+| RF-EMU-025 | Ultima instruccion que escribio cada direccion | Hecho | `Memoria::activar_seguimiento`, `ultima_escritura` |
+| RF-EMU-026 | Marcar memoria no inicializada | Hecho | `esta_inicializada`, `lecturas_sin_inicializar`, `--vigilar` |
 | RF-EMU-027 | Dispositivos por puertos | Hecho | `Puertos` |
 | RF-EMU-028 | Dispositivos por region mapeada | Parcial | solo la pantalla |
 | RF-EMU-029 | Error en un puerto no declarado | Hecho | `PuertoNoDeclarado` |
