@@ -17,6 +17,31 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Seguimiento de la memoria
+
+**Hecho:**
+
+- \`Memoria::activar_seguimiento\` anota quien escribio cada celda por ultima vez (la carga o la
+  instruccion en tal direccion) y cuales celdas nadie escribio (RF-EMU-025, RF-EMU-026). Solo se
+  reserva la memoria extra cuando se activa.
+- El interprete lee con \`leer_vigilada\`, que anota las lecturas de celdas sin escribir con la
+  direccion de la instruccion que las hizo (hasta 4096).
+- \`lorenz ejecutar --vigilar\` activa el seguimiento antes de cargar el programa y avisa de las
+  lecturas sin inicializar al terminar.
+- Pruebas: 23 de seguimiento, 2 de argumentos y 4 de la CLI.
+
+**Decidido:**
+
+- **D-024** — Al activar el seguimiento con memoria ya cargada, lo que vale distinto de cero se da
+  por cargado y lo que vale cero por no escrito. Motivo: no se puede saber mas; por eso la CLI lo
+  activa antes de cargar el programa.
+
+**Requisitos:** RF-EMU-025, RF-EMU-026.
+
+**Commits:** contador en $N al cerrar el bloque.
+
+---
+
 ## 2026-10-16 — Control de la ejecucion, instantaneas y volcado
 
 **Hecho:**

@@ -133,7 +133,9 @@ impl Interprete {
             Expr::Nombre(n) => self.leer_nombre(n, dec, entorno),
             Expr::Mem(direccion) => {
                 let d = self.evaluar(direccion, instruccion, dec, entorno)?;
-                Ok(i128::from(entorno.memoria.leer(self.direccion(d))?))
+                Ok(i128::from(
+                    entorno.memoria.leer_vigilada(self.direccion(d))?,
+                ))
             }
             Expr::Entrada(puerto) => {
                 let p = self.evaluar(puerto, instruccion, dec, entorno)?;

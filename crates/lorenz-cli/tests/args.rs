@@ -85,6 +85,7 @@ fn ejecutar_usa_valores_por_omision() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: false,
+            vigilar: false,
             teclas: None,
             serie: None,
             volcados: vec![],
@@ -114,6 +115,7 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             limite: 50,
             traza: true,
             pantalla: false,
+            vigilar: false,
             teclas: None,
             serie: None,
             volcados: vec![],
@@ -192,6 +194,7 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: true,
+            vigilar: false,
             teclas: Some("hola".into()),
             serie: None,
             volcados: vec![],
@@ -220,6 +223,7 @@ fn serie_es_una_opcion_de_ejecutar() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: false,
+            vigilar: false,
             teclas: None,
             serie: Some("hola".into()),
             volcados: vec![],
@@ -422,4 +426,20 @@ fn interrumpir_sin_valor_falla() {
         disparos(&["--interrumpir"]),
         Err(ErrorUso::OpcionSinValor("--interrumpir".into()))
     );
+}
+
+#[test]
+fn vigilar_es_una_opcion_de_ejecutar() {
+    match interpretar(&v(&["ejecutar", "m", "p", "--vigilar"])).unwrap() {
+        Orden::Ejecutar { vigilar, .. } => assert!(vigilar),
+        otra => panic!("{otra:?}"),
+    }
+}
+
+#[test]
+fn sin_la_opcion_vigilar_no_se_vigila() {
+    match interpretar(&v(&["ejecutar", "m", "p"])).unwrap() {
+        Orden::Ejecutar { vigilar, .. } => assert!(!vigilar),
+        otra => panic!("{otra:?}"),
+    }
 }

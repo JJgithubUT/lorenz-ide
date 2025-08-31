@@ -478,6 +478,7 @@ impl Emulador {
         }
         self.atender_interrupcion()?;
         let direccion = self.estado.pc();
+        self.memoria.fijar_instruccion_actual(direccion);
         let dec = self.decodificador.decodificar(&self.memoria, direccion)?;
         self.estado
             .fijar_pc(direccion.wrapping_add(dec.longitud as u64));

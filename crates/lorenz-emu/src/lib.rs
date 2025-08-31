@@ -11,7 +11,7 @@ pub mod error;
 pub use error::ErrorEjecucion;
 pub mod memoria;
 
-pub use memoria::Memoria;
+pub use memoria::{Escritura, LecturaSinInicializar, Memoria, MAX_LECTURAS_SIN_INICIALIZAR};
 pub mod estado;
 
 pub use estado::Estado;
