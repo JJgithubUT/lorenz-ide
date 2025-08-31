@@ -550,3 +550,44 @@ fn los_disparos_se_aplican_en_orden_de_instruccion_aunque_se_den_al_reves() {
     assert_eq!(r.codigo, SALIDA_OK);
     assert_eq!(r.salida.matches("interrupcion: linea 0").count(), 2);
 }
+
+// --- Lecturas de memoria sin inicializar (RF-EMU-026) ---
+
+#[test]
+fn vigilar_avisa_de_la_lectura_de_una_celda_sin_escribir() {
+    // LD A,[0x2005] ; HLT
+    let p = temporal("sin_inicializar.hex", "40 05 20 F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--vigilar"]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r
+        .salida
+        .contains("aviso: la instruccion en 0000 leyo 2005, que nadie habia escrito"));
+}
+
+#[test]
+fn sin_vigilar_no_hay_avisos() {
+    let p = temporal("sin_inicializar2.hex", "40 05 20 F0");
+    let r = correr(&["ejecutar", &maquina(), &p]);
+    assert!(!r.salida.contains("aviso:"));
+}
+
+#[test]
+fn vigilar_no_avisa_de_lo_que_el_programa_escribio_antes() {
+    // LDI A,1 ; ST A,[0x2000] ; LD B,[0x2000] ; HLT
+    let p = temporal("inicializada.hex", "20 01 50 00 20 44 00 20 F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--vigilar"]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(!r.salida.contains("aviso:"));
+}
+
+#[test]
+fn vigilar_no_cambia_el_resultado_de_la_ejecucion() {
+    let a = correr(&["ejecutar", &maquina(), &programa_de_ejemplo("suma.hex")]);
+    let b = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--vigilar",
+    ]);
+    assert_eq!(a.salida, b.salida);
+}
