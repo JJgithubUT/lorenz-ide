@@ -21,12 +21,12 @@ Formato de una entrada:
 
 **Hecho:**
 
-- \`Memoria::activar_seguimiento\` anota quien escribio cada celda por ultima vez (la carga o la
+- `Memoria::activar_seguimiento` anota quien escribio cada celda por ultima vez (la carga o la
   instruccion en tal direccion) y cuales celdas nadie escribio (RF-EMU-025, RF-EMU-026). Solo se
   reserva la memoria extra cuando se activa.
-- El interprete lee con \`leer_vigilada\`, que anota las lecturas de celdas sin escribir con la
+- El interprete lee con `leer_vigilada`, que anota las lecturas de celdas sin escribir con la
   direccion de la instruccion que las hizo (hasta 4096).
-- \`lorenz ejecutar --vigilar\` activa el seguimiento antes de cargar el programa y avisa de las
+- `lorenz ejecutar --vigilar` activa el seguimiento antes de cargar el programa y avisa de las
   lecturas sin inicializar al terminar.
 - Pruebas: 23 de seguimiento, 2 de argumentos y 4 de la CLI.
 
