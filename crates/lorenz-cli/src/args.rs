@@ -49,6 +49,8 @@ pub enum Orden {
         volcados: Vec<Volcado>,
         /// Interrupciones que se disparan a mano.
         disparos: Vec<Disparo>,
+        /// Guion de eventos de entrada que se reproducen durante la ejecucion.
+        guion: Option<String>,
         /// Direccion donde se carga el programa; por omision, la de arranque de la maquina.
         direccion: Option<u64>,
     },
@@ -134,6 +136,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut serie = None;
     let mut volcados = Vec::new();
     let mut disparos = Vec::new();
+    let mut guion = None;
     let mut direccion = None;
     let mut i = 0;
     while i < resto.len() {
@@ -142,6 +145,13 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
             "--traza" => traza = true,
             "--pantalla" => pantalla = true,
             "--vigilar" => vigilar = true,
+            "--guion" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                guion = Some(valor.clone());
+            }
             "--interrumpir" => {
                 i += 1;
                 let valor = resto
@@ -204,6 +214,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         serie,
         volcados,
         disparos,
+        guion,
         direccion,
     })
 }

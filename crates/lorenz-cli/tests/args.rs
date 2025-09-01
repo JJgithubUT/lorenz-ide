@@ -90,6 +90,7 @@ fn ejecutar_usa_valores_por_omision() {
             serie: None,
             volcados: vec![],
             disparos: vec![],
+            guion: None,
             direccion: None
         })
     );
@@ -120,6 +121,7 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             serie: None,
             volcados: vec![],
             disparos: vec![],
+            guion: None,
             direccion: Some(0x2000)
         })
     );
@@ -199,6 +201,7 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             serie: None,
             volcados: vec![],
             disparos: vec![],
+            guion: None,
             direccion: None
         })
     );
@@ -228,6 +231,7 @@ fn serie_es_una_opcion_de_ejecutar() {
             serie: Some("hola".into()),
             volcados: vec![],
             disparos: vec![],
+            guion: None,
             direccion: None
         })
     );
@@ -442,4 +446,20 @@ fn sin_la_opcion_vigilar_no_se_vigila() {
         Orden::Ejecutar { vigilar, .. } => assert!(!vigilar),
         otra => panic!("{otra:?}"),
     }
+}
+
+#[test]
+fn guion_es_una_opcion_de_ejecutar() {
+    match interpretar(&v(&["ejecutar", "m", "p", "--guion", "g.txt"])).unwrap() {
+        Orden::Ejecutar { guion, .. } => assert_eq!(guion, Some("g.txt".into())),
+        otra => panic!("{otra:?}"),
+    }
+}
+
+#[test]
+fn guion_necesita_un_valor() {
+    assert_eq!(
+        interpretar(&v(&["ejecutar", "m", "p", "--guion"])),
+        Err(ErrorUso::OpcionSinValor("--guion".into()))
+    );
 }

@@ -6,6 +6,7 @@ use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
 use crate::args::{interpretar, Disparo, Orden, Volcado};
+use crate::guion::{leer_guion, Accion, Evento};
 use crate::programa::{escribir_palabras, leer_palabras};
 
 /// El programa termino bien: la maquina se detuvo.
@@ -25,6 +26,7 @@ Uso:
   lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
                   [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
+                  [--guion ARCHIVO]
   lorenz ayuda
   lorenz version
 
@@ -70,6 +72,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             serie,
             volcados,
             disparos,
+            guion,
             direccion,
         } => {
             let opciones = Opciones {
@@ -81,6 +84,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 serie,
                 volcados,
                 disparos,
+                guion,
                 direccion,
             };
             ejecutar(&maquina, &programa, &opciones, salida, errores)
@@ -119,6 +123,7 @@ struct Opciones {
     serie: Option<String>,
     volcados: Vec<Volcado>,
     disparos: Vec<Disparo>,
+    guion: Option<String>,
     direccion: Option<u64>,
 }
 
@@ -212,9 +217,34 @@ fn ejecutar(
         }
     }
 
-    let mut disparos = opciones.disparos.clone();
-    disparos.sort_by_key(|d| d.instruccion);
-    let mut siguiente_disparo = 0;
+    // Eventos de la linea de comandos y del guion, ordenados por instruccion; a igual momento
+    // conservan el orden en que se dieron.
+    let mut eventos: Vec<Evento> = opciones
+        .disparos
+        .iter()
+        .map(|d| Evento {
+            instruccion: d.instruccion,
+            accion: Accion::Interrupcion(d.linea),
+        })
+        .collect();
+    if let Some(ruta) = &opciones.guion {
+        let texto = match std::fs::read_to_string(ruta) {
+            Ok(t) => t,
+            Err(e) => {
+                escribir(errores, &format!("{ruta}: no se pudo leer: {e}\n"));
+                return SALIDA_ERROR_USO;
+            }
+        };
+        match leer_guion(&texto) {
+            Ok(g) => eventos.extend(g),
+            Err(e) => {
+                escribir(errores, &format!("{ruta}: {e}\n"));
+                return SALIDA_ERROR_USO;
+            }
+        }
+    }
+    eventos.sort_by_key(|e| e.instruccion);
+    let mut siguiente_evento = 0;
     let mut ejecutadas = 0u64;
     let codigo = 'ejecucion: loop {
         if emulador.estado().detenida() {
@@ -225,15 +255,14 @@ fn ejecutar(
             escribir(errores, &format!("error: {e}\n"));
             break SALIDA_LIMITE;
         }
-        while siguiente_disparo < disparos.len()
-            && disparos[siguiente_disparo].instruccion <= ejecutadas
+        while siguiente_evento < eventos.len()
+            && eventos[siguiente_evento].instruccion <= ejecutadas
         {
-            let linea = disparos[siguiente_disparo].linea;
-            if let Err(e) = emulador.levantar_interrupcion(linea) {
-                escribir(errores, &format!("error: {e}\n"));
+            if let Err(mensaje) = aplicar(&mut emulador, &eventos[siguiente_evento].accion) {
+                escribir(errores, &format!("error: {mensaje}\n"));
                 break 'ejecucion SALIDA_ERROR_USO;
             }
-            siguiente_disparo += 1;
+            siguiente_evento += 1;
         }
         match emulador.paso() {
             Ok(Some(p)) => {
@@ -279,6 +308,39 @@ fn ejecutar(
         dibujar_pantallas(&emulador, salida);
     }
     codigo
+}
+
+/// Nombre del primer dispositivo de un tipo.
+fn primer_dispositivo(emulador: &Emulador, tipo: TipoDispositivo) -> Option<String> {
+    emulador
+        .maquina()
+        .dispositivos
+        .iter()
+        .find(|d| d.tipo == tipo)
+        .map(|d| d.nombre.clone())
+}
+
+/// Aplica un evento de entrada a la maquina.
+fn aplicar(emulador: &mut Emulador, accion: &Accion) -> Result<(), String> {
+    match accion {
+        Accion::Interrupcion(linea) => emulador
+            .levantar_interrupcion(*linea)
+            .map_err(|e| e.to_string()),
+        Accion::Tecla(codigo) => {
+            let teclado = primer_dispositivo(emulador, TipoDispositivo::Teclado)
+                .ok_or("la maquina no tiene teclado para el guion")?;
+            emulador
+                .pulsar_tecla(&teclado, *codigo)
+                .map_err(|e| e.to_string())
+        }
+        Accion::Serie(bytes) => {
+            let uart = primer_dispositivo(emulador, TipoDispositivo::Uart)
+                .ok_or("la maquina no tiene UART para el guion")?;
+            emulador
+                .recibir_en_uart(&uart, bytes)
+                .map_err(|e| e.to_string())
+        }
+    }
 }
 
 /// Vuelca un rango de memoria a la salida o a un archivo, en el formato que `lorenz ejecutar`
