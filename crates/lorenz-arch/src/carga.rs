@@ -64,6 +64,8 @@ struct InterrupcionesCrudas {
     #[serde(default)]
     vectores: BTreeMap<String, u64>,
     #[serde(default)]
+    prioridades: BTreeMap<String, u32>,
+    #[serde(default)]
     habilitadas_al_arrancar: bool,
 }
 
@@ -431,6 +433,11 @@ fn convertir(
     let interrupciones = m.interrupciones.map(|i| Interrupciones {
         vectores: i
             .vectores
+            .into_iter()
+            .filter_map(|(k, v)| k.parse::<u32>().ok().map(|linea| (linea, v)))
+            .collect(),
+        prioridades: i
+            .prioridades
             .into_iter()
             .filter_map(|(k, v)| k.parse::<u32>().ok().map(|linea| (linea, v)))
             .collect(),

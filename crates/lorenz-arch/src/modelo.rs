@@ -209,6 +209,9 @@ pub struct Dispositivo {
 pub struct Interrupciones {
     /// Linea a direccion del vector.
     pub vectores: BTreeMap<u32, u64>,
+    /// Prioridad de cada linea: la de numero menor se atiende antes. Una linea sin entrada usa su
+    /// propio numero como prioridad.
+    pub prioridades: BTreeMap<u32, u32>,
     pub habilitadas_al_arrancar: bool,
 }
 
@@ -228,6 +231,13 @@ pub struct Maquina {
     pub regiones: Vec<Region>,
     pub dispositivos: Vec<Dispositivo>,
     pub interrupciones: Option<Interrupciones>,
+}
+
+impl Interrupciones {
+    /// Prioridad efectiva de una linea (menor es mas urgente).
+    pub fn prioridad_de(&self, linea: u32) -> u32 {
+        self.prioridades.get(&linea).copied().unwrap_or(linea)
+    }
 }
 
 impl Maquina {

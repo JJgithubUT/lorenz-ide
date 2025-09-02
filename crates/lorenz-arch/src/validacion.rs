@@ -295,6 +295,14 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     }
 
     if let Some(int) = &m.interrupciones {
+        for linea in int.prioridades.keys() {
+            if !int.vectores.contains_key(linea) {
+                fallos.push(fallo(
+                    Regla::ValorFueraDeRango,
+                    format!("la linea {linea} tiene prioridad pero no tiene vector declarado"),
+                ));
+            }
+        }
         for dispositivo in &m.dispositivos {
             if let Some(linea) = dispositivo.interrupcion {
                 if !int.vectores.contains_key(&linea) {
