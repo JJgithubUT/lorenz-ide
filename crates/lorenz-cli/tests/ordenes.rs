@@ -591,3 +591,160 @@ fn vigilar_no_cambia_el_resultado_de_la_ejecucion() {
     ]);
     assert_eq!(a.salida, b.salida);
 }
+
+// --- Guiones de entrada (RF-EMU-041) ---
+
+fn guion_de(nombre: &str, contenido: &str) -> String {
+    temporal(nombre, contenido)
+}
+
+#[test]
+fn un_guion_de_interrupcion_equivale_a_interrumpir() {
+    let guion = raiz().join("ejemplos/ejemplo-8/programas/interrupcion.guion");
+    let con_guion = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--guion",
+        &guion.to_string_lossy(),
+    ]);
+    let con_opcion = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--interrumpir",
+        "0@8",
+    ]);
+    assert_eq!(con_guion.codigo, SALIDA_OK);
+    assert_eq!(con_guion.salida, con_opcion.salida);
+}
+
+#[test]
+fn un_guion_entrega_texto_a_la_uart_en_el_momento_indicado() {
+    let guion = raiz().join("ejemplos/ejemplo-8-serie/programas/eco.guion");
+    let r = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--guion",
+        &guion.to_string_lossy(),
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(r.salida.contains("uart serie:\nZ\n"));
+}
+
+#[test]
+fn el_texto_llega_demasiado_tarde_si_el_momento_es_posterior_a_la_lectura() {
+    let guion = guion_de("tarde.guion", "@2 serie \"Z\"");
+    let r = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--guion",
+        &guion,
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    // IN leyo antes de que llegara nada: transmite un 0, no la Z.
+    assert!(!r.salida.contains("uart serie:\nZ"));
+}
+
+#[test]
+fn el_mismo_guion_da_siempre_el_mismo_resultado() {
+    let guion = guion_de("repetible.guion", "@0 serie \"Q\"\n@1 interrupcion 0\n");
+    let a = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--guion",
+        &guion,
+    ]);
+    let b = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--guion",
+        &guion,
+    ]);
+    assert_eq!(a.salida, b.salida);
+    assert_eq!(a.codigo, b.codigo);
+}
+
+#[test]
+fn un_guion_con_un_error_de_sintaxis_cita_el_archivo_y_la_linea() {
+    let guion = guion_de("roto.guion", "@0 serie \"ok\"\n@x teclado 1\n");
+    let r = correr(&[
+        "ejecutar",
+        &serie(),
+        &programa_serie("eco.hex"),
+        "--guion",
+        &guion,
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("roto.guion"));
+    assert!(r.errores.contains("linea 2"));
+}
+
+#[test]
+fn un_guion_inexistente_es_error_de_uso() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--guion",
+        "/no/hay.guion",
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no se pudo leer"));
+}
+
+#[test]
+fn un_guion_con_teclas_en_una_maquina_sin_teclado_falla() {
+    let texto = std::fs::read_to_string(maquina()).unwrap();
+    let inicio = texto
+        .find("[[dispositivo]]\nnombre       = \"teclado\"")
+        .unwrap();
+    let m = temporal("sin_teclado2.toml", &texto[..inicio]);
+    let guion = guion_de("tecla.guion", "@0 teclado 65\n");
+    let p = temporal("espera4.hex", "F0");
+    let r = correr(&["ejecutar", &m, &p, "--guion", &guion]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no tiene teclado"));
+}
+
+#[test]
+fn un_guion_con_texto_en_una_maquina_sin_uart_falla() {
+    let guion = guion_de("serie.guion", "@0 serie \"x\"\n");
+    let p = temporal("espera5.hex", "F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--guion", &guion]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no tiene UART"));
+}
+
+#[test]
+fn un_guion_con_una_linea_sin_vector_falla() {
+    let guion = guion_de("linea.guion", "@0 interrupcion 9\n");
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--guion",
+        &guion,
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("linea de interrupcion 9"));
+}
+
+#[test]
+fn los_eventos_del_guion_y_de_interrumpir_se_ordenan_juntos() {
+    let guion = guion_de("mezcla.guion", "@9 interrupcion 0\n");
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("interrupcion.hex"),
+        "--guion",
+        &guion,
+        "--interrumpir",
+        "0@8",
+    ]);
+    assert_eq!(r.salida.matches("interrupcion: linea 0").count(), 2);
+}

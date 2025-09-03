@@ -12,3 +12,5 @@ pub mod ordenes;
 pub use ordenes::{
     ejecutar_cli, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
 };
+
+pub mod guion;

@@ -307,7 +307,8 @@ impl Emulador {
     /// Levanta una linea de interrupcion. Se atiende antes de la siguiente instruccion si las
     /// interrupciones estan habilitadas; mientras tanto queda pendiente.
     ///
-    /// Si varias lineas esperan, se atiende primero la de numero menor (D-019).
+    /// Si varias lineas esperan, se atiende primero la de menor prioridad numerica; sin prioridades
+    /// declaradas, la de menor numero de linea (D-019).
     pub fn levantar_interrupcion(&mut self, linea: u32) -> Result<(), ErrorEjecucion> {
         let declarada = self
             .maquina
@@ -331,7 +332,17 @@ impl Emulador {
         self.atendidas_sin_registrar
     }
 
-    /// Lineas de interrupcion que esperan ser atendidas, de menor a mayor.
+    /// La linea pendiente que se atenderia primero: la de menor prioridad numerica y, a igual
+    /// prioridad, la de menor numero de linea (RF-EMU-036).
+    pub fn siguiente_interrupcion(&self) -> Option<u32> {
+        let int = self.maquina.interrupciones.as_ref()?;
+        self.pendientes
+            .iter()
+            .copied()
+            .min_by_key(|l| (int.prioridad_de(*l), *l))
+    }
+
+    /// Lineas de interrupcion que esperan ser atendidas, ordenadas por numero de linea.
     pub fn interrupciones_pendientes(&self) -> Vec<u32> {
         self.pendientes.iter().copied().collect()
     }
@@ -419,7 +430,7 @@ impl Emulador {
         if !self.estado.interrupciones_habilitadas() {
             return Ok(false);
         }
-        let Some(&linea) = self.pendientes.iter().next() else {
+        let Some(linea) = self.siguiente_interrupcion() else {
             return Ok(false);
         };
         let vector = self

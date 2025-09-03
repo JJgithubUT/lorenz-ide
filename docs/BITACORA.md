@@ -17,16 +17,32 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Guion de entrada y prioridades de interrupcion
+
+**Hecho:**
+
+- `--guion` reproduce eventos de entrada (teclas, texto por serie, interrupciones) en la
+  instruccion indicada (RF-EMU-041).
+- La arquitectura declara `prioridades` por linea y el emulador atiende primero la mejor
+  (RF-EMU-036); sin declarar, gana la linea de menor numero.
+
+**Decidido:** la prioridad es numerica y menor significa mas urgente (D-019 se mantiene).
+**Pendiente:** RF-EMU-011, 013, 034, 035, 045, 046 y la parte no grafica de 028.
+**Requisitos:** RF-EMU-036, RF-EMU-041.
+**Commits:** feat/emu-guion (#150-#159).
+
+---
+
 ## 2026-10-16 — Seguimiento de la memoria
 
 **Hecho:**
 
-- \`Memoria::activar_seguimiento\` anota quien escribio cada celda por ultima vez (la carga o la
+- `Memoria::activar_seguimiento` anota quien escribio cada celda por ultima vez (la carga o la
   instruccion en tal direccion) y cuales celdas nadie escribio (RF-EMU-025, RF-EMU-026). Solo se
   reserva la memoria extra cuando se activa.
-- El interprete lee con \`leer_vigilada\`, que anota las lecturas de celdas sin escribir con la
+- El interprete lee con `leer_vigilada`, que anota las lecturas de celdas sin escribir con la
   direccion de la instruccion que las hizo (hasta 4096).
-- \`lorenz ejecutar --vigilar\` activa el seguimiento antes de cargar el programa y avisa de las
+- `lorenz ejecutar --vigilar` activa el seguimiento antes de cargar el programa y avisa de las
   lecturas sin inicializar al terminar.
 - Pruebas: 23 de seguimiento, 2 de argumentos y 4 de la CLI.
 

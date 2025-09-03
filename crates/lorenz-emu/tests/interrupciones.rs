@@ -378,3 +378,61 @@ fn reiniciar_borra_el_registro() {
     assert!(e.interrupciones_atendidas().is_empty());
     assert_eq!(e.interrupciones_sin_registrar(), 0);
 }
+
+// --- Prioridades declaradas (RF-EMU-036) ---
+
+fn con_prioridades(p0: u32, p1: u32) -> Emulador {
+    let mut m = ejemplo_8();
+    let int = m.interrupciones.as_mut().unwrap();
+    int.prioridades.insert(0, p0);
+    int.prioridades.insert(1, p1);
+    emulador_de(m)
+}
+
+#[test]
+fn sin_prioridades_declaradas_gana_la_linea_de_menor_numero() {
+    let mut e = emulador();
+    e.levantar_interrupcion(1).unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    assert_eq!(e.siguiente_interrupcion(), Some(0));
+}
+
+#[test]
+fn una_prioridad_declarada_puede_invertir_el_orden() {
+    let mut e = con_prioridades(5, 1);
+    e.levantar_interrupcion(0).unwrap();
+    e.levantar_interrupcion(1).unwrap();
+    assert_eq!(e.siguiente_interrupcion(), Some(1));
+}
+
+#[test]
+fn se_atiende_primero_la_de_mejor_prioridad() {
+    let mut e = con_prioridades(5, 1);
+    e.estado_mut().habilitar_interrupciones(true);
+    e.levantar_interrupcion(0).unwrap();
+    e.levantar_interrupcion(1).unwrap();
+    let p = e.paso().unwrap().unwrap();
+    assert_eq!(p.direccion, 0x0110);
+    assert_eq!(e.interrupciones_atendidas()[0].linea, 1);
+}
+
+#[test]
+fn a_igual_prioridad_gana_el_menor_numero_de_linea() {
+    let mut e = con_prioridades(3, 3);
+    e.levantar_interrupcion(1).unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    assert_eq!(e.siguiente_interrupcion(), Some(0));
+}
+
+#[test]
+fn sin_nada_pendiente_no_hay_siguiente() {
+    assert_eq!(emulador().siguiente_interrupcion(), None);
+}
+
+#[test]
+fn la_lista_de_pendientes_sigue_ordenada_por_numero_de_linea() {
+    let mut e = con_prioridades(5, 1);
+    e.levantar_interrupcion(1).unwrap();
+    e.levantar_interrupcion(0).unwrap();
+    assert_eq!(e.interrupciones_pendientes(), [0, 1]);
+}
