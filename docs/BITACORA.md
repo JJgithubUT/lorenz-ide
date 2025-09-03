@@ -17,6 +17,22 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Guion de entrada y prioridades de interrupcion
+
+**Hecho:**
+
+- `--guion` reproduce eventos de entrada (teclas, texto por serie, interrupciones) en la
+  instruccion indicada (RF-EMU-041).
+- La arquitectura declara `prioridades` por linea y el emulador atiende primero la mejor
+  (RF-EMU-036); sin declarar, gana la linea de menor numero.
+
+**Decidido:** la prioridad es numerica y menor significa mas urgente (D-019 se mantiene).
+**Pendiente:** RF-EMU-011, 013, 034, 035, 045, 046 y la parte no grafica de 028.
+**Requisitos:** RF-EMU-036, RF-EMU-041.
+**Commits:** feat/emu-guion (#150-#159).
+
+---
+
 ## 2026-10-16 — Seguimiento de la memoria
 
 **Hecho:**
