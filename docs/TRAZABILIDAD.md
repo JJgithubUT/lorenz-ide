@@ -44,12 +44,12 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-033 | Temporizador programable | Hecho | `Temporizador`, periodo en ciclos |
 | RF-EMU-034 | Almacenamiento por bloques | Pendiente | |
 | RF-EMU-035 | Dispositivos propios con script | Pendiente | |
-| RF-EMU-036 | Prioridad de las lineas de interrupcion | Parcial | gana la de menor numero; falta prioridad declarada |
+| RF-EMU-036 | Prioridad de las lineas de interrupcion | Hecho | `prioridades` en la arquitectura; gana la menor, y a igual prioridad la de menor linea |
 | RF-EMU-037 | Saltar al vector al aceptar una interrupcion | Hecho | `atender_interrupcion` |
 | RF-EMU-038 | Respetar la habilitacion global | Hecho | `ie`, `EI`, `DI`, `RETI` |
 | RF-EMU-039 | Registrar cada interrupcion atendida | Hecho | `interrupciones_atendidas`; la CLI las lista |
 | RF-EMU-040 | Disparar una interrupcion a mano | Hecho | `levantar_interrupcion`, `--interrumpir LINEA@INSTRUCCION` |
-| RF-EMU-041 | Entrada grabada para reproducir | Pendiente | |
+| RF-EMU-041 | Entrada grabada para reproducir | Hecho | `--guion ARCHIVO` (teclas, serie e interrupciones por instruccion) |
 | RF-EMU-042 | Ejecutar sin interfaz grafica | Hecho | `lorenz ejecutar` |
 | RF-EMU-043 | Codigo de salida segun parada, error o limite | Hecho | 0, 1, 3 (2 es uso incorrecto) |
 | RF-EMU-044 | Limite de instrucciones | Hecho | `--limite` |

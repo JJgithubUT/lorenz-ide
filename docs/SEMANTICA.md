@@ -106,3 +106,9 @@ Una instruccion de retorno se escribe en la propia arquitectura. Para el ejemplo
 ```text
 pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1
 ```
+
+## Prioridad de las interrupciones
+
+La seccion `[maquina.interrupciones]` admite `prioridades = { linea = valor }`. Entre las lineas
+pendientes se atiende la de menor valor; a igual valor (o sin declarar), la de menor numero de
+linea (RF-EMU-036).
