@@ -108,6 +108,7 @@ pub struct Emulador {
     temporizadores: Vec<Temporizador>,
     atendidas: Vec<InterrupcionAtendida>,
     atendidas_sin_registrar: u64,
+    en_pausa: bool,
 }
 
 impl Emulador {
@@ -131,6 +132,7 @@ impl Emulador {
             temporizadores,
             atendidas: Vec::new(),
             atendidas_sin_registrar: 0,
+            en_pausa: false,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
             estado: Estado::nuevo(&maquina),
@@ -185,10 +187,26 @@ impl Emulador {
         self.pendientes.clear();
         self.atendidas.clear();
         self.atendidas_sin_registrar = 0;
+        self.en_pausa = false;
         for t in &mut self.temporizadores {
             t.acumulado = 0;
             t.ticks = 0;
         }
+    }
+
+    /// Pone la maquina en pausa: `avanzar` y `ejecutar` se niegan a correr hasta reanudarla.
+    /// Un `paso` suelto sigue permitido, para que un depurador avance a mano (RF-EMU-013).
+    pub fn pausar(&mut self) {
+        self.en_pausa = true;
+    }
+
+    /// Quita la pausa; la ejecucion sigue donde se quedo.
+    pub fn reanudar(&mut self) {
+        self.en_pausa = false;
+    }
+
+    pub fn en_pausa(&self) -> bool {
+        self.en_pausa
     }
 
     /// Copia el estado completo de la maquina.
@@ -532,6 +550,9 @@ impl Emulador {
     /// Ejecuta como mucho `cantidad` instrucciones y devuelve el control, se haya detenido la
     /// maquina o no (RF-EMU-010). Es lo que usa un depurador para avanzar de a poco.
     pub fn avanzar(&mut self, cantidad: u64) -> Result<Resumen, ErrorEjecucion> {
+        if self.en_pausa {
+            return Err(ErrorEjecucion::EnPausa);
+        }
         let mut resumen = Resumen {
             instrucciones: 0,
             ciclos: 0,
@@ -553,6 +574,9 @@ impl Emulador {
     /// El limite cuenta las instrucciones de esta llamada. Si se alcanza sin detenerse, devuelve
     /// `LimiteDeInstrucciones` (RF-EMU-017): un programa que no termina no cuelga al usuario.
     pub fn ejecutar(&mut self, limite: u64) -> Result<Resumen, ErrorEjecucion> {
+        if self.en_pausa {
+            return Err(ErrorEjecucion::EnPausa);
+        }
         let mut resumen = Resumen {
             instrucciones: 0,
             ciclos: 0,
