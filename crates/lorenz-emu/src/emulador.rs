@@ -109,6 +109,10 @@ pub struct Emulador {
     atendidas: Vec<InterrupcionAtendida>,
     atendidas_sin_registrar: u64,
     en_pausa: bool,
+    frecuencia_hz: Option<u64>,
+    /// Credito de tiempo en nanosegundos por hercio; un ciclo cuesta 1 000 000 000. Puede quedar
+    /// negativo si la ultima instruccion se paso del tiempo dado.
+    credito: i128,
 }
 
 impl Emulador {
@@ -133,6 +137,8 @@ impl Emulador {
             atendidas: Vec::new(),
             atendidas_sin_registrar: 0,
             en_pausa: false,
+            frecuencia_hz: None,
+            credito: 0,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
             estado: Estado::nuevo(&maquina),
@@ -188,6 +194,7 @@ impl Emulador {
         self.atendidas.clear();
         self.atendidas_sin_registrar = 0;
         self.en_pausa = false;
+        self.credito = 0;
         for t in &mut self.temporizadores {
             t.acumulado = 0;
             t.ticks = 0;
@@ -207,6 +214,52 @@ impl Emulador {
 
     pub fn en_pausa(&self) -> bool {
         self.en_pausa
+    }
+
+    /// Frecuencia objetivo en hercios; `None` es la maxima velocidad (RF-EMU-011, RF-EMU-012).
+    pub fn frecuencia_hz(&self) -> Option<u64> {
+        self.frecuencia_hz
+    }
+
+    /// Fija la frecuencia objetivo. Cero se rechaza: una maquina a 0 Hz no avanzaria nunca.
+    pub fn fijar_frecuencia_hz(&mut self, hz: Option<u64>) -> Result<(), ErrorEjecucion> {
+        if hz == Some(0) {
+            return Err(ErrorEjecucion::FrecuenciaInvalida);
+        }
+        self.frecuencia_hz = hz;
+        self.credito = 0;
+        Ok(())
+    }
+
+    /// Deja correr la maquina durante `nanosegundos` de tiempo emulado a la frecuencia objetivo.
+    ///
+    /// No espera nada: el llamador decide cuando invocarla (un bucle en tiempo real, o una prueba
+    /// con tiempo inventado). Lo que sobra o falta de una llamada pasa a la siguiente, de modo que
+    /// la suma de muchos intervalos pequenos equivale a uno grande. Sin frecuencia fijada da error.
+    pub fn avanzar_tiempo(&mut self, nanosegundos: u64) -> Result<Resumen, ErrorEjecucion> {
+        if self.en_pausa {
+            return Err(ErrorEjecucion::EnPausa);
+        }
+        let hz = self.frecuencia_hz.ok_or(ErrorEjecucion::SinFrecuencia)?;
+        self.credito += i128::from(nanosegundos) * i128::from(hz);
+        let mut resumen = Resumen {
+            instrucciones: 0,
+            ciclos: 0,
+        };
+        while self.credito > 0 {
+            match self.paso()? {
+                Some(paso) => {
+                    resumen.instrucciones += 1;
+                    resumen.ciclos += paso.ciclos;
+                    self.credito -= i128::from(paso.ciclos) * 1_000_000_000;
+                }
+                None => {
+                    self.credito = 0;
+                    break;
+                }
+            }
+        }
+        Ok(resumen)
     }
 
     /// Copia el estado completo de la maquina.

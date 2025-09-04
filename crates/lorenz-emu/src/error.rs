@@ -52,6 +52,12 @@ pub enum ErrorEjecucion {
     #[error("se alcanzo el limite de {limite} instrucciones")]
     LimiteDeInstrucciones { limite: u64 },
 
+    #[error("la frecuencia objetivo debe ser mayor que cero")]
+    FrecuenciaInvalida,
+
+    #[error("no hay frecuencia objetivo; fijala antes de avanzar por tiempo")]
+    SinFrecuencia,
+
     #[error("la maquina esta en pausa; reanudala antes de ejecutar")]
     EnPausa,
 
