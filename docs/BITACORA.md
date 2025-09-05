@@ -17,6 +17,22 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Pausa y frecuencia objetivo
+
+**Hecho:**
+
+- `pausar`/`reanudar`: `avanzar`, `ejecutar` y `avanzar_tiempo` se niegan en pausa; `paso` no (RF-EMU-013).
+- `fijar_frecuencia_hz` y `avanzar_tiempo(ns)` ejecutan los ciclos que caben en el tiempo dado,
+  arrastrando el resto al siguiente intervalo (RF-EMU-011).
+
+**Decidido:** D-025 — el emulador no mide tiempo real ni duerme; el tiempo entra como dato, asi
+las pruebas son deterministas. El ritmo real lo pondra el CLI o el depurador.
+**Pendiente:** RF-EMU-034, 035, 045 (formato maquina), 046 y la parte no grafica de 028.
+**Requisitos:** RF-EMU-011, RF-EMU-013.
+**Commits:** feat/emu-pausa (#161-#164). Contador: 164.
+
+---
+
 ## 2026-10-16 — Guion de entrada y prioridades de interrupcion
 
 **Hecho:**
