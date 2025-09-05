@@ -23,7 +23,7 @@ Lorenz: emulador de maquinas definidas por el usuario
 
 Uso:
   lorenz validar <maquina.toml>
-  lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza]
+  lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza | --traza-maquina]
                   [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
@@ -66,6 +66,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             programa,
             limite,
             traza,
+            traza_maquina,
             pantalla,
             vigilar,
             teclas,
@@ -78,6 +79,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             let opciones = Opciones {
                 limite,
                 traza,
+                traza_maquina,
                 pantalla,
                 vigilar,
                 teclas,
@@ -117,6 +119,7 @@ fn validar(ruta: &str, salida: &mut dyn Write, errores: &mut dyn Write) -> i32 {
 struct Opciones {
     limite: u64,
     traza: bool,
+    traza_maquina: bool,
     pantalla: bool,
     vigilar: bool,
     teclas: Option<String>,
@@ -267,7 +270,19 @@ fn ejecutar(
         match emulador.paso() {
             Ok(Some(p)) => {
                 ejecutadas += 1;
-                if traza {
+                if traza && opciones.traza_maquina {
+                    escribir(
+                        salida,
+                        &format!(
+                            "pc={:#0ancho$x} op={} ciclos={} salto={}\n",
+                            p.direccion,
+                            p.mnemonico,
+                            p.ciclos,
+                            u8::from(p.salto),
+                            ancho = digitos + 2
+                        ),
+                    );
+                } else if traza {
                     escribir(
                         salida,
                         &format!(
