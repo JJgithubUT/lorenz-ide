@@ -19,9 +19,9 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-008 | Detenerse ante una instruccion de parada | Hecho | `detener` |
 | RF-EMU-009 | Error ante una palabra que no es instruccion | Hecho | `ErrorEjecucion::InstruccionInvalida` |
 | RF-EMU-010 | Ejecutar N instrucciones y devolver el control | Hecho | `Emulador::avanzar`; `ejecutar(limite)` corta con error |
-| RF-EMU-011 | Frecuencia objetivo en hercios | Pendiente | |
+| RF-EMU-011 | Frecuencia objetivo en hercios | Hecho | `fijar_frecuencia_hz`, `avanzar_tiempo(ns)`; el tiempo lo aporta el llamador |
 | RF-EMU-012 | Maxima velocidad sin frecuencia | Hecho | `ejecutar` |
-| RF-EMU-013 | Pausar y reanudar | Pendiente | |
+| RF-EMU-013 | Pausar y reanudar | Hecho | `pausar`, `reanudar`; el `paso` suelto sigue permitido |
 | RF-EMU-014 | Reiniciar sin recargar el programa | Hecho | `Emulador::reiniciar` |
 | RF-EMU-015 | Contar instrucciones y ciclos | Hecho | `Estado::contar_instruccion` |
 | RF-EMU-016 | Resultados identicos con la misma entrada | Hecho | pruebas de determinismo |
