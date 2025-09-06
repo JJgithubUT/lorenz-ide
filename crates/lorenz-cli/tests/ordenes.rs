@@ -748,3 +748,44 @@ fn los_eventos_del_guion_y_de_interrumpir_se_ordenan_juntos() {
     ]);
     assert_eq!(r.salida.matches("interrupcion: linea 0").count(), 2);
 }
+
+#[test]
+fn la_traza_de_maquina_usa_clave_valor() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--traza-maquina",
+    ]);
+    let lineas: Vec<&str> = r.salida.lines().take(4).collect();
+    assert_eq!(lineas[0], "pc=0x0000 op=LDI ciclos=2 salto=0");
+    assert_eq!(lineas[3], "pc=0x0005 op=HLT ciclos=1 salto=0");
+}
+
+#[test]
+fn la_traza_de_maquina_marca_los_saltos_con_uno() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("bucle.hex"),
+        "--traza-maquina",
+    ]);
+    assert!(r.salida.contains(" salto=1\n"), "{}", r.salida);
+}
+
+#[test]
+fn la_traza_de_maquina_no_usa_el_formato_para_personas() {
+    let r = correr(&[
+        "ejecutar",
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+        "--traza-maquina",
+    ]);
+    assert!(!r.salida.contains("ciclos\n"));
+}
+
+#[test]
+fn la_ayuda_menciona_la_traza_de_maquina() {
+    let r = correr(&["ayuda"]);
+    assert!(r.salida.contains("--traza-maquina"));
+}

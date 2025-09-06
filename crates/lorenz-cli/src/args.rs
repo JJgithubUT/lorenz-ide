@@ -37,6 +37,8 @@ pub enum Orden {
         programa: String,
         limite: u64,
         traza: bool,
+        /// La traza sale en formato de maquina (`clave=valor`), pensado para compararla con otra.
+        traza_maquina: bool,
         /// Dibujar las pantallas de la maquina al terminar.
         pantalla: bool,
         /// Avisar de las lecturas de memoria que nadie habia escrito.
@@ -130,6 +132,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut posicionales: Vec<String> = Vec::new();
     let mut limite = LIMITE_POR_OMISION;
     let mut traza = false;
+    let mut traza_maquina = false;
     let mut pantalla = false;
     let mut vigilar = false;
     let mut teclas = None;
@@ -143,6 +146,10 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         let a = &resto[i];
         match a.as_str() {
             "--traza" => traza = true,
+            "--traza-maquina" => {
+                traza = true;
+                traza_maquina = true;
+            }
             "--pantalla" => pantalla = true,
             "--vigilar" => vigilar = true,
             "--guion" => {
@@ -208,6 +215,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         programa,
         limite,
         traza,
+        traza_maquina,
         pantalla,
         vigilar,
         teclas,

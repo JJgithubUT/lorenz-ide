@@ -85,6 +85,7 @@ fn ejecutar_usa_valores_por_omision() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: false,
+            traza_maquina: false,
             vigilar: false,
             teclas: None,
             serie: None,
@@ -116,6 +117,7 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             limite: 50,
             traza: true,
             pantalla: false,
+            traza_maquina: false,
             vigilar: false,
             teclas: None,
             serie: None,
@@ -196,6 +198,7 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: true,
+            traza_maquina: false,
             vigilar: false,
             teclas: Some("hola".into()),
             serie: None,
@@ -226,6 +229,7 @@ fn serie_es_una_opcion_de_ejecutar() {
             limite: LIMITE_POR_OMISION,
             traza: false,
             pantalla: false,
+            traza_maquina: false,
             vigilar: false,
             teclas: None,
             serie: Some("hola".into()),
@@ -462,4 +466,24 @@ fn guion_necesita_un_valor() {
         interpretar(&v(&["ejecutar", "m", "p", "--guion"])),
         Err(ErrorUso::OpcionSinValor("--guion".into()))
     );
+}
+
+#[test]
+fn traza_maquina_activa_tambien_la_traza() {
+    match interpretar(&v(&["ejecutar", "m", "p", "--traza-maquina"])).unwrap() {
+        Orden::Ejecutar {
+            traza,
+            traza_maquina,
+            ..
+        } => assert!(traza && traza_maquina),
+        o => panic!("{o:?}"),
+    }
+}
+
+#[test]
+fn traza_a_secas_no_pide_el_formato_de_maquina() {
+    match interpretar(&v(&["ejecutar", "m", "p", "--traza"])).unwrap() {
+        Orden::Ejecutar { traza_maquina, .. } => assert!(!traza_maquina),
+        o => panic!("{o:?}"),
+    }
 }
