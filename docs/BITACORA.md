@@ -17,6 +17,16 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Traza en formato de maquina
+
+**Hecho:** `lorenz ejecutar --traza-maquina` escribe `pc=0x0000 op=LDI ciclos=2 salto=0` por
+instruccion (RF-EMU-045). Base para comparar dos implementaciones (RF-EMU-046).
+**Pendiente:** RF-EMU-034, 035, 046 y la parte no grafica de 028.
+**Requisitos:** RF-EMU-045.
+**Commits:** feat/cli-traza-maquina (#165-#168). Contador: 168.
+
+---
+
 ## 2026-10-16 — Pausa y frecuencia objetivo
 
 **Hecho:**
