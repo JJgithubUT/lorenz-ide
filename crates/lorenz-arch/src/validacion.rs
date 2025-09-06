@@ -294,6 +294,24 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         }
     }
 
+    for dispositivo in &m.dispositivos {
+        if let TipoDispositivo::Bloques {
+            tamano_bloque,
+            cantidad_bloques,
+        } = dispositivo.tipo
+        {
+            if tamano_bloque == 0 || cantidad_bloques == 0 {
+                fallos.push(fallo(
+                    Regla::ValorFueraDeRango,
+                    format!(
+                        "el dispositivo de bloques '{}' necesita tamano_bloque y cantidad_bloques de al menos 1",
+                        dispositivo.nombre
+                    ),
+                ));
+            }
+        }
+    }
+
     if let Some(int) = &m.interrupciones {
         for linea in int.prioridades.keys() {
             if !int.vectores.contains_key(linea) {
