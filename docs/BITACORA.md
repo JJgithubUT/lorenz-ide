@@ -17,6 +17,22 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Almacenamiento por bloques
+
+**Hecho:**
+
+- La arquitectura declara `cantidad_bloques` y rechaza tamano o cantidad cero.
+- El emulador implementa el disco con puertos `bloque`, `datos` y `estado` (ver SEMANTICA.md);
+  `cargar_bloque` y `leer_bloque` permiten poner y sacar imagenes desde fuera (RF-EMU-034).
+- El contenido del disco sobrevive a `reiniciar` y entra en las instantaneas.
+
+**Decidido:** D-026 — un acceso erroneo al disco enciende el bit de error y no escribe nada.
+**Pendiente:** RF-EMU-035, 046 y la parte no grafica de 028.
+**Requisitos:** RF-EMU-034.
+**Commits:** feat/arch-cantidad-bloques (#170-#174). Contador: 174.
+
+---
+
 ## 2026-10-16 — Traza en formato de maquina
 
 **Hecho:** `lorenz ejecutar --traza-maquina` escribe `pc=0x0000 op=LDI ciclos=2 salto=0` por
