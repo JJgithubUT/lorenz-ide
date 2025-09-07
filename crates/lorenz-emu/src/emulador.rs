@@ -201,6 +201,25 @@ impl Emulador {
         }
     }
 
+    /// Escribe un bloque de un dispositivo de almacenamiento desde fuera (RF-EMU-034).
+    pub fn cargar_bloque(
+        &mut self,
+        dispositivo: &str,
+        bloque: usize,
+        palabras: &[u64],
+    ) -> Result<(), ErrorEjecucion> {
+        self.puertos.cargar_bloque(dispositivo, bloque, palabras)
+    }
+
+    /// Lee un bloque de un dispositivo de almacenamiento desde fuera.
+    pub fn leer_bloque(
+        &mut self,
+        dispositivo: &str,
+        bloque: usize,
+    ) -> Result<Vec<u64>, ErrorEjecucion> {
+        self.puertos.leer_bloque(dispositivo, bloque)
+    }
+
     /// Pone la maquina en pausa: `avanzar` y `ejecutar` se niegan a correr hasta reanudarla.
     /// Un `paso` suelto sigue permitido, para que un depurador avance a mano (RF-EMU-013).
     pub fn pausar(&mut self) {

@@ -7,8 +7,33 @@ use lorenz_arch::modelo::{Maquina, TipoDispositivo};
 use crate::error::ErrorEjecucion;
 use crate::estado::mascara_de;
 
+/// Papel de un puerto dentro de un dispositivo de bloques.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Papel {
+    /// Escribir el numero de bloque lo selecciona y pone el cursor al principio.
+    Bloque,
+    /// Leer o escribir la siguiente palabra del bloque seleccionado.
+    Datos,
+    /// Bit 0: listo (siempre). Bit 1: el ultimo acceso fue erroneo.
+    Estado,
+}
+
+/// Contenido y posicion de un dispositivo de almacenamiento por bloques (RF-EMU-034).
+#[derive(Debug, Clone)]
+struct Almacen {
+    nombre: String,
+    tamano: usize,
+    cantidad: usize,
+    palabras: Vec<u64>,
+    bloque: usize,
+    cursor: usize,
+    error: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 struct Puerto {
+    /// Dispositivo de bloques al que pertenece y que papel juega en el.
+    almacen: Option<(usize, Papel)>,
     entrada: VecDeque<u64>,
     salida: Vec<u64>,
     /// Si es el puerto de estado de un teclado o una UART: el puerto de datos del que informa y
@@ -25,15 +50,43 @@ struct Puerto {
 #[derive(Debug, Clone)]
 pub struct Puertos {
     puertos: BTreeMap<u64, Puerto>,
+    almacenes: Vec<Almacen>,
     mascara: u64,
 }
 
 impl Puertos {
     pub fn nuevo(maquina: &Maquina) -> Self {
         let mut puertos = BTreeMap::new();
+        let mut almacenes = Vec::new();
         for d in &maquina.dispositivos {
             for numero in d.puertos.values() {
                 puertos.insert(*numero, Puerto::default());
+            }
+            if let TipoDispositivo::Bloques {
+                tamano_bloque,
+                cantidad_bloques,
+            } = d.tipo
+            {
+                let indice = almacenes.len();
+                let (tamano, cantidad) = (tamano_bloque as usize, cantidad_bloques as usize);
+                almacenes.push(Almacen {
+                    nombre: d.nombre.clone(),
+                    tamano,
+                    cantidad,
+                    palabras: vec![0; tamano * cantidad],
+                    bloque: 0,
+                    cursor: 0,
+                    error: false,
+                });
+                for (nombre, papel) in [
+                    ("bloque", Papel::Bloque),
+                    ("datos", Papel::Datos),
+                    ("estado", Papel::Estado),
+                ] {
+                    if let Some(p) = d.puertos.get(nombre).and_then(|n| puertos.get_mut(n)) {
+                        p.almacen = Some((indice, papel));
+                    }
+                }
             }
             // Un teclado informa por `estado` de si hay una tecla esperando en `datos`; una UART
             // ademas tiene siempre encendido el bit 1 (lista para transmitir).
@@ -52,6 +105,7 @@ impl Puertos {
         }
         Puertos {
             puertos,
+            almacenes,
             mascara: mascara_de(maquina.bits_palabra),
         }
     }
@@ -79,6 +133,9 @@ impl Puertos {
     /// El puerto de estado de un teclado no consume nada: vale 1 si hay una tecla esperando en el
     /// puerto de datos y 0 si no. El de una UART es igual, con el bit 1 siempre encendido.
     pub fn leer(&mut self, numero: u64) -> Result<u64, ErrorEjecucion> {
+        if let Some((i, papel)) = self.puerto(numero)?.almacen {
+            return Ok(self.leer_almacen(i, papel));
+        }
         if let Some(valor) = self.puerto(numero)?.publicado {
             return Ok(valor);
         }
@@ -100,6 +157,10 @@ impl Puertos {
     /// Escribe un valor de salida, truncado al ancho de palabra.
     pub fn escribir(&mut self, numero: u64, valor: u64) -> Result<(), ErrorEjecucion> {
         let mascara = self.mascara;
+        if let Some((i, papel)) = self.puerto(numero)?.almacen {
+            self.escribir_almacen(i, papel, valor & mascara);
+            return Ok(());
+        }
         self.puerto(numero)?.salida.push(valor & mascara);
         Ok(())
     }
@@ -116,8 +177,101 @@ impl Puertos {
         Ok(())
     }
 
-    /// Vacia todas las colas y registros.
+    fn leer_almacen(&mut self, i: usize, papel: Papel) -> u64 {
+        let a = &mut self.almacenes[i];
+        match papel {
+            Papel::Bloque => a.bloque as u64,
+            Papel::Estado => 1 | (u64::from(a.error) << 1),
+            Papel::Datos => {
+                if a.cursor >= a.tamano {
+                    a.error = true;
+                    return 0;
+                }
+                let v = a.palabras[a.bloque * a.tamano + a.cursor];
+                a.cursor += 1;
+                v
+            }
+        }
+    }
+
+    fn escribir_almacen(&mut self, i: usize, papel: Papel, valor: u64) {
+        let a = &mut self.almacenes[i];
+        match papel {
+            Papel::Estado => {}
+            Papel::Bloque => {
+                a.cursor = 0;
+                a.error = valor >= a.cantidad as u64;
+                if !a.error {
+                    a.bloque = valor as usize;
+                }
+            }
+            Papel::Datos => {
+                if a.error || a.cursor >= a.tamano {
+                    a.error = true;
+                    return;
+                }
+                a.palabras[a.bloque * a.tamano + a.cursor] = valor;
+                a.cursor += 1;
+            }
+        }
+    }
+
+    fn almacen(&mut self, nombre: &str) -> Result<&mut Almacen, ErrorEjecucion> {
+        self.almacenes
+            .iter_mut()
+            .find(|a| a.nombre == nombre)
+            .ok_or_else(|| ErrorEjecucion::DispositivoInexistente {
+                nombre: nombre.to_string(),
+            })
+    }
+
+    /// Deja el contenido de un bloque desde fuera de la maquina (por ejemplo, una imagen de disco).
+    /// Lo que falte hasta el final del bloque se rellena con ceros.
+    pub fn cargar_bloque(
+        &mut self,
+        dispositivo: &str,
+        bloque: usize,
+        palabras: &[u64],
+    ) -> Result<(), ErrorEjecucion> {
+        let mascara = self.mascara;
+        let a = self.almacen(dispositivo)?;
+        if bloque >= a.cantidad || palabras.len() > a.tamano {
+            return Err(ErrorEjecucion::BloqueFueraDeRango {
+                dispositivo: dispositivo.to_string(),
+                bloque,
+            });
+        }
+        let base = bloque * a.tamano;
+        for (k, celda) in a.palabras[base..base + a.tamano].iter_mut().enumerate() {
+            *celda = palabras.get(k).map_or(0, |v| v & mascara);
+        }
+        Ok(())
+    }
+
+    /// Contenido actual de un bloque.
+    pub fn leer_bloque(
+        &mut self,
+        dispositivo: &str,
+        bloque: usize,
+    ) -> Result<Vec<u64>, ErrorEjecucion> {
+        let a = self.almacen(dispositivo)?;
+        if bloque >= a.cantidad {
+            return Err(ErrorEjecucion::BloqueFueraDeRango {
+                dispositivo: dispositivo.to_string(),
+                bloque,
+            });
+        }
+        let base = bloque * a.tamano;
+        Ok(a.palabras[base..base + a.tamano].to_vec())
+    }
+
+    /// Vacia todas las colas y registros. El contenido de los discos se conserva.
     pub fn reiniciar(&mut self) {
+        for a in &mut self.almacenes {
+            a.bloque = 0;
+            a.cursor = 0;
+            a.error = false;
+        }
         for p in self.puertos.values_mut() {
             p.entrada.clear();
             p.salida.clear();

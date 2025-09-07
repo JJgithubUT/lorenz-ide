@@ -197,3 +197,39 @@ impl Banco {
         self.estado.fijar_registro(nombre, valor).unwrap();
     }
 }
+
+/// Maquina con un disco de 4 bloques de 4 palabras: puertos bloque 0x20, datos 0x21, estado 0x22.
+pub fn con_disco() -> Maquina {
+    let texto = "
+[maquina]
+nombre = \"disco\"
+formato = \"0.1\"
+bits_palabra = 8
+bits_direccion = 16
+arranque = 0x0000
+
+[[registro]]
+nombre = \"PC\"
+bits = 16
+rol = \"pc\"
+
+[[instruccion]]
+mnemonico = \"HLT\"
+codigo = \"1111 ....\"
+semantica = \"detener\"
+
+[[region]]
+nombre = \"ram\"
+desde = 0x0000
+hasta = 0x00FF
+acceso = \"rw\"
+
+[[dispositivo]]
+nombre = \"disco\"
+tipo = \"bloques\"
+tamano_bloque = 4
+cantidad_bloques = 4
+puertos = { bloque = 0x20, datos = 0x21, estado = 0x22 }
+";
+    lorenz_arch::cargar(texto).expect("la maquina con disco debe cargar")
+}
