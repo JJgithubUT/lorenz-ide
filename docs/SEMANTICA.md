@@ -112,3 +112,14 @@ pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1
 La seccion `[maquina.interrupciones]` admite `prioridades = { linea = valor }`. Entre las lineas
 pendientes se atiende la de menor valor; a igual valor (o sin declarar), la de menor numero de
 linea (RF-EMU-036).
+
+## Dispositivo de bloques
+
+Un dispositivo `tipo = "bloques"` declara `tamano_bloque` (palabras, 512 por omision) y
+`cantidad_bloques` (64 por omision) y tres puertos:
+
+- `bloque`: escribir N selecciona el bloque N y pone el cursor al principio; leer devuelve el
+  bloque seleccionado.
+- `datos`: leer o escribir da acceso a la palabra siguiente del bloque y avanza el cursor.
+- `estado`: bit 0 siempre 1 (listo); bit 1 encendido si el ultimo acceso fue erroneo (bloque
+  inexistente o cursor pasado del final). Un acceso erroneo no modifica el disco (RF-EMU-034).
