@@ -52,6 +52,9 @@ pub enum ErrorEjecucion {
     #[error("se alcanzo el limite de {limite} instrucciones")]
     LimiteDeInstrucciones { limite: u64 },
 
+    #[error("el bloque {bloque} no existe en '{dispositivo}' o no cabe en el")]
+    BloqueFueraDeRango { dispositivo: String, bloque: usize },
+
     #[error("la frecuencia objetivo debe ser mayor que cero")]
     FrecuenciaInvalida,
 

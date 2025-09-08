@@ -90,7 +90,10 @@ fn los_bloques_tienen_512_por_omision() {
     .unwrap();
     assert_eq!(
         m.dispositivo("disco").unwrap().tipo,
-        TipoDispositivo::Bloques { tamano_bloque: 512 }
+        TipoDispositivo::Bloques {
+            tamano_bloque: 512,
+            cantidad_bloques: 64
+        }
     );
 }
 
@@ -98,4 +101,32 @@ fn los_bloques_tienen_512_por_omision() {
 fn una_region_que_cita_un_dispositivo_inexistente_se_rechaza() {
     let texto = ejemplo().replace("dispositivo = \"pantalla\"", "dispositivo = \"monitor\"");
     assert!(reglas(&texto).contains(&Regla::DispositivoInexistente));
+}
+
+fn bloques(extra: &str) -> String {
+    con_dispositivo(&format!(
+        "[[dispositivo]]\nnombre = \"disco\"\ntipo = \"bloques\"\n{extra}"
+    ))
+}
+
+#[test]
+fn los_bloques_aceptan_tamano_y_cantidad() {
+    let m = cargar(&bloques("tamano_bloque = 16\ncantidad_bloques = 8\n")).unwrap();
+    assert_eq!(
+        m.dispositivo("disco").unwrap().tipo,
+        TipoDispositivo::Bloques {
+            tamano_bloque: 16,
+            cantidad_bloques: 8
+        }
+    );
+}
+
+#[test]
+fn un_tamano_de_bloque_cero_se_rechaza() {
+    assert!(reglas(&bloques("tamano_bloque = 0\n")).contains(&Regla::ValorFueraDeRango));
+}
+
+#[test]
+fn una_cantidad_de_bloques_cero_se_rechaza() {
+    assert!(reglas(&bloques("cantidad_bloques = 0\n")).contains(&Regla::ValorFueraDeRango));
 }

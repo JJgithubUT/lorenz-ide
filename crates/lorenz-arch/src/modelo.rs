@@ -185,8 +185,10 @@ pub enum TipoDispositivo {
     Temporizador {
         periodo: u64,
     },
+    /// Almacenamiento por bloques: `cantidad_bloques` bloques de `tamano_bloque` palabras.
     Bloques {
         tamano_bloque: u32,
+        cantidad_bloques: u32,
     },
     Generico {
         script: String,

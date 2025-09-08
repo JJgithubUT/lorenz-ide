@@ -154,6 +154,8 @@ struct DispositivoCrudo {
     #[serde(default)]
     tamano_bloque: Option<u32>,
     #[serde(default)]
+    cantidad_bloques: Option<u32>,
+    #[serde(default)]
     script: Option<String>,
     #[serde(default)]
     periodo: Option<u64>,
@@ -404,6 +406,7 @@ fn convertir(
                 },
                 "bloques" => TipoDispositivo::Bloques {
                     tamano_bloque: d.tamano_bloque.unwrap_or(512),
+                    cantidad_bloques: d.cantidad_bloques.unwrap_or(64),
                 },
                 "generico" => TipoDispositivo::Generico {
                     script: d.script.unwrap_or_default(),
