@@ -609,6 +609,9 @@ impl Emulador {
         let mnemonico = instruccion.mnemonico.clone();
         self.estado.contar_instruccion(ciclos);
         self.avanzar_temporizadores(ciclos)?;
+        for linea in self.puertos.tomar_interrupciones() {
+            self.levantar_interrupcion(linea)?;
+        }
         Ok(Some(Paso {
             direccion,
             mnemonico,

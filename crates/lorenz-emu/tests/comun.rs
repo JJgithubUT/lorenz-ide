@@ -233,3 +233,62 @@ puertos = { bloque = 0x20, datos = 0x21, estado = 0x22 }
 ";
     lorenz_arch::cargar(texto).expect("la maquina con disco debe cargar")
 }
+
+/// Maquina con un dispositivo generico `eco` (puertos entrada 0x30 y salida 0x31, linea 0) cuyo
+/// script se da como parametro. Tiene `OUT` (`0001 ....`, escribe A en el puerto 0x30), `OUT2`
+/// (`0010 ....`, escribe A en el 0x31) y `HLT`.
+pub fn con_script(script: &str) -> Maquina {
+    let texto = format!(
+        "
+[maquina]
+nombre = \"scripts\"
+formato = \"0.1\"
+bits_palabra = 8
+bits_direccion = 16
+arranque = 0x0000
+
+[maquina.interrupciones]
+vectores = {{ 0 = 0x0010 }}
+habilitadas_al_arrancar = false
+
+[[registro]]
+nombre = \"A\"
+bits = 8
+rol = \"general\"
+inicial = 0
+[[registro]]
+nombre = \"PC\"
+bits = 16
+rol = \"pc\"
+
+[[instruccion]]
+mnemonico = \"OUT\"
+codigo = \"0001 ....\"
+semantica = \"out[48] = A\"
+ciclos = 1
+[[instruccion]]
+mnemonico = \"OUT2\"
+codigo = \"0010 ....\"
+semantica = \"out[49] = A\"
+ciclos = 1
+[[instruccion]]
+mnemonico = \"HLT\"
+codigo = \"1111 ....\"
+semantica = \"detener\"
+
+[[region]]
+nombre = \"ram\"
+desde = 0x0000
+hasta = 0x00FF
+acceso = \"rw\"
+
+[[dispositivo]]
+nombre = \"eco\"
+tipo = \"generico\"
+puertos = {{ entrada = 0x30, salida = 0x31 }}
+interrupcion = 0
+script = \"{script}\"
+"
+    );
+    lorenz_arch::cargar(&texto).unwrap_or_else(|e| panic!("la maquina con script no carga: {e:?}"))
+}

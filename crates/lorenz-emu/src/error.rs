@@ -55,6 +55,12 @@ pub enum ErrorEjecucion {
     #[error("el bloque {bloque} no existe en '{dispositivo}' o no cabe en el")]
     BloqueFueraDeRango { dispositivo: String, bloque: usize },
 
+    #[error("el script de '{dispositivo}' usa '{nombre}', que no puede usar")]
+    NombreDeScriptDesconocido { dispositivo: String, nombre: String },
+
+    #[error("division entre cero en el script de '{dispositivo}'")]
+    DivisionEntreCeroEnScript { dispositivo: String },
+
     #[error("la frecuencia objetivo debe ser mayor que cero")]
     FrecuenciaInvalida,
 
