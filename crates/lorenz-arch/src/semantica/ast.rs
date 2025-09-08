@@ -212,6 +212,27 @@ impl Programa {
         sin_repetir(todos)
     }
 
+    /// Si el programa toca `mem[...]`, `in[...]` u `out[...]`, en una expresion o como destino.
+    pub fn accede_a_memoria_o_puertos(&self) -> bool {
+        fn en_expr(e: &Expr) -> bool {
+            match e {
+                Expr::Literal(_) | Expr::Nombre(_) => false,
+                Expr::Mem(_) | Expr::Entrada(_) => true,
+                Expr::Unario(_, a) => en_expr(a),
+                Expr::Binario(_, a, b) => en_expr(a) || en_expr(b),
+            }
+        }
+        fn en_lista(l: &[Sentencia]) -> bool {
+            l.iter().any(|s| match s {
+                Sentencia::Asignar(Destino::Nombre(_), v) => en_expr(v),
+                Sentencia::Asignar(_, _) => true,
+                Sentencia::Si(c, cuerpo) => en_expr(c) || en_lista(cuerpo),
+                Sentencia::Detener => false,
+            })
+        }
+        en_lista(&self.sentencias)
+    }
+
     /// Si alguna sentencia puede detener la maquina.
     pub fn puede_detener(&self) -> bool {
         fn alguna(sentencias: &[Sentencia]) -> bool {

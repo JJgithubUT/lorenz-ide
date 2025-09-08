@@ -295,6 +295,50 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     }
 
     for dispositivo in &m.dispositivos {
+        let TipoDispositivo::Generico { programa, .. } = &dispositivo.tipo else {
+            continue;
+        };
+        let mut permitidos: Vec<&str> = vec!["valor", "puerto"];
+        permitidos.extend(dispositivo.puertos.keys().map(String::as_str));
+        let mut asignables: Vec<&str> = dispositivo.puertos.keys().map(String::as_str).collect();
+        if dispositivo.interrupcion.is_some() {
+            permitidos.push("interrumpir");
+            asignables.push("interrumpir");
+        }
+        for nombre in programa.nombres_leidos() {
+            if !permitidos.contains(&nombre.as_str()) {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "el script de '{}' cita '{}', que no es valor, puerto, uno de sus puertos ni interrumpir",
+                        dispositivo.nombre, nombre
+                    ),
+                ));
+            }
+        }
+        for nombre in programa.nombres_escritos() {
+            if !asignables.contains(&nombre.as_str()) {
+                fallos.push(fallo(
+                    Regla::SemanticaInvalida,
+                    format!(
+                        "el script de '{}' asigna a '{}', que no es uno de sus puertos ni interrumpir (este ultimo exige declarar una interrupcion)",
+                        dispositivo.nombre, nombre
+                    ),
+                ));
+            }
+        }
+        if programa.accede_a_memoria_o_puertos() || programa.puede_detener() {
+            fallos.push(fallo(
+                Regla::SemanticaInvalida,
+                format!(
+                    "el script de '{}' no puede usar mem, in, out ni detener",
+                    dispositivo.nombre
+                ),
+            ));
+        }
+    }
+
+    for dispositivo in &m.dispositivos {
         if let TipoDispositivo::Bloques {
             tamano_bloque,
             cantidad_bloques,

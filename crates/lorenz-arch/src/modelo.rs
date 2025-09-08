@@ -190,8 +190,11 @@ pub enum TipoDispositivo {
         tamano_bloque: u32,
         cantidad_bloques: u32,
     },
+    /// Dispositivo propio. El `script` (en el lenguaje de semantica) se ejecuta cada vez que el
+    /// programa escribe en uno de sus puertos (RF-EMU-035); `programa` es su arbol ya analizado.
     Generico {
         script: String,
+        programa: crate::semantica::Programa,
     },
 }
 
