@@ -43,7 +43,7 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-032 | Consola serie | Hecho | `recibir_en_uart`, `texto_de_uart` |
 | RF-EMU-033 | Temporizador programable | Hecho | `Temporizador`, periodo en ciclos |
 | RF-EMU-034 | Almacenamiento por bloques | Hecho | dispositivo `bloques` con puertos `bloque`, `datos`, `estado`; `cargar_bloque`/`leer_bloque` |
-| RF-EMU-035 | Dispositivos propios con script | Pendiente | |
+| RF-EMU-035 | Dispositivos propios con script | Hecho | dispositivo `generico` con `script`; se analiza al cargar y corre al escribir en sus puertos |
 | RF-EMU-036 | Prioridad de las lineas de interrupcion | Hecho | `prioridades` en la arquitectura; gana la menor, y a igual prioridad la de menor linea |
 | RF-EMU-037 | Saltar al vector al aceptar una interrupcion | Hecho | `atender_interrupcion` |
 | RF-EMU-038 | Respetar la habilitacion global | Hecho | `ie`, `EI`, `DI`, `RETI` |

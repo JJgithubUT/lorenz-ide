@@ -17,6 +17,24 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Dispositivos con script
+
+**Hecho:**
+
+- Un dispositivo `generico` lleva un `script` que se analiza al cargar y se valida (nombres
+  permitidos, sin `mem`/`in`/`out`/`detener`) (RF-EMU-035, RF-ARQ-022).
+- El emulador lo ejecuta cada vez que el programa escribe en uno de sus puertos; recuerda su
+  estado entre ejecuciones y puede levantar su interrupcion con `interrumpir`.
+- El calculo de operadores binarios se extrajo del interprete para compartirlo.
+
+**Decidido:** D-027 — el script reutiliza el lenguaje de semantica en lugar de uno nuevo, con un
+entorno propio que no toca memoria ni puertos de la maquina.
+**Pendiente:** RF-EMU-046 y la parte no grafica de RF-EMU-028.
+**Requisitos:** RF-EMU-035.
+**Commits:** feat/dispositivo-script (#175-#180).
+
+---
+
 ## 2026-10-16 — Almacenamiento por bloques
 
 **Hecho:**

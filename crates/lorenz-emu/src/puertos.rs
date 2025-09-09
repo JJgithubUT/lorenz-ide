@@ -1,8 +1,10 @@
 //! Puertos de entrada y salida declarados por los dispositivos de la maquina.
 
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::Arc;
 
 use lorenz_arch::modelo::{Maquina, TipoDispositivo};
+use lorenz_arch::semantica::Programa;
 
 use crate::error::ErrorEjecucion;
 use crate::estado::mascara_de;
@@ -30,8 +32,19 @@ struct Almacen {
     error: bool,
 }
 
+/// Dispositivo generico: su script y los puertos que declara.
+#[derive(Debug, Clone)]
+struct Script {
+    nombre: String,
+    programa: Arc<Programa>,
+    nombres: BTreeMap<String, u64>,
+    linea: Option<u32>,
+}
+
 #[derive(Debug, Clone, Default)]
 struct Puerto {
+    /// Dispositivo generico al que pertenece: su script corre al escribir en este puerto.
+    script: Option<usize>,
     /// Dispositivo de bloques al que pertenece y que papel juega en el.
     almacen: Option<(usize, Papel)>,
     entrada: VecDeque<u64>,
@@ -51,6 +64,9 @@ struct Puerto {
 pub struct Puertos {
     puertos: BTreeMap<u64, Puerto>,
     almacenes: Vec<Almacen>,
+    scripts: Vec<Script>,
+    /// Lineas de interrupcion que los scripts pidieron y el emulador aun no recogio.
+    pedidas: Vec<u32>,
     mascara: u64,
 }
 
@@ -58,6 +74,7 @@ impl Puertos {
     pub fn nuevo(maquina: &Maquina) -> Self {
         let mut puertos = BTreeMap::new();
         let mut almacenes = Vec::new();
+        let mut scripts = Vec::new();
         for d in &maquina.dispositivos {
             for numero in d.puertos.values() {
                 puertos.insert(*numero, Puerto::default());
@@ -88,6 +105,21 @@ impl Puertos {
                     }
                 }
             }
+            if let TipoDispositivo::Generico { programa, .. } = &d.tipo {
+                let indice = scripts.len();
+                scripts.push(Script {
+                    nombre: d.nombre.clone(),
+                    programa: Arc::new(programa.clone()),
+                    nombres: d.puertos.clone(),
+                    linea: d.interrupcion,
+                });
+                for numero in d.puertos.values() {
+                    if let Some(p) = puertos.get_mut(numero) {
+                        p.script = Some(indice);
+                        p.publicado = Some(0);
+                    }
+                }
+            }
             // Un teclado informa por `estado` de si hay una tecla esperando en `datos`; una UART
             // ademas tiene siempre encendido el bit 1 (lista para transmitir).
             let fijos = match d.tipo {
@@ -106,6 +138,8 @@ impl Puertos {
         Puertos {
             puertos,
             almacenes,
+            scripts,
+            pedidas: Vec::new(),
             mascara: mascara_de(maquina.bits_palabra),
         }
     }
@@ -161,6 +195,9 @@ impl Puertos {
             self.escribir_almacen(i, papel, valor & mascara);
             return Ok(());
         }
+        if let Some(i) = self.puerto(numero)?.script {
+            return self.ejecutar_script(i, numero, valor & mascara);
+        }
         self.puerto(numero)?.salida.push(valor & mascara);
         Ok(())
     }
@@ -175,6 +212,46 @@ impl Puertos {
         let mascara = self.mascara;
         self.puerto(numero)?.publicado = Some(valor & mascara);
         Ok(())
+    }
+
+    /// Corre el script del dispositivo `i` porque el programa escribio `valor` en `numero`.
+    fn ejecutar_script(&mut self, i: usize, numero: u64, valor: u64) -> Result<(), ErrorEjecucion> {
+        let script = self.scripts[i].clone();
+        let mut valores: BTreeMap<u64, u64> = script
+            .nombres
+            .values()
+            .map(|n| {
+                (
+                    *n,
+                    self.puertos.get(n).and_then(|p| p.publicado).unwrap_or(0),
+                )
+            })
+            .collect();
+        let mut entorno = crate::script::Entorno {
+            nombres: &script.nombres,
+            valores: &mut valores,
+            valor,
+            puerto: numero,
+            mascara: self.mascara,
+            interrumpir: false,
+            dispositivo: &script.nombre,
+        };
+        crate::script::ejecutar(&script.programa, &mut entorno)?;
+        let interrumpir = entorno.interrumpir;
+        for (n, v) in valores {
+            if let Some(p) = self.puertos.get_mut(&n) {
+                p.publicado = Some(v);
+            }
+        }
+        if interrumpir {
+            self.pedidas.extend(script.linea);
+        }
+        Ok(())
+    }
+
+    /// Lineas de interrupcion pedidas por scripts desde la ultima vez, en orden.
+    pub fn tomar_interrupciones(&mut self) -> Vec<u32> {
+        std::mem::take(&mut self.pedidas)
     }
 
     fn leer_almacen(&mut self, i: usize, papel: Papel) -> u64 {
@@ -267,6 +344,7 @@ impl Puertos {
 
     /// Vacia todas las colas y registros. El contenido de los discos se conserva.
     pub fn reiniciar(&mut self) {
+        self.pedidas.clear();
         for a in &mut self.almacenes {
             a.bloque = 0;
             a.cursor = 0;

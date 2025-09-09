@@ -71,6 +71,29 @@ fn desplazar_der(a: i128, n: i128) -> i128 {
     }
 }
 
+/// Aplica un operador binario a dos valores ya evaluados. `None` si divide entre cero.
+pub(crate) fn aplicar_binario(op: OpBinario, x: i128, y: i128) -> Option<i128> {
+    Some(match op {
+        OpBinario::Suma => x.wrapping_add(y),
+        OpBinario::Resta => x.wrapping_sub(y),
+        OpBinario::Producto => x.wrapping_mul(y),
+        OpBinario::Division => x.checked_div(y)?,
+        OpBinario::Modulo => x.checked_rem(y)?,
+        OpBinario::DesplazaIzq => desplazar_izq(x, y),
+        OpBinario::DesplazaDer => desplazar_der(x, y),
+        OpBinario::Y => x & y,
+        OpBinario::O => x | y,
+        OpBinario::Xor => x ^ y,
+        OpBinario::Igual => i128::from(x == y),
+        OpBinario::Distinto => i128::from(x != y),
+        OpBinario::Menor => i128::from(x < y),
+        OpBinario::MenorIgual => i128::from(x <= y),
+        OpBinario::Mayor => i128::from(x > y),
+        OpBinario::MayorIgual => i128::from(x >= y),
+        OpBinario::YLogico | OpBinario::OLogico => como_bool(y),
+    })
+}
+
 pub(crate) fn como_bool(v: i128) -> i128 {
     i128::from(v != 0)
 }
@@ -170,27 +193,8 @@ impl Interprete {
             _ => {}
         }
         let y = self.evaluar(b, instruccion, dec, entorno)?;
-        let cero = || ErrorEjecucion::DivisionEntreCero {
+        aplicar_binario(op, x, y).ok_or_else(|| ErrorEjecucion::DivisionEntreCero {
             mnemonico: instruccion.mnemonico.clone(),
-        };
-        Ok(match op {
-            OpBinario::Suma => x.wrapping_add(y),
-            OpBinario::Resta => x.wrapping_sub(y),
-            OpBinario::Producto => x.wrapping_mul(y),
-            OpBinario::Division => x.checked_div(y).ok_or_else(cero)?,
-            OpBinario::Modulo => x.checked_rem(y).ok_or_else(cero)?,
-            OpBinario::DesplazaIzq => desplazar_izq(x, y),
-            OpBinario::DesplazaDer => desplazar_der(x, y),
-            OpBinario::Y => x & y,
-            OpBinario::O => x | y,
-            OpBinario::Xor => x ^ y,
-            OpBinario::Igual => i128::from(x == y),
-            OpBinario::Distinto => i128::from(x != y),
-            OpBinario::Menor => i128::from(x < y),
-            OpBinario::MenorIgual => i128::from(x <= y),
-            OpBinario::Mayor => i128::from(x > y),
-            OpBinario::MayorIgual => i128::from(x >= y),
-            OpBinario::YLogico | OpBinario::OLogico => como_bool(y),
         })
     }
 

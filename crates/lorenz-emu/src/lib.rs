@@ -17,6 +17,7 @@ pub mod estado;
 pub use estado::Estado;
 
 pub mod puertos;
+pub(crate) mod script;
 
 pub use puertos::Puertos;
 

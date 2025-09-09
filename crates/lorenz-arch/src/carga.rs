@@ -408,9 +408,20 @@ fn convertir(
                     tamano_bloque: d.tamano_bloque.unwrap_or(512),
                     cantidad_bloques: d.cantidad_bloques.unwrap_or(64),
                 },
-                "generico" => TipoDispositivo::Generico {
-                    script: d.script.unwrap_or_default(),
-                },
+                "generico" => {
+                    let script = d.script.unwrap_or_default();
+                    let programa = match semantica::analizar(&script) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            fallos.push(fallo(
+                                Regla::SemanticaInvalida,
+                                format!("el script de '{}' no es valido: {}", d.nombre, e),
+                            ));
+                            semantica::Programa::default()
+                        }
+                    };
+                    TipoDispositivo::Generico { script, programa }
+                }
                 otro => {
                     fallos.push(fallo(
                         Regla::ValorFueraDeRango,
@@ -421,6 +432,7 @@ fn convertir(
                     ));
                     TipoDispositivo::Generico {
                         script: String::new(),
+                        programa: semantica::Programa::default(),
                     }
                 }
             };
