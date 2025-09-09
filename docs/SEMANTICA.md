@@ -123,3 +123,22 @@ Un dispositivo `tipo = "bloques"` declara `tamano_bloque` (palabras, 512 por omi
 - `datos`: leer o escribir da acceso a la palabra siguiente del bloque y avanza el cursor.
 - `estado`: bit 0 siempre 1 (listo); bit 1 encendido si el ultimo acceso fue erroneo (bloque
   inexistente o cursor pasado del final). Un acceso erroneo no modifica el disco (RF-EMU-034).
+
+## Dispositivos con script
+
+Un dispositivo `tipo = "generico"` declara `puertos` y un `script` escrito en el mismo lenguaje
+que `semantica`. El script se analiza al cargar y se ejecuta una vez cada vez que el programa
+escribe en uno de sus puertos (RF-EMU-035).
+
+Nombres disponibles:
+
+- `valor`: lo que el programa acaba de escribir (solo lectura).
+- `puerto`: el numero del puerto escrito (solo lectura).
+- Cada puerto del dispositivo por su nombre. Leerlo da el ultimo valor que el script le asigno
+  (0 al arrancar); asignarlo cambia lo que el programa lee de ese puerto. Leer el puerto desde el
+  programa no lo consume.
+- `interrumpir`: asignarle un valor distinto de cero levanta la linea `interrupcion` del
+  dispositivo. Solo existe si el dispositivo declara esa linea.
+
+No se permite `mem`, `in`, `out` ni `detener`. Las asignaciones se truncan al ancho de palabra.
+Ejemplo: `script = "salida = salida + valor; si salida > 200: interrumpir = 1"`.
