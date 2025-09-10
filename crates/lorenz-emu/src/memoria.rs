@@ -125,6 +125,12 @@ impl Memoria {
             .and_then(|i| self.regiones[i].dispositivo.as_deref())
     }
 
+    /// Posicion de la direccion dentro de su region, contando desde cero.
+    pub fn desplazamiento_en_region(&self, direccion: u64) -> Option<u64> {
+        self.localizar(direccion)
+            .map(|i| direccion - self.regiones[i].desde)
+    }
+
     /// Si la direccion cae en alguna region.
     pub fn es_valida(&self, direccion: u64) -> bool {
         self.localizar(direccion).is_some()
