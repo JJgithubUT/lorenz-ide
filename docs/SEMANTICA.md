@@ -142,3 +142,10 @@ Nombres disponibles:
 
 No se permite `mem`, `in`, `out` ni `detener`. Las asignaciones se truncan al ancho de palabra.
 Ejemplo: `script = "salida = salida + valor; si salida > 200: interrumpir = 1"`.
+
+### Dispositivos mapeados en una region
+
+Si una `[[region]]` declara `dispositivo = "nombre"` y ese dispositivo tiene `script`, escribir en
+cualquier direccion de la region ejecuta el script con `valor` igual a lo escrito y `puerto` igual
+a la posicion dentro de la region (0 para la primera direccion). La celda conserva ademas el valor
+escrito. Un dispositivo sin script, como la pantalla, solo se lee desde su region (RF-EMU-028).
