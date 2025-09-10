@@ -35,6 +35,10 @@ pub use emulador::{
     Emulador, Instantanea, InterrupcionAtendida, Paso, Resumen, MAX_INTERRUPCIONES_REGISTRADAS,
 };
 
+pub mod comparar;
+
+pub use comparar::{comparar, Ejecutor, Veredicto, Vista};
+
 pub mod pantalla;
 
 pub use pantalla::{leer_imagen, Imagen};
