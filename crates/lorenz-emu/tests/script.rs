@@ -146,3 +146,62 @@ fn la_instantanea_conserva_el_estado_del_dispositivo() {
     e.restaurar(&foto).unwrap();
     assert_eq!(e.puertos_mut().leer(SALIDA).unwrap(), 5);
 }
+
+// --- Dispositivos mapeados en una region de memoria (RF-EMU-028) ---
+
+#[test]
+fn escribir_en_la_region_mapeada_ejecuta_el_script() {
+    // ST0 ; HLT, con A = 5
+    let mut e = emulador("salida = valor + 100");
+    e.cargar_programa(0, &[0x30, 0xF0]).unwrap();
+    e.estado_mut().fijar_registro("A", 5).unwrap();
+    e.ejecutar(10).unwrap();
+    assert_eq!(e.puertos_mut().leer(SALIDA).unwrap(), 105);
+}
+
+#[test]
+fn en_una_region_puerto_es_la_posicion_dentro_de_ella() {
+    let mut e = emulador("salida = puerto");
+    e.cargar_programa(0, &[0x30, 0x40, 0xF0]).unwrap();
+    e.paso().unwrap();
+    assert_eq!(e.puertos_mut().leer(SALIDA).unwrap(), 0);
+    e.paso().unwrap();
+    assert_eq!(e.puertos_mut().leer(SALIDA).unwrap(), 3);
+}
+
+#[test]
+fn la_region_conserva_ademas_lo_que_se_escribio() {
+    let mut e = emulador("salida = valor");
+    e.cargar_programa(0, &[0x30, 0xF0]).unwrap();
+    e.estado_mut().fijar_registro("A", 9).unwrap();
+    e.ejecutar(10).unwrap();
+    assert_eq!(e.memoria().leer_privilegiado(0x100).unwrap(), 9);
+}
+
+#[test]
+fn un_script_de_region_puede_levantar_la_interrupcion() {
+    let mut e = emulador("si puerto == 3: interrumpir = 1");
+    e.cargar_programa(0, &[0x30, 0x40, 0xF0]).unwrap();
+    e.paso().unwrap();
+    assert!(e.interrupciones_pendientes().is_empty());
+    e.paso().unwrap();
+    assert_eq!(e.interrupciones_pendientes(), [0]);
+}
+
+#[test]
+fn escribir_fuera_de_la_region_no_ejecuta_el_script() {
+    let mut e = emulador("salida = 77");
+    e.memoria_mut().escribir(0x10, 1).unwrap();
+    assert_eq!(e.puertos_mut().leer(SALIDA).unwrap(), 0);
+}
+
+#[test]
+fn una_region_de_pantalla_sigue_funcionando_sin_script() {
+    // la maquina de ejemplo mapea su pantalla a una region; escribir en ella no falla
+    let mut e = Emulador::nuevo(comun::ejemplo_8()).unwrap();
+    // LDI A,1 ; ST A,[0xF000] ; HLT
+    e.cargar_programa(0, &[0x20, 1, 0x50, 0x00, 0xF0, 0xF0])
+        .unwrap();
+    e.ejecutar(10).unwrap();
+    assert_eq!(e.memoria().leer_privilegiado(0xF000).unwrap(), 1);
+}

@@ -125,6 +125,27 @@ impl Memoria {
             .and_then(|i| self.regiones[i].dispositivo.as_deref())
     }
 
+    /// Posicion de la direccion dentro de su region, contando desde cero.
+    pub fn desplazamiento_en_region(&self, direccion: u64) -> Option<u64> {
+        self.localizar(direccion)
+            .map(|i| direccion - self.regiones[i].desde)
+    }
+
+    /// Resumen de todo el contenido (FNV-1a sobre las celdas en orden de direccion). Dos memorias
+    /// con el mismo contenido dan el mismo valor; sirve para comparar sin recorrerlas a mano.
+    pub fn suma_de_verificacion(&self) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for r in &self.regiones {
+            for celda in &r.celdas {
+                for b in celda.to_le_bytes() {
+                    h ^= u64::from(b);
+                    h = h.wrapping_mul(0x0000_0100_0000_01b3);
+                }
+            }
+        }
+        h
+    }
+
     /// Si la direccion cae en alguna region.
     pub fn es_valida(&self, direccion: u64) -> bool {
         self.localizar(direccion).is_some()

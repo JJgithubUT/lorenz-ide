@@ -36,7 +36,7 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-025 | Ultima instruccion que escribio cada direccion | Hecho | `Memoria::activar_seguimiento`, `ultima_escritura` |
 | RF-EMU-026 | Marcar memoria no inicializada | Hecho | `esta_inicializada`, `lecturas_sin_inicializar`, `--vigilar` |
 | RF-EMU-027 | Dispositivos por puertos | Hecho | `Puertos` |
-| RF-EMU-028 | Dispositivos por region mapeada | Parcial | solo la pantalla |
+| RF-EMU-028 | Dispositivos por region mapeada | Hecho | la pantalla lee su region; un dispositivo con script corre al escribir en la suya |
 | RF-EMU-029 | Error en un puerto no declarado | Hecho | `PuertoNoDeclarado` |
 | RF-EMU-030 | Pantalla con framebuffer configurable | Hecho | `pantalla::leer_imagen` (formatos `indice1`, `indice8`) |
 | RF-EMU-031 | Teclado | Hecho | `Emulador::pulsar_tecla` |
@@ -54,7 +54,7 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-043 | Codigo de salida segun parada, error o limite | Hecho | 0, 1, 3 (2 es uso incorrecto) |
 | RF-EMU-044 | Limite de instrucciones | Hecho | `--limite` |
 | RF-EMU-045 | Traza legible | Hecho | `--traza` para personas, `--traza-maquina` en `clave=valor` |
-| RF-EMU-046 | Comparar dos implementaciones | Pendiente | |
+| RF-EMU-046 | Comparar dos implementaciones | Parcial | `comparar` y `Ejecutor` en la biblioteca; falta la orden `lorenz comparar` |
 
 ## Concordancia con los commits anteriores
 

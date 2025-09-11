@@ -249,6 +249,21 @@ impl Puertos {
         Ok(())
     }
 
+    /// El programa escribio `valor` en una region mapeada al dispositivo `dispositivo`: si tiene
+    /// script, corre con `puerto` igual a la posicion dentro de la region (RF-EMU-028). Un
+    /// dispositivo sin script, como una pantalla, no hace nada.
+    pub fn escribir_region(
+        &mut self,
+        dispositivo: &str,
+        desplazamiento: u64,
+        valor: u64,
+    ) -> Result<(), ErrorEjecucion> {
+        match self.scripts.iter().position(|s| s.nombre == dispositivo) {
+            Some(i) => self.ejecutar_script(i, desplazamiento, valor & self.mascara),
+            None => Ok(()),
+        }
+    }
+
     /// Lineas de interrupcion pedidas por scripts desde la ultima vez, en orden.
     pub fn tomar_interrupciones(&mut self) -> Vec<u32> {
         std::mem::take(&mut self.pedidas)

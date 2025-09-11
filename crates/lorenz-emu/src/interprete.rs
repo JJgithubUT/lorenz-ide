@@ -251,7 +251,20 @@ impl Interprete {
             Destino::Mem(direccion) => {
                 let d = self.evaluar(direccion, instruccion, dec, entorno)?;
                 let truncado = (valor as u64) & self.mascara_palabra;
-                entorno.memoria.escribir(self.direccion(d), truncado)?;
+                let direccion = self.direccion(d);
+                entorno.memoria.escribir(direccion, truncado)?;
+                let mapeado = entorno
+                    .memoria
+                    .dispositivo_de(direccion)
+                    .map(str::to_string);
+                if let Some(dispositivo) = mapeado {
+                    let desplazamiento = entorno.memoria.desplazamiento_en_region(direccion);
+                    entorno.puertos.escribir_region(
+                        &dispositivo,
+                        desplazamiento.unwrap_or(0),
+                        truncado,
+                    )?;
+                }
                 registrar(truncado, self.mascara_palabra, seg);
                 Ok(())
             }

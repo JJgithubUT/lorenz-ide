@@ -17,6 +17,24 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Dispositivos en regiones y comparador
+
+**Hecho:**
+
+- Escribir en una region mapeada a un dispositivo con script ejecuta el script; `puerto` vale la
+  posicion dentro de la region (RF-EMU-028).
+- `Memoria::suma_de_verificacion` resume todo el contenido.
+- `comparar(a, b, limite)` avanza dos `Ejecutor` instruccion a instruccion y devuelve la primera
+  diferencia (instruccion, registros, ciclos, parada, memoria) (RF-EMU-046).
+
+**Decidido:** D-028 — el comparador trabaja sobre un trait `Ejecutor` para que la segunda
+implementacion (por ejemplo la de ciclo a ciclo de la fase 6) pueda enchufarse sin cambios.
+**Pendiente:** la orden `lorenz comparar`; despues, cierre de la fase 1.
+**Requisitos:** RF-EMU-028, RF-EMU-046.
+**Commits:** feat/emu-region-dispositivo (#181-#187).
+
+---
+
 ## 2026-10-16 — Dispositivos con script
 
 **Hecho:**

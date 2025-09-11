@@ -236,7 +236,8 @@ puertos = { bloque = 0x20, datos = 0x21, estado = 0x22 }
 
 /// Maquina con un dispositivo generico `eco` (puertos entrada 0x30 y salida 0x31, linea 0) cuyo
 /// script se da como parametro. Tiene `OUT` (`0001 ....`, escribe A en el puerto 0x30), `OUT2`
-/// (`0010 ....`, escribe A en el 0x31) y `HLT`.
+/// (`0010 ....`, escribe A en el 0x31), `ST0` y `ST3` (`0011 ....` y `0100 ....`, escriben A en las
+/// posiciones 0 y 3 de la region `buzon`, mapeada al dispositivo) y `HLT`.
 pub fn con_script(script: &str) -> Maquina {
     let texto = format!(
         "
@@ -272,6 +273,16 @@ codigo = \"0010 ....\"
 semantica = \"out[49] = A\"
 ciclos = 1
 [[instruccion]]
+mnemonico = \"ST0\"
+codigo = \"0011 ....\"
+semantica = \"mem[256] = A\"
+ciclos = 1
+[[instruccion]]
+mnemonico = \"ST3\"
+codigo = \"0100 ....\"
+semantica = \"mem[259] = A\"
+ciclos = 1
+[[instruccion]]
 mnemonico = \"HLT\"
 codigo = \"1111 ....\"
 semantica = \"detener\"
@@ -281,6 +292,13 @@ nombre = \"ram\"
 desde = 0x0000
 hasta = 0x00FF
 acceso = \"rw\"
+
+[[region]]
+nombre = \"buzon\"
+desde = 0x0100
+hasta = 0x010F
+acceso = \"rw\"
+dispositivo = \"eco\"
 
 [[dispositivo]]
 nombre = \"eco\"
