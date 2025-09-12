@@ -17,6 +17,8 @@ pub const SALIDA_ERROR_EJECUCION: i32 = 1;
 pub const SALIDA_ERROR_USO: i32 = 2;
 /// Se alcanzo el limite de instrucciones sin que la maquina se detuviera.
 pub const SALIDA_LIMITE: i32 = 3;
+/// `comparar` encontro una diferencia entre las dos maquinas.
+pub const SALIDA_DIFIEREN: i32 = 4;
 
 const AYUDA: &str = "\
 Lorenz: emulador de maquinas definidas por el usuario
@@ -27,6 +29,7 @@ Uso:
                   [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
+  lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
 
@@ -35,6 +38,7 @@ Codigos de salida:
   1  fallo durante la ejecucion
   2  argumentos, archivos o arquitectura invalidos
   3  se alcanzo el limite de instrucciones
+  4  comparar: las dos maquinas difieren
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -61,6 +65,20 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
+        Orden::Comparar {
+            maquina_a,
+            maquina_b,
+            programa,
+            limite,
+            direccion,
+        } => crate::comparar::comparar_cli(
+            [&maquina_a, &maquina_b],
+            &programa,
+            limite,
+            direccion,
+            salida,
+            errores,
+        ),
         Orden::Ejecutar {
             maquina,
             programa,

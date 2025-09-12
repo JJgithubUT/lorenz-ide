@@ -31,6 +31,14 @@ pub enum Orden {
     Validar {
         maquina: String,
     },
+    /// Ejecutar el mismo programa en dos descripciones de maquina y comparar paso a paso.
+    Comparar {
+        maquina_a: String,
+        maquina_b: String,
+        programa: String,
+        limite: u64,
+        direccion: Option<u64>,
+    },
     /// Cargar un programa y ejecutarlo.
     Ejecutar {
         maquina: String,
@@ -124,6 +132,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
             Ok(Orden::Validar { maquina })
         }
         "ejecutar" => interpretar_ejecutar(resto),
+        "comparar" => interpretar_comparar(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -223,6 +232,47 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         volcados,
         disparos,
         guion,
+        direccion,
+    })
+}
+
+fn interpretar_comparar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut limite = LIMITE_POR_OMISION;
+    let mut direccion = None;
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" | "--direccion" => {
+                i += 1;
+                let valor = resto
+                    .get(i)
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                let n = numero(a, valor)?;
+                if a == "--limite" {
+                    limite = n;
+                } else {
+                    direccion = Some(n);
+                }
+            }
+            _ if a.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina_a = it.next().ok_or(ErrorUso::Falta("maquina-a"))?;
+    let maquina_b = it.next().ok_or(ErrorUso::Falta("maquina-b"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Comparar {
+        maquina_a,
+        maquina_b,
+        programa,
+        limite,
         direccion,
     })
 }
