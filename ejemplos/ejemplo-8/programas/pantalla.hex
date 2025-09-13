@@ -1,0 +1,8 @@
+# Dibuja una linea de 8 pixeles en la esquina de la pantalla y una columna debajo.
+20 FF        # LDI A, 0xFF
+50 00 F0     # ST A, [0xF000]    fila 0: ocho pixeles encendidos
+20 80        # LDI A, 0x80
+50 08 F0     # ST A, [0xF008]    fila 1: un pixel
+50 10 F0     # ST A, [0xF010]    fila 2: un pixel
+50 18 F0     # ST A, [0xF018]    fila 3: un pixel
+F0           # HLT

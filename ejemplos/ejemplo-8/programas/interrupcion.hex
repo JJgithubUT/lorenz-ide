@@ -1,0 +1,12 @@
+# Interrupcion disparada a mano. Se prueba con: --interrumpir 0@8
+# El programa instala el vector de la linea 0 (0xEFF0 -> 0x0010), habilita las
+# interrupciones y espera con NOP; el manejador carga 0x99 en C y vuelve con RETI.
+20 10        # 0000  LDI A, 0x10
+50 F0 EF     # 0002  ST A, [0xEFF0]    parte baja del vector
+20 00        # 0005  LDI A, 0x00
+50 F1 EF     # 0007  ST A, [0xEFF1]    parte alta del vector
+71           # 000A  EI
+00 00 00 00  # 000B  NOP x4
+F0           # 000F  HLT
+28 99        # 0010  manejador: LDI C, 0x99
+70           # 0012  RETI
