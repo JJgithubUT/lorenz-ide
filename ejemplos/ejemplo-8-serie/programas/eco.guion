@@ -1,0 +1,2 @@
+# Guion para eco.hex: entrega la letra Z a la UART antes de la primera instruccion.
+@0 serie "Z"

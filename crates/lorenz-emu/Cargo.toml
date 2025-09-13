@@ -1,0 +1,11 @@
+[package]
+name = "lorenz-emu"
+description = "Emulador funcional de maquinas descritas con lorenz-arch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+thiserror.workspace = true

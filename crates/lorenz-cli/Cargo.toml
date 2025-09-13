@@ -1,0 +1,19 @@
+[package]
+name = "lorenz-cli"
+description = "Interfaz de linea de comandos de Lorenz"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "lorenz_cli"
+
+[[bin]]
+name = "lorenz"
+path = "src/main.rs"
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+thiserror.workspace = true

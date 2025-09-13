@@ -1,0 +1,3 @@
+# Guion para interrupcion.hex: levanta la linea 0 justo antes de la instruccion numero 8.
+# Se usa con: lorenz ejecutar maquina.toml programas/interrupcion.hex --guion programas/interrupcion.guion
+@8 interrupcion 0

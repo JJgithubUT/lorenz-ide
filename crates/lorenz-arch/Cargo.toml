@@ -1,0 +1,12 @@
+[package]
+name = "lorenz-arch"
+description = "Carga y validacion de descripciones de arquitectura de Lorenz"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+toml.workspace = true
+serde.workspace = true
+thiserror.workspace = true

@@ -22,17 +22,93 @@ reglas:
 6. Un commit debe dejar el arbol compilando. Si un cambio grande no cabe compilando, se parte en
    commits que si lo hagan.
 
+## 1.1 Cadencia: 1000 commits en una semana
+
+La meta es llegar a 1000 commits en **una semana de desarrollo**. Eso obliga a commitear con mucha
+frecuencia, de forma sostenida y desde el primer dia: un commit que se pospone se convierte en un
+commit gordo, y un commit gordo es justo lo que esta politica quiere evitar.
+
+### Metas
+
+| Medida | Valor |
+| --- | --- |
+| Commits al arrancar la semana (2026-10-15) | 17 |
+| Commits que faltan | 983 |
+| Meta diaria | 140 como minimo |
+| Meta por hora, en jornadas de 12 horas | 12 |
+| Intervalo maximo entre dos commits | 10 minutos de trabajo |
+
+### Calendario de la semana
+
+| Dia | Fecha | Acumulado al cierre | Foco |
+| --- | --- | --- | --- |
+| 1 | vie 2026-10-16 | 160 | Emulador funcional: semantica, estado, decodificador |
+| 2 | sab 2026-10-17 | 300 | Emulador: ejecucion, interrupciones, dispositivos |
+| 3 | dom 2026-10-18 | 440 | Ensamblador, desensamblador y depurador de linea de comandos |
+| 4 | lun 2026-10-19 | 580 | Linea de tiempo, trazas, pruebas y suite de conformidad |
+| 5 | mar 2026-10-20 | 720 | Documentacion generada, proyectos, CLI completa |
+| 6 | mie 2026-10-21 | 860 | Lenguaje SGT: analisis y representacion intermedia |
+| 7 | jue 2026-10-22 | 1000+ | SGT: generacion de codigo, cierre, version `v0.1.0` |
+
+El calendario fija el ritmo, no el alcance. Si un dia el trabajo avanza menos de lo previsto, el
+alcance se mueve al dia siguiente; el contador de commits no se recupera inflandolo, se recupera
+dividiendo mejor el trabajo del dia.
+
+### Como se llega a esa frecuencia sin inventar commits
+
+Un commit cada diez minutos sale solo cuando cada unidad de trabajo, por pequena que sea, se
+registra por separado. Estas son las unidades que cuentan como un commit propio:
+
+1. **Un tipo de dato nuevo**, con su documentacion.
+2. **Una funcion publica**, con su prueba en el commit siguiente o en el mismo.
+3. **Una regla de validacion o una instruccion de la ISA**, una por commit.
+4. **Un grupo de pruebas sobre un comportamiento**, no un archivo de pruebas entero.
+5. **Un error corregido**, con la prueba que lo reproducia.
+6. **Un refactor**, siempre separado del cambio funcional que lo motiva.
+7. **Una actualizacion de documentacion**: cada bloque de la bitacora, cada seccion del formato.
+8. **Una entrada de configuracion**: una dependencia, un script, una regla de CI.
+9. **Una maquina o un programa de ejemplo**, y despues cada ajuste que reciba.
+10. **Un renombrado o un movimiento de archivo**, aislado de cualquier cambio de contenido.
+
+### Lo que no se hace para subir el contador
+
+- Commits vacios (`--allow-empty`).
+- Cambios de espacios en blanco, de formato o de comentarios sin motivo.
+- Dividir un cambio atomico de modo que un commit intermedio no compile.
+- Commitear y revertir para sumar dos.
+- Deshacer el trabajo con `git commit --amend` o `git rebase` para reescribir historial ya publicado.
+
+La razon no es solo la honestidad del contador: un historial lleno de ruido no sirve para
+`git bisect` ni para entender como se construyo el sistema, que es para lo que se pide.
+
+### Ritmo de trabajo
+
+1. Elegir la siguiente unidad de la lista de arriba.
+2. Escribirla, compilar y correr las pruebas del crate afectado.
+3. `git add` solo lo que pertenece a esa unidad y commitear.
+4. Cada 10 commits, correr `cargo test --workspace` completo.
+5. Cada bloque de trabajo cerrado, una linea en `docs/BITACORA.md` con el contador.
+
+### Seguimiento
+
+`scripts/contador.sh` imprime los commits actuales, la meta del dia segun el calendario y la
+diferencia. Se corre al empezar y al terminar cada bloque de trabajo.
+
 ### Reparto esperado por fase
 
-| Fase | Contenido | Commits estimados |
-| --- | --- | --- |
-| 1 | Nucleo, formato de arquitectura, emulador funcional | 180 |
-| 2 | Ensamblador, desensamblador, depurador de linea de comandos | 160 |
-| 3 | IDE, depuracion grafica, pruebas | 240 |
-| 4 | Lenguaje SGT y su compilador | 190 |
-| 5 | Ciclo a ciclo, pipeline, cache, metricas | 130 |
-| 6 | GPU, ecosistema, exportacion, version web | 150 |
-| — | **Total** | **1050** |
+| Fase | Contenido | Commits estimados | Dias |
+| --- | --- | --- | --- |
+| 1 | Nucleo, formato de arquitectura, emulador funcional, linea de comandos | 200 | 1 y 2 |
+| 2 | Ensamblador, desensamblador, depurador de linea de comandos | 170 | 2 y 3 |
+| 3 | IDE, depuracion grafica, pruebas | 220 | 3 a 5 |
+| 4 | Lenguaje SGT y su compilador | 190 | 5 y 6 |
+| 5 | Ciclo a ciclo, pipeline, cache, metricas | 110 | 6 y 7 |
+| 6 | GPU, ecosistema, exportacion, version web | 130 | 7 |
+| — | **Total** | **1020** | |
+
+El total supera 1000 a proposito: deja un margen de 20 commits por si alguna fase termina con menos
+cambios de los previstos. Las fases se solapan porque el calendario manda; cuando una fase se
+atrasa, se avanza en la siguiente en lugar de inflar commits.
 
 ## 2. Ramas permanentes
 
