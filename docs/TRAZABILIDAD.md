@@ -54,7 +54,7 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-043 | Codigo de salida segun parada, error o limite | Hecho | 0, 1, 3 (2 es uso incorrecto) |
 | RF-EMU-044 | Limite de instrucciones | Hecho | `--limite` |
 | RF-EMU-045 | Traza legible | Hecho | `--traza` para personas, `--traza-maquina` en `clave=valor` |
-| RF-EMU-046 | Comparar dos implementaciones | Parcial | `comparar` y `Ejecutor` en la biblioteca; falta la orden `lorenz comparar` |
+| RF-EMU-046 | Comparar dos implementaciones | Hecho | `comparar` y `Ejecutor`; orden `lorenz comparar` (salida 4 si difieren) |
 
 ## Concordancia con los commits anteriores
 

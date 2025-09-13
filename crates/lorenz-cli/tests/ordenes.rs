@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 
 use lorenz_cli::{
-    ejecutar_cli, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
+    ejecutar_cli, SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE,
+    SALIDA_OK,
 };
 
 fn raiz() -> PathBuf {
@@ -788,4 +789,80 @@ fn la_traza_de_maquina_no_usa_el_formato_para_personas() {
 fn la_ayuda_menciona_la_traza_de_maquina() {
     let r = correr(&["ayuda"]);
     assert!(r.salida.contains("--traza-maquina"));
+}
+
+// --- lorenz comparar (RF-EMU-046) ---
+
+/// La maquina de ejemplo con `ADD` a 3 ciclos en lugar de 2.
+fn maquina_con_add_lento() -> String {
+    let texto = std::fs::read_to_string(maquina()).unwrap();
+    let cambiado = texto.replace(
+        "afecta    = [\"Z\", \"C\"]\nciclos    = 2",
+        "afecta    = [\"Z\", \"C\"]\nciclos    = 3",
+    );
+    assert_ne!(texto, cambiado, "la maquina de ejemplo cambio de forma");
+    temporal("add-lento.toml", &cambiado)
+}
+
+#[test]
+fn comparar_una_maquina_consigo_misma_da_iguales() {
+    let r = correr(&[
+        "comparar",
+        &maquina(),
+        &maquina(),
+        &programa_de_ejemplo("suma.hex"),
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK, "{}", r.errores);
+    assert!(r.salida.starts_with("iguales:"), "{}", r.salida);
+}
+
+#[test]
+fn comparar_dos_maquinas_distintas_dice_donde_difieren() {
+    let r = correr(&[
+        "comparar",
+        &maquina(),
+        &maquina_con_add_lento(),
+        &programa_de_ejemplo("suma.hex"),
+    ]);
+    assert_eq!(r.codigo, SALIDA_DIFIEREN, "{}{}", r.salida, r.errores);
+    assert!(r.salida.contains("difieren en la instruccion"));
+    assert!(r.salida.contains("ciclos:"), "{}", r.salida);
+}
+
+#[test]
+fn comparar_un_programa_sin_fin_llega_al_limite() {
+    let r = correr(&[
+        "comparar",
+        &maquina(),
+        &maquina(),
+        &programa_de_ejemplo("bucle.hex"),
+        "--limite",
+        "5",
+    ]);
+    assert_eq!(r.codigo, SALIDA_LIMITE, "{}{}", r.salida, r.errores);
+}
+
+#[test]
+fn comparar_con_una_maquina_inexistente_es_un_error_de_uso() {
+    let r = correr(&[
+        "comparar",
+        &maquina(),
+        "no-existe.toml",
+        &programa_de_ejemplo("suma.hex"),
+    ]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+    assert!(r.errores.contains("no-existe.toml"));
+}
+
+#[test]
+fn comparar_con_un_programa_inexistente_es_un_error_de_uso() {
+    let r = correr(&["comparar", &maquina(), &maquina(), "no-existe.hex"]);
+    assert_eq!(r.codigo, SALIDA_ERROR_USO);
+}
+
+#[test]
+fn la_ayuda_explica_comparar_y_el_codigo_4() {
+    let r = correr(&["ayuda"]);
+    assert!(r.salida.contains("lorenz comparar"));
+    assert!(r.salida.contains("4  comparar"));
 }

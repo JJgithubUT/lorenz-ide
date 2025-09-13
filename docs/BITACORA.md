@@ -17,6 +17,17 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Orden lorenz comparar
+
+**Hecho:** `lorenz comparar <a.toml> <b.toml> <programa.hex>` carga el mismo programa en las dos
+descripciones, las avanza instruccion a instruccion y dice en que instruccion y en que difieren.
+Codigos: 0 iguales, 3 limite sin diferencias, 4 difieren (RF-EMU-046).
+**Pendiente:** revision de cierre de la fase 1.
+**Requisitos:** RF-EMU-046.
+**Commits:** feat/cli-comparar (#187-#190). Contador: 190.
+
+---
+
 ## 2026-10-16 — Dispositivos en regiones y comparador
 
 **Hecho:**

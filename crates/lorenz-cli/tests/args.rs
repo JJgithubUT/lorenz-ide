@@ -487,3 +487,54 @@ fn traza_a_secas_no_pide_el_formato_de_maquina() {
         o => panic!("{o:?}"),
     }
 }
+
+#[test]
+fn comparar_pide_las_dos_maquinas_y_el_programa() {
+    assert_eq!(
+        interpretar(&v(&["comparar"])),
+        Err(ErrorUso::Falta("maquina-a"))
+    );
+    assert_eq!(
+        interpretar(&v(&["comparar", "a"])),
+        Err(ErrorUso::Falta("maquina-b"))
+    );
+    assert_eq!(
+        interpretar(&v(&["comparar", "a", "b"])),
+        Err(ErrorUso::Falta("programa"))
+    );
+}
+
+#[test]
+fn comparar_acepta_limite_y_direccion() {
+    assert_eq!(
+        interpretar(&v(&[
+            "comparar",
+            "a",
+            "b",
+            "p",
+            "--limite",
+            "50",
+            "--direccion",
+            "0x10"
+        ])),
+        Ok(Orden::Comparar {
+            maquina_a: "a".into(),
+            maquina_b: "b".into(),
+            programa: "p".into(),
+            limite: 50,
+            direccion: Some(16),
+        })
+    );
+}
+
+#[test]
+fn comparar_rechaza_opciones_y_argumentos_de_mas() {
+    assert_eq!(
+        interpretar(&v(&["comparar", "a", "b", "p", "--traza"])),
+        Err(ErrorUso::OpcionDesconocida("--traza".into()))
+    );
+    assert_eq!(
+        interpretar(&v(&["comparar", "a", "b", "p", "q"])),
+        Err(ErrorUso::Sobra("q".into()))
+    );
+}
