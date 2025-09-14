@@ -17,6 +17,27 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Cierre de la fase 1 (version 0.1.0)
+
+**Hecho:**
+
+- Los 46 requisitos RF-EMU estan en "Hecho" en `docs/TRAZABILIDAD.md`, cada uno con pruebas.
+- Suite completa: 746 pruebas en verde, `cargo fmt --check` y `cargo clippy` sin avisos.
+- Flujo de version: `develop` -> `deploy` (version 0.1.0, `CHANGELOG.md`) -> `main`, con la
+  etiqueta `v0.1.0`.
+- Ejemplos de punta a punta: `suma` termina con A=0x2c en 7 ciclos; `bucle` y `comparar`
+  funcionan desde la linea de comandos.
+
+**Decidido:** la fase 1 se da por cerrada; la fase 2 (ensamblador y desensamblador generados desde
+la arquitectura) empieza desde `develop`.
+**Pendiente:** tabla de trazabilidad de RF-ARQ (hoy solo se estima por las citas en el codigo);
+formato de arquitectura publicado en Claude Docs por corregir (`dir:16` a dos campos de 8 bits y
+secciones de interrupciones, prioridades, periodo y UART).
+**Requisitos:** RF-EMU-001 a RF-EMU-046.
+**Commits:** 194 al cierre. Meta del dia 1: 160.
+
+---
+
 ## 2026-10-16 — Orden lorenz comparar
 
 **Hecho:** `lorenz comparar <a.toml> <b.toml> <programa.hex>` carga el mismo programa en las dos
