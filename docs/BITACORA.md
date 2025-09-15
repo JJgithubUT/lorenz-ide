@@ -17,6 +17,18 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Trazabilidad de Arquitectura
+
+**Hecho:** `docs/TRAZABILIDAD.md` incluye la tabla de los 42 RF-ARQ comprobada contra el codigo:
+30 hechos, 3 parciales (029 precarga de regiones, 034 linea en los errores, 042 arquitecturas de
+ejemplo) y 9 pendientes (pares de registros, bancos, herencia, comentarios a documentacion y
+editor visual). Corrige la estimacion anterior de 20 de 42.
+**Pendiente:** formato publicado en Claude Docs por actualizar.
+**Requisitos:** RF-ARQ-001 a RF-ARQ-042.
+**Commits:** docs/trazabilidad-arq.
+
+---
+
 ## 2026-10-16 — Cierre de la fase 1 (version 0.1.0)
 
 **Hecho:**
