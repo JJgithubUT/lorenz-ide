@@ -7,4 +7,5 @@
 
 pub mod error;
 pub mod expr;
+pub mod fuente;
 pub mod plantilla;
