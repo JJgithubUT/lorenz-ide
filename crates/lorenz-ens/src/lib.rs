@@ -5,5 +5,6 @@
 //! (RF-ENS-001). Una instruccion nueva en el TOML aparece en el ensamblador y en el desensamblador
 //! sin tocar este crate.
 
+pub mod error;
 pub mod expr;
 pub mod plantilla;
