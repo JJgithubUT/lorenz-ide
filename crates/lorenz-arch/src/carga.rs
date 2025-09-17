@@ -284,7 +284,7 @@ fn convertir(
                 causa: e.to_string(),
             })?;
 
-        let operandos = i
+        let operandos: Vec<Operando> = i
             .operandos
             .into_iter()
             .map(|o| {
@@ -317,8 +317,17 @@ fn convertir(
 
         let ciclos = convertir_ciclos(i.ciclos.as_ref(), &i.mnemonico, fallos);
 
+        // Sin `sintaxis` se escribe el mnemonico seguido de los operandos en el orden declarado.
         let sintaxis = if i.sintaxis.is_empty() {
-            i.mnemonico.clone()
+            let nombres: Vec<String> = operandos
+                .iter()
+                .map(|o| format!("{{{}}}", o.nombre))
+                .collect();
+            if nombres.is_empty() {
+                i.mnemonico.clone()
+            } else {
+                format!("{} {}", i.mnemonico, nombres.join(", "))
+            }
         } else {
             i.sintaxis
         };
