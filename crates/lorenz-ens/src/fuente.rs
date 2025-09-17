@@ -80,7 +80,7 @@ pub fn dividir_argumentos(texto: &str, columna_base: usize) -> Vec<Texto> {
     let mut comilla: Option<char> = None;
     let mut previo_barra = false;
     let mut inicio = 0usize;
-    let mut cortar = |hasta: usize, inicio: usize, partes: &mut Vec<Texto>| {
+    let cortar = |hasta: usize, inicio: usize, partes: &mut Vec<Texto>| {
         let trozo = &texto[inicio..hasta];
         let espacios = trozo.len() - trozo.trim_start().len();
         partes.push(Texto {
