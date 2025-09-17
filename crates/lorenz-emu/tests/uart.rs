@@ -35,7 +35,7 @@ descripcion = "Recibe un byte de la UART."
   de = ["A", "B", "C", "D"]
 
 [[instruccion]]
-mnemonico = "IN_ESTADO"
+mnemonico = "INE"
 sintaxis  = "INE {rd}"
 codigo    = "1010 rd:2 .."
 semantica = "rd = in[0x11]"
