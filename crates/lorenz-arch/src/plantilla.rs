@@ -132,6 +132,13 @@ impl Plantilla {
     /// Devuelve el texto de cada hueco, recortado, en el orden de la plantilla. `None` si la linea
     /// no encaja. Las mayusculas no importan en los literales.
     pub fn reconocer(&self, texto: &str) -> Option<Vec<(String, String)>> {
+        self.reconocer_con_posicion(texto)
+            .map(|v| v.into_iter().map(|(n, t, _)| (n, t)).collect())
+    }
+
+    /// Como [`Plantilla::reconocer`], pero tambien devuelve en que byte de `texto` empieza cada
+    /// captura: es lo que permite senalar la columna exacta de un operando en un error.
+    pub fn reconocer_con_posicion(&self, texto: &str) -> Option<Vec<(String, String, usize)>> {
         let mut resto = texto;
         let mut capturas = Vec::new();
         let mut i = 0;
@@ -151,11 +158,14 @@ impl Plantilla {
                         Some(Trozo::Literal(siguiente)) => buscar_en_nivel_cero(resto, siguiente)?,
                         _ => resto.len(),
                     };
-                    let captura = resto[..hasta].trim();
+                    let bruto = &resto[..hasta];
+                    let captura = bruto.trim();
                     if captura.is_empty() {
                         return None;
                     }
-                    capturas.push((nombre.clone(), captura.to_string()));
+                    let inicio =
+                        texto.len() - resto.len() + (bruto.len() - bruto.trim_start().len());
+                    capturas.push((nombre.clone(), captura.to_string(), inicio));
                     resto = &resto[hasta..];
                 }
             }
@@ -295,6 +305,14 @@ mod pruebas {
         assert!(p.reconocer("A").is_none());
         assert!(p.reconocer("A B").is_none());
         assert!(p.reconocer(", B").is_none());
+    }
+
+    #[test]
+    fn la_posicion_de_cada_captura_distingue_textos_repetidos() {
+        let p = Plantilla::analizar("OP {a}, {b}").unwrap();
+        let c = p.reconocer_con_posicion(" A, A").unwrap();
+        assert_eq!(c[0], ("a".to_string(), "A".to_string(), 1));
+        assert_eq!(c[1], ("b".to_string(), "A".to_string(), 4));
     }
 
     #[test]
