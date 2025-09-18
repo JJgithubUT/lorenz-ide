@@ -10,3 +10,4 @@ pub mod expr;
 pub mod fuente;
 
 pub use lorenz_arch::plantilla;
+pub mod codificar;
