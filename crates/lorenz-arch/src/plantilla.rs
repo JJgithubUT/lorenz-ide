@@ -49,6 +49,9 @@ impl std::error::Error for ErrorPlantilla {}
 pub struct Plantilla {
     mnemonico: String,
     trozos: Vec<Trozo>,
+    /// Para cada trozo, si en la sintaxis original habia un espacio justo antes. Permite escribir
+    /// la instruccion con el mismo aspecto que declaro el usuario.
+    espacio_antes: Vec<bool>,
 }
 
 impl Plantilla {
@@ -67,13 +70,17 @@ impl Plantilla {
         }
         let resto = &texto[fin_mnemonico..];
         let mut trozos: Vec<Trozo> = Vec::new();
+        let mut espacio_antes: Vec<bool> = Vec::new();
         let mut literal = String::new();
-        let mut chars = resto.chars().peekable();
+        let mut espacio_literal = false;
+        let mut espacio = false;
+        let mut chars = resto.chars();
         while let Some(c) = chars.next() {
             match c {
                 '{' => {
                     if !literal.is_empty() {
                         trozos.push(Trozo::Literal(std::mem::take(&mut literal)));
+                        espacio_antes.push(espacio_literal);
                     }
                     let mut nombre = String::new();
                     loop {
@@ -91,21 +98,36 @@ impl Plantilla {
                         return Err(ErrorPlantilla::HuecosContiguos(previo.clone(), nombre));
                     }
                     trozos.push(Trozo::Hueco(nombre));
+                    espacio_antes.push(espacio);
+                    espacio = false;
                 }
                 '}' => return Err(ErrorPlantilla::LlaveSinAbrir),
                 c if c.is_whitespace() => {
                     // Un espacio separa trozos pero no es parte del literal.
                     if !literal.is_empty() {
                         trozos.push(Trozo::Literal(std::mem::take(&mut literal)));
+                        espacio_antes.push(espacio_literal);
                     }
+                    espacio = true;
                 }
-                c => literal.push(c),
+                c => {
+                    if literal.is_empty() {
+                        espacio_literal = espacio;
+                        espacio = false;
+                    }
+                    literal.push(c);
+                }
             }
         }
         if !literal.is_empty() {
             trozos.push(Trozo::Literal(literal));
+            espacio_antes.push(espacio_literal);
         }
-        Ok(Plantilla { mnemonico, trozos })
+        Ok(Plantilla {
+            mnemonico,
+            trozos,
+            espacio_antes,
+        })
     }
 
     pub fn mnemonico(&self) -> &str {
@@ -178,31 +200,17 @@ impl Plantilla {
         }
     }
 
-    /// Escribe la instruccion rellenando cada hueco con el texto dado por `valor`.
+    /// Escribe la instruccion rellenando cada hueco con el texto dado por `valor`. Respeta los
+    /// espacios de la sintaxis declarada: `LD {rd}, [{dir}]` produce `LD A, [0x2000]`.
     pub fn componer(&self, valor: impl Fn(&str) -> String) -> String {
         let mut salida = self.mnemonico.clone();
-        let mut previo_es_hueco_o_inicio = true;
-        for trozo in &self.trozos {
+        for (trozo, espacio) in self.trozos.iter().zip(&self.espacio_antes) {
+            if *espacio {
+                salida.push(' ');
+            }
             match trozo {
-                Trozo::Hueco(n) => {
-                    if previo_es_hueco_o_inicio {
-                        salida.push(' ');
-                    }
-                    salida.push_str(&valor(n));
-                    previo_es_hueco_o_inicio = false;
-                }
-                Trozo::Literal(l) => {
-                    // Se separa del mnemonico, no de lo que sigue a una coma ni a un corchete.
-                    if previo_es_hueco_o_inicio && salida == self.mnemonico {
-                        salida.push(' ');
-                    } else if l.chars().next().is_some_and(|c| c.is_alphanumeric()) {
-                        salida.push(' ');
-                    } else if salida.ends_with(',') {
-                        salida.push(' ');
-                    }
-                    salida.push_str(l);
-                    previo_es_hueco_o_inicio = false;
-                }
+                Trozo::Hueco(n) => salida.push_str(&valor(n)),
+                Trozo::Literal(l) => salida.push_str(l),
             }
         }
         salida
