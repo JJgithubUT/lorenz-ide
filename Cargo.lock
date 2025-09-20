@@ -55,6 +55,7 @@ name = "lorenz-ens"
 version = "0.1.0"
 dependencies = [
  "lorenz-arch",
+ "lorenz-emu",
  "thiserror",
 ]
 

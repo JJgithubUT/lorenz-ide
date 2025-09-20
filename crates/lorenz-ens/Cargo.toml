@@ -9,3 +9,6 @@ license.workspace = true
 [dependencies]
 lorenz-arch = { path = "../lorenz-arch" }
 thiserror.workspace = true
+
+[dev-dependencies]
+lorenz-emu = { path = "../lorenz-emu" }

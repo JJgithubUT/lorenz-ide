@@ -11,4 +11,5 @@ pub mod fuente;
 
 pub use lorenz_arch::plantilla;
 pub mod codificar;
+pub mod desensamblador;
 pub mod ensamblador;
