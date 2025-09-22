@@ -7,7 +7,7 @@ use lorenz_emu::{Emulador, ErrorEjecucion};
 
 use crate::args::{interpretar, Disparo, Orden, Volcado};
 use crate::guion::{leer_guion, Accion, Evento};
-use crate::programa::{escribir_palabras, leer_palabras};
+use crate::programa::escribir_palabras;
 
 /// El programa termino bien: la maquina se detuvo.
 pub const SALIDA_OK: i32 = 0;
@@ -25,10 +25,13 @@ Lorenz: emulador de maquinas definidas por el usuario
 
 Uso:
   lorenz validar <maquina.toml>
-  lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza | --traza-maquina]
+  lorenz ejecutar <maquina.toml> <programa.hex | fuente.s> [--limite N] [--direccion A] [--traza | --traza-maquina]
                   [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
+  lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
+                   [--simbolos ARCHIVO]
+  lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -65,6 +68,24 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
+        Orden::Ensamblar {
+            maquina,
+            fuente,
+            opciones,
+        } => crate::ensamblar::ensamblar_cli(&maquina, &fuente, &opciones, salida, errores),
+        Orden::Desensamblar {
+            maquina,
+            programa,
+            direccion,
+            simbolos,
+        } => crate::ensamblar::desensamblar_cli(
+            &maquina,
+            &programa,
+            direccion,
+            simbolos.as_deref(),
+            salida,
+            errores,
+        ),
         Orden::Comparar {
             maquina_a,
             maquina_b,
@@ -168,22 +189,15 @@ fn ejecutar(
             return SALIDA_ERROR_USO;
         }
     };
-    let texto = match std::fs::read_to_string(ruta_programa) {
-        Ok(t) => t,
+    let inicio = direccion.unwrap_or(maquina.arranque);
+    let segmentos = match crate::ensamblar::cargar_segmentos(&maquina, ruta_programa, inicio) {
+        Ok(s) => s,
         Err(e) => {
-            escribir(errores, &format!("{ruta_programa}: no se pudo leer: {e}\n"));
-            return SALIDA_ERROR_USO;
-        }
-    };
-    let palabras = match leer_palabras(&texto, maquina.bits_palabra) {
-        Ok(p) => p,
-        Err(e) => {
-            escribir(errores, &format!("{ruta_programa}: {e}\n"));
+            escribir(errores, &format!("{e}\n"));
             return SALIDA_ERROR_USO;
         }
     };
     let digitos = (maquina.bits_direccion as usize).div_ceil(4);
-    let inicio = direccion.unwrap_or(maquina.arranque);
     let mut emulador = match Emulador::nuevo(maquina) {
         Ok(e) => e,
         Err(e) => {
@@ -194,9 +208,11 @@ fn ejecutar(
     if opciones.vigilar {
         emulador.memoria_mut().activar_seguimiento();
     }
-    if let Err(e) = emulador.cargar_programa(inicio, &palabras) {
-        escribir(errores, &format!("{ruta_programa}: {e}\n"));
-        return SALIDA_ERROR_USO;
+    for (desde, palabras) in &segmentos {
+        if let Err(e) = emulador.cargar_programa(*desde, palabras) {
+            escribir(errores, &format!("{ruta_programa}: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
     }
     emulador.estado_mut().fijar_pc(inicio);
     if let Some(teclas) = &opciones.teclas {
