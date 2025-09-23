@@ -5,6 +5,7 @@ use std::io::Write;
 use lorenz_arch::modelo::Maquina;
 use lorenz_ens::desensamblador::Desensamblador;
 use lorenz_ens::ensamblador::{Ensamblador, Fuente, Objeto};
+use lorenz_ens::preprocesar::CargadorDeDisco;
 use lorenz_ens::salidas::{leer_etiquetas, listado, mapa, tabla_de_simbolos};
 
 use crate::ordenes::{SALIDA_ERROR_USO, SALIDA_OK};
@@ -25,20 +26,22 @@ fn escribir(salida: &mut dyn Write, texto: &str) {
     let _ = salida.write_all(texto.as_bytes());
 }
 
-/// Lee y ensambla un archivo; los errores salen ya formateados, uno por linea.
-pub fn ensamblar_archivo(maquina: &Maquina, ruta: &str) -> Result<(Objeto, Fuente), String> {
+/// Lee y ensambla un archivo, siguiendo sus `.incluir`. Devuelve tambien todos los archivos
+/// leidos (el principal primero). Los errores salen ya formateados, uno por linea.
+pub fn ensamblar_archivo(maquina: &Maquina, ruta: &str) -> Result<(Objeto, Vec<Fuente>), String> {
     let texto =
         std::fs::read_to_string(ruta).map_err(|e| format!("{ruta}: no se pudo leer: {e}"))?;
-    let fuente = Fuente::nueva(ruta, texto);
+    let raiz = Fuente::nueva(ruta, texto);
     let ensamblador = Ensamblador::nuevo(maquina).map_err(|e| format!("{ruta}: {e}"))?;
-    match ensamblador.ensamblar(&fuente) {
-        Ok(o) => Ok((o, fuente)),
-        Err(errores) => Err(errores
-            .iter()
-            .map(|e| e.to_string())
-            .collect::<Vec<_>>()
-            .join("\n")),
-    }
+    ensamblador
+        .ensamblar_con(&raiz, &CargadorDeDisco)
+        .map_err(|errores| {
+            errores
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
 }
 
 /// Opciones de `lorenz ensamblar`.
@@ -94,7 +97,7 @@ pub fn ensamblar_cli(
             return SALIDA_ERROR_USO;
         }
     };
-    let (objeto, fuente) = match ensamblar_archivo(&maquina, ruta_fuente) {
+    let (objeto, fuentes) = match ensamblar_archivo(&maquina, ruta_fuente) {
         Ok(r) => r,
         Err(e) => {
             escribir(errores, &format!("{e}\n"));
@@ -116,7 +119,7 @@ pub fn ensamblar_cli(
         }
     }
     if let Some(ruta) = &opciones.listado {
-        let texto = listado(&objeto, &[fuente], maquina.bits_palabra);
+        let texto = listado(&objeto, &fuentes, maquina.bits_palabra);
         if !escribir_archivo(ruta, &texto, errores) {
             return SALIDA_ERROR_USO;
         }
