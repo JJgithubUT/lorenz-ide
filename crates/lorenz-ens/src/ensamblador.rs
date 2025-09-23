@@ -189,15 +189,23 @@ impl<'m> Ensamblador<'m> {
         v
     }
 
-    /// Ensambla un programa de un solo archivo.
+    /// Ensambla un programa de un solo archivo. Admite macros; `.incluir` solo funciona si se usa
+    /// [`Ensamblador::ensamblar_con`] con un cargador que sepa leer los archivos.
     pub fn ensamblar(&self, fuente: &Fuente) -> Result<Objeto, Vec<ErrorEns>> {
-        let lineas: Vec<(String, usize, String)> = fuente
-            .texto
-            .lines()
-            .enumerate()
-            .map(|(i, t)| (fuente.nombre.clone(), i + 1, t.to_string()))
-            .collect();
-        self.ensamblar_lineas(&lineas)
+        let sin_archivos = crate::preprocesar::CargadorEnMemoria::default();
+        self.ensamblar_con(fuente, &sin_archivos).map(|(o, _)| o)
+    }
+
+    /// Ensambla un programa con `.incluir` y macros. Devuelve tambien todos los archivos leidos,
+    /// el principal primero, para generar el listado.
+    pub fn ensamblar_con(
+        &self,
+        raiz: &Fuente,
+        cargador: &dyn crate::preprocesar::Cargador,
+    ) -> Result<(Objeto, Vec<Fuente>), Vec<ErrorEns>> {
+        let pre = crate::preprocesar::preprocesar(raiz, cargador, &self.mnemonicos())?;
+        let objeto = self.ensamblar_lineas(&pre.lineas)?;
+        Ok((objeto, pre.fuentes))
     }
 
     /// Ensambla lineas ya preprocesadas: `(archivo, numero, texto)`.
