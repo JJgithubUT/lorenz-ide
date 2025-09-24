@@ -224,3 +224,27 @@ fn la_ayuda_documenta_las_nuevas_ordenes() {
     assert!(r.salida.contains("lorenz ensamblar"));
     assert!(r.salida.contains("lorenz desensamblar"));
 }
+
+#[test]
+fn un_fuente_con_inclusiones_y_macros_se_ejecuta() {
+    let r = correr(&["ejecutar", &maquina(), &ejemplo("macros.s")]);
+    assert_eq!(r.codigo, SALIDA_OK, "{}", r.errores);
+    assert!(r.salida.contains("A=0xe"), "{}", r.salida);
+    assert!(r.salida.contains("instrucciones: 4"));
+}
+
+#[test]
+fn el_listado_incluye_los_archivos_incluidos() {
+    let lst = temporal("macros.lst", "");
+    let r = correr(&[
+        "ensamblar",
+        &maquina(),
+        &ejemplo("macros.s"),
+        "--listado",
+        &lst,
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK, "{}", r.errores);
+    let t = std::fs::read_to_string(&lst).unwrap();
+    assert!(t.contains("constantes.inc"));
+    assert!(t.contains("SIETE = 7"));
+}
