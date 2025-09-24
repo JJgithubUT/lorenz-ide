@@ -110,6 +110,13 @@ pub struct Ensamblador<'m> {
     formas: Vec<Forma>,
 }
 
+/// Secciones con nombre: cada una continua donde la dejo la ultima vez que se uso (RF-ENS-010).
+#[derive(Debug, Default)]
+struct Secciones {
+    actual: Option<String>,
+    guardadas: BTreeMap<String, u64>,
+}
+
 #[derive(Debug)]
 struct Origen {
     archivo: String,
@@ -301,6 +308,7 @@ impl<'m> Ensamblador<'m> {
         let m = self.maquina;
         let mut elementos = Vec::new();
         let mut dir = m.arranque;
+        let mut secciones = Secciones::default();
         for (archivo, numero, texto) in lineas {
             let origen = Origen {
                 archivo: archivo.clone(),
@@ -331,6 +339,7 @@ impl<'m> Ensamblador<'m> {
                         &nombre,
                         &argumentos,
                         &mut dir,
+                        &mut secciones,
                         simbolos,
                         &mut elementos,
                         errores,
@@ -363,6 +372,7 @@ impl<'m> Ensamblador<'m> {
         nombre: &Texto,
         argumentos: &[Texto],
         dir: &mut u64,
+        secciones: &mut Secciones,
         simbolos: &mut BTreeMap<String, Simbolo>,
         elementos: &mut Vec<Elemento>,
         errores: &mut Vec<ErrorEns>,
@@ -397,6 +407,37 @@ impl<'m> Ensamblador<'m> {
                         *dir = v as u64;
                     }
                 }
+            }
+            "seccion" | "section" => {
+                let [arg] = argumentos else {
+                    errores.push(args_mal("el nombre de una region de memoria"));
+                    return;
+                };
+                let Some(region) = m.regiones.iter().find(|r| r.nombre == arg.texto) else {
+                    errores.push(Self::error(
+                        origen,
+                        arg.columna,
+                        Causa::Otra(format!(
+                            "no hay ninguna region llamada `{}`; las secciones se llaman como las regiones de la maquina ({})",
+                            arg.texto,
+                            m.regiones
+                                .iter()
+                                .map(|r| r.nombre.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )),
+                    ));
+                    return;
+                };
+                if let Some(anterior) = secciones.actual.take() {
+                    secciones.guardadas.insert(anterior, *dir);
+                }
+                *dir = secciones
+                    .guardadas
+                    .get(&region.nombre)
+                    .copied()
+                    .unwrap_or(region.desde);
+                secciones.actual = Some(region.nombre.clone());
             }
             "equ" | "const" => {
                 if argumentos.len() != 2 {
