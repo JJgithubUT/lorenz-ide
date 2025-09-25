@@ -51,6 +51,7 @@ pub struct OpcionesEnsamblar {
     pub mapa: Option<String>,
     pub listado: Option<String>,
     pub simbolos: Option<String>,
+    pub objeto: Option<String>,
 }
 
 fn escribir_archivo(ruta: &str, texto: &str, errores: &mut dyn Write) -> bool {
@@ -126,6 +127,11 @@ pub fn ensamblar_cli(
     }
     if let Some(ruta) = &opciones.simbolos {
         if !escribir_archivo(ruta, &tabla_de_simbolos(&objeto), errores) {
+            return SALIDA_ERROR_USO;
+        }
+    }
+    if let Some(ruta) = &opciones.objeto {
+        if !escribir_archivo(ruta, &objeto.a_toml(&maquina.nombre), errores) {
             return SALIDA_ERROR_USO;
         }
     }

@@ -311,6 +311,7 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
             "--mapa" => opciones.mapa = Some(valor_de(resto, &mut i, a)?.clone()),
             "--listado" => opciones.listado = Some(valor_de(resto, &mut i, a)?.clone()),
             "--simbolos" => opciones.simbolos = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--objeto" => opciones.objeto = Some(valor_de(resto, &mut i, a)?.clone()),
             _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
             _ => posicionales.push(a.clone()),
         }

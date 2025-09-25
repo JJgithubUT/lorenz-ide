@@ -30,7 +30,7 @@ Uso:
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
-                   [--simbolos ARCHIVO]
+                   [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
