@@ -248,3 +248,19 @@ fn el_listado_incluye_los_archivos_incluidos() {
     assert!(t.contains("constantes.inc"));
     assert!(t.contains("SIETE = 7"));
 }
+
+#[test]
+fn ensamblar_puede_guardar_el_archivo_objeto() {
+    let obj = temporal("suma.lobj", "");
+    let r = correr(&[
+        "ensamblar",
+        &maquina(),
+        &ejemplo("suma.s"),
+        "--objeto",
+        &obj,
+    ]);
+    assert_eq!(r.codigo, SALIDA_OK, "{}", r.errores);
+    let t = std::fs::read_to_string(&obj).unwrap();
+    assert!(t.contains("lorenz-objeto-0.1"));
+    assert!(t.contains("0x20") || t.contains("32"));
+}
