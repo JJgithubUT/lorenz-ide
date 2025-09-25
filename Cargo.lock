@@ -57,6 +57,7 @@ version = "0.1.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
+ "serde",
  "thiserror",
  "toml",
 ]

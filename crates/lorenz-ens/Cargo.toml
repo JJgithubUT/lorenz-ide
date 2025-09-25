@@ -10,6 +10,7 @@ license.workspace = true
 lorenz-arch = { path = "../lorenz-arch" }
 thiserror.workspace = true
 toml.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 lorenz-emu = { path = "../lorenz-emu" }
