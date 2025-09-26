@@ -39,6 +39,19 @@ pub enum Orden {
         limite: u64,
         direccion: Option<u64>,
     },
+    /// Ensamblar un fuente y escribir el programa en hexadecimal.
+    Ensamblar {
+        maquina: String,
+        fuente: String,
+        opciones: crate::ensamblar::OpcionesEnsamblar,
+    },
+    /// Desensamblar un programa en hexadecimal.
+    Desensamblar {
+        maquina: String,
+        programa: String,
+        direccion: Option<u64>,
+        simbolos: Option<String>,
+    },
     /// Cargar un programa y ejecutarlo.
     Ejecutar {
         maquina: String,
@@ -133,6 +146,8 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         }
         "ejecutar" => interpretar_ejecutar(resto),
         "comparar" => interpretar_comparar(resto),
+        "ensamblar" => interpretar_ensamblar(resto),
+        "desensamblar" => interpretar_desensamblar(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -274,6 +289,76 @@ fn interpretar_comparar(resto: &[String]) -> Result<Orden, ErrorUso> {
         programa,
         limite,
         direccion,
+    })
+}
+
+/// Valor de una opcion que lo necesita: avanza `i` hasta el argumento siguiente.
+fn valor_de<'a>(resto: &'a [String], i: &mut usize, opcion: &str) -> Result<&'a String, ErrorUso> {
+    *i += 1;
+    resto
+        .get(*i)
+        .ok_or_else(|| ErrorUso::OpcionSinValor(opcion.to_string()))
+}
+
+fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut opciones = crate::ensamblar::OpcionesEnsamblar::default();
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "-o" | "--salida" => opciones.salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--mapa" => opciones.mapa = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--listado" => opciones.listado = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--simbolos" => opciones.simbolos = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--objeto" => opciones.objeto = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let fuente = it.next().ok_or(ErrorUso::Falta("fuente"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Ensamblar {
+        maquina,
+        fuente,
+        opciones,
+    })
+}
+
+fn interpretar_desensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut direccion = None;
+    let mut simbolos = None;
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--direccion" => {
+                let v = valor_de(resto, &mut i, a)?;
+                direccion = Some(numero(a, v)?);
+            }
+            "--simbolos" => simbolos = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Desensamblar {
+        maquina,
+        programa,
+        direccion,
+        simbolos,
     })
 }
 

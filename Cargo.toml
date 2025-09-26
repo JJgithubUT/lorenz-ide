@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-cli"]
+members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-ens", "crates/lorenz-cli"]
 
 [workspace.package]
 version = "0.1.0"

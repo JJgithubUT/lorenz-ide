@@ -7,6 +7,7 @@ pub mod bits;
 pub mod carga;
 pub mod error;
 pub mod modelo;
+pub mod plantilla;
 pub mod semantica;
 pub mod validacion;
 

@@ -74,7 +74,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-010 | Pares de registros como un registro ancho | Pendiente |  |
 | RF-ARQ-011 | Banderas con nombre, posicion y descripcion | Hecho | seccion `[flags]` |
 | RF-ARQ-012 | Bancos de registros conmutables | Pendiente | fase 5 de la ERS |
-| RF-ARQ-013 | Instrucciones con mnemonico, sintaxis, codificacion, semantica y ciclos | Hecho | `Instruccion` |
+| RF-ARQ-013 | Instrucciones con mnemonico, sintaxis, codificacion, semantica y ciclos | Hecho | `Instruccion`; la sintaxis se valida (`E-SINTAXIS`) |
 | RF-ARQ-014 | Lenguaje de campos de bits | Hecho | `bits.rs` |
 | RF-ARQ-015 | Instrucciones de varias palabras | Hecho | codificacion con `|` |
 | RF-ARQ-016 | Los bits de cada palabra suman el ancho de palabra | Hecho | E-BITS |
@@ -104,6 +104,44 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-040 | Editor visual: diagrama a texto | Pendiente | fase del IDE |
 | RF-ARQ-041 | Editor visual: errores de validacion en el diagrama | Pendiente | fase del IDE |
 | RF-ARQ-042 | Al menos cuatro arquitecturas de ejemplo | Parcial | hay una de 8 bits (y su variante con UART); faltan 16 bits, RISC y de pila |
+
+## Requisitos del ensamblador (RF-ENS)
+
+Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensamblador viven en
+`lorenz-ens`; no conocen ninguna ISA, todo lo leen de la descripcion de la maquina.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-ENS-001 | Ensamblador generado de la descripcion, sin configuracion | Hecho | `Ensamblador::nuevo` |
+| RF-ENS-002 | Mnemonicos y sintaxis declarados | Hecho | `Plantilla` en `lorenz-arch` |
+| RF-ENS-003 | Etiquetas en dos pasadas | Hecho | `primera_pasada`, `segunda_pasada` |
+| RF-ENS-004 | Constantes con nombre | Hecho | `nombre = expr`, `.equ` |
+| RF-ENS-005 | Expresiones aritmeticas constantes | Hecho | `expr.rs` |
+| RF-ENS-006 | Literales decimal, hexadecimal, binario y caracter | Hecho | `expr.rs` |
+| RF-ENS-007 | Directivas de espacio, datos y origen | Hecho | `.org`, `.db`, `.dw`, `.espacio` |
+| RF-ENS-008 | Inclusion de archivos | Hecho | `.incluir`, `preprocesar.rs` |
+| RF-ENS-009 | Macros con parametros | Hecho | `.macro`, `.endm` |
+| RF-ENS-010 | Secciones ubicadas en regiones | Hecho | `.seccion` |
+| RF-ENS-011 | Rechazar un inmediato fuera de rango | Hecho | `Causa::InmediatoFueraDeRango` |
+| RF-ENS-012 | Rechazar un salto relativo fuera de alcance | Hecho | `Causa::SaltoFueraDeAlcance` |
+| RF-ENS-013 | Rechazar codigo en una region que no corresponde | Hecho | `comprobar_region` (D-029) |
+| RF-ENS-014 | Errores con archivo, linea, columna y causa en terminos de la ISA | Hecho | `ErrorEns` |
+| RF-ENS-015 | Seguir tras un error recuperable | Hecho | acumula errores por pasada |
+| RF-ENS-016 | Archivo objeto con codigo, simbolos y ubicacion | Hecho | `objeto.rs` |
+| RF-ENS-017 | Mapa de direccion a archivo y linea | Hecho | `salidas::mapa` |
+| RF-ENS-018 | Listado con direccion, bytes y fuente | Hecho | `salidas::listado` |
+| RF-ENS-019 | Enlazador | Pendiente | |
+| RF-ENS-020 | Simbolos no resueltos y duplicados al enlazar | Pendiente | |
+| RF-ENS-021 | Desensamblador generado de la misma descripcion | Hecho | `Desensamblador` |
+| RF-ENS-022 | Reconstruir el texto desde la codificacion | Hecho | `Plantilla::componer` |
+| RF-ENS-023 | Marcar como datos lo que no es instruccion | Hecho | `Linea::Dato` |
+| RF-ENS-024 | Etiquetas en lugar de direcciones con tabla de simbolos | Hecho | `--simbolos` |
+| RF-ENS-025 | Ensamblar y desensamblar da texto equivalente | Hecho | prueba de ida y vuelta |
+| RF-ENS-026 | Ensamblar desde la linea de comandos | Hecho | `lorenz ensamblar`, `desensamblar` |
+| RF-ENS-027 | Palabras binarias literales | Hecho | `.db` |
+| RF-ENS-028 | Aviso de banderas indeterminadas antes de un salto | Pendiente | |
+| RF-ENS-029 | Exportar la tabla de simbolos | Hecho | `salidas::tabla_de_simbolos` (TOML) |
+| RF-ENS-030 | Recargar sin reiniciar al cambiar la arquitectura | Pendiente | hace falta el IDE o un modo vigilante |
 
 ## Concordancia con los commits anteriores
 

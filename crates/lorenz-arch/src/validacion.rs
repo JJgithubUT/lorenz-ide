@@ -17,6 +17,7 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     anchos_de_palabra(m, &mut fallos);
     codificaciones_ambiguas(m, &mut fallos);
     campos_y_operandos(m, &mut fallos);
+    sintaxis_de_instrucciones(m, &mut fallos);
     roles_de_registro(m, &mut fallos);
     nombres_duplicados(m, &mut fallos);
     regiones(m, &mut fallos);
@@ -26,6 +27,67 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     nombres_de_semantica(m, &mut fallos);
     rangos(m, &mut fallos);
     fallos
+}
+
+/// RF-ARQ-013: la sintaxis de cada instruccion empieza por su mnemonico y menciona exactamente
+/// sus operandos, cada uno una vez. Sin esto el ensamblador no podria leerla ni el desensamblador
+/// escribirla.
+fn sintaxis_de_instrucciones(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    for ins in &m.instrucciones {
+        let plantilla = match crate::plantilla::Plantilla::analizar(&ins.sintaxis) {
+            Ok(p) => p,
+            Err(e) => {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!("la sintaxis de '{}' no es valida: {}", ins.mnemonico, e),
+                ));
+                continue;
+            }
+        };
+        if !plantilla.mnemonico().eq_ignore_ascii_case(&ins.mnemonico) {
+            fallos.push(fallo(
+                Regla::SintaxisInvalida,
+                format!(
+                    "la sintaxis de '{}' empieza por '{}': debe empezar por su mnemonico",
+                    ins.mnemonico,
+                    plantilla.mnemonico()
+                ),
+            ));
+        }
+        let huecos = plantilla.huecos();
+        let mut vistos: BTreeSet<&str> = BTreeSet::new();
+        for h in &huecos {
+            if !vistos.insert(h) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "la sintaxis de '{}' repite el operando '{}'",
+                        ins.mnemonico, h
+                    ),
+                ));
+            }
+            if !ins.operandos.iter().any(|o| o.nombre == *h) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "la sintaxis de '{}' cita '{{{}}}', que no es un operando suyo",
+                        ins.mnemonico, h
+                    ),
+                ));
+            }
+        }
+        for o in &ins.operandos {
+            if !vistos.contains(o.nombre.as_str()) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "el operando '{}' de '{}' no aparece en su sintaxis",
+                        o.nombre, ins.mnemonico
+                    ),
+                ));
+            }
+        }
+    }
 }
 
 fn fallo(regla: Regla, detalle: String) -> FalloValidacion {

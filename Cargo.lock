@@ -39,6 +39,7 @@ version = "0.1.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
+ "lorenz-ens",
  "thiserror",
 ]
 
@@ -48,6 +49,17 @@ version = "0.1.0"
 dependencies = [
  "lorenz-arch",
  "thiserror",
+]
+
+[[package]]
+name = "lorenz-ens"
+version = "0.1.0"
+dependencies = [
+ "lorenz-arch",
+ "lorenz-emu",
+ "serde",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]

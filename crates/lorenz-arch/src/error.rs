@@ -95,6 +95,8 @@ pub enum Regla {
     ValorFueraDeRango,
     /// La semantica de una instruccion no se puede analizar o cita nombres que no existen.
     SemanticaInvalida,
+    /// La sintaxis de una instruccion esta mal formada o no cuadra con sus operandos.
+    SintaxisInvalida,
 }
 
 impl Regla {
@@ -112,6 +114,7 @@ impl Regla {
             Regla::NombreDuplicado => "E-DUPLICADO",
             Regla::ValorFueraDeRango => "E-RANGO",
             Regla::SemanticaInvalida => "E-SEMANT",
+            Regla::SintaxisInvalida => "E-SINTAXIS",
         }
     }
 
@@ -129,6 +132,7 @@ impl Regla {
             Regla::NombreDuplicado => "RF-ARQ-007",
             Regla::ValorFueraDeRango => "RF-ARQ-003",
             Regla::SemanticaInvalida => "RF-ARQ-022",
+            Regla::SintaxisInvalida => "RF-ARQ-013",
         }
     }
 }

@@ -16,4 +16,5 @@ path = "src/main.rs"
 [dependencies]
 lorenz-arch = { path = "../lorenz-arch" }
 lorenz-emu = { path = "../lorenz-emu" }
+lorenz-ens = { path = "../lorenz-ens" }
 thiserror.workspace = true
