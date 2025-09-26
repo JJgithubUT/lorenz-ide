@@ -17,6 +17,43 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: ensamblador y desensamblador
+
+**Hecho:**
+
+- Nuevo crate `lorenz-ens`. El ensamblador y el desensamblador se generan de la descripcion de la
+  maquina; una instruccion nueva en el TOML aparece en ambos sin tocar el codigo (hay una prueba
+  que lo demuestra).
+- Ensamblador en dos pasadas con etiquetas, constantes, expresiones, literales, directivas de datos
+  y origen, inclusion de archivos, macros con parametros y etiquetas locales, y secciones.
+- Errores con archivo, linea y columna; se acumulan para informar de varios a la vez.
+- Salidas: hexadecimal, mapa, listado, tabla de simbolos (TOML) y archivo objeto (TOML).
+- Desensamblador con datos, etiquetas y salida que el ensamblador vuelve a aceptar.
+- CLI: `lorenz ensamblar`, `lorenz desensamblar`, y `ejecutar` acepta fuentes `.s` directamente.
+- `lorenz-arch` valida la sintaxis de cada instruccion (regla `E-SINTAXIS`, RF-ARQ-013). Al
+  activarla aparecio un fixture de la UART cuyo mnemonico y sintaxis no coincidian; se corrigio.
+- `docs/TRAZABILIDAD.md` tiene la tabla de los 30 RF-ENS: 26 hechos, 4 pendientes.
+
+**Decidido:**
+
+- D-029 — el codigo puede caer en una region de solo lectura (es donde vive una ROM), pero no en
+  una region sin lectura, en un dispositivo ni fuera de toda region. Un elemento no puede cruzar el
+  limite entre dos regiones.
+- D-030 — el desensamblador y el emulador decodifican con codigo propio cada uno; la prueba
+  `coherencia_emu` los obliga a coincidir palabra por palabra en tres maquinas.
+- D-031 — una linea que viene de una macro se atribuye a la que la invoca.
+- D-032 — una seccion se llama como una region y conserva su propio contador.
+- D-033 — el desensamblador es fiel a la maquina: una palabra con bits de relleno distintos de cero
+  se muestra como la instruccion que el emulador ejecutaria, aunque al ensamblar el relleno sea cero.
+
+**Pendiente:** enlazador (RF-ENS-019, 020), aviso de banderas indeterminadas (RF-ENS-028) y recarga
+al cambiar la arquitectura (RF-ENS-030). Siguen el depurador de linea de comandos y las pruebas.
+**Requisitos:** RF-ENS-001 a RF-ENS-018, RF-ENS-021 a RF-ENS-027, RF-ENS-029, RF-ARQ-013.
+**Commits:** feat/ens-nucleo (199 a 236).
+**Estado del contador:** 236 de 1000 commits.
+
+---
+
 ## 2026-10-16 — Trazabilidad de Arquitectura
 
 **Hecho:** `docs/TRAZABILIDAD.md` incluye la tabla de los 42 RF-ARQ comprobada contra el codigo:
