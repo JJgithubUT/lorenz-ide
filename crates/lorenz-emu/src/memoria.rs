@@ -4,6 +4,8 @@
 //! lectura y escritura que el programa debe respetar; el depurador y el cargador de programas los
 //! saltan con las operaciones `*_privilegiado` (RF-EMU-019, RF-EMU-022, RF-EMU-023).
 
+use std::collections::BTreeSet;
+
 use lorenz_arch::modelo::{Acceso, Maquina};
 
 use crate::error::ErrorEjecucion;
@@ -41,6 +43,22 @@ pub enum Escritura {
     Instruccion { pc: u64 },
 }
 
+/// Tipo de acceso a una celda vigilada.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TipoAcceso {
+    Lectura,
+    Escritura,
+}
+
+/// Un acceso de una instruccion a una celda que el depurador vigila (RF-DEP-014, RF-DEP-015).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccesoVigilado {
+    pub direccion: u64,
+    pub tipo: TipoAcceso,
+    /// Direccion de la instruccion que accedio.
+    pub pc: u64,
+}
+
 /// Una lectura de una celda que nadie habia escrito (RF-EMU-026).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LecturaSinInicializar {
@@ -58,6 +76,9 @@ pub struct Memoria {
     seguimiento: bool,
     instruccion_actual: u64,
     sin_inicializar: Vec<LecturaSinInicializar>,
+    vigiladas_lectura: BTreeSet<u64>,
+    vigiladas_escritura: BTreeSet<u64>,
+    accesos: Vec<AccesoVigilado>,
 }
 
 impl Memoria {
@@ -90,6 +111,9 @@ impl Memoria {
             seguimiento: false,
             instruccion_actual: 0,
             sin_inicializar: Vec::new(),
+            vigiladas_lectura: BTreeSet::new(),
+            vigiladas_escritura: BTreeSet::new(),
+            accesos: Vec::new(),
         })
     }
 
@@ -190,6 +214,13 @@ impl Memoria {
         r.celdas[celda] = valor & mascara;
         if self.seguimiento {
             r.origen[celda] = DESDE_INSTRUCCION + self.instruccion_actual;
+        }
+        if self.vigiladas_escritura.contains(&direccion) {
+            self.accesos.push(AccesoVigilado {
+                direccion,
+                tipo: TipoAcceso::Escritura,
+                pc: self.instruccion_actual,
+            });
         }
         Ok(())
     }
@@ -295,6 +326,13 @@ impl Memoria {
     /// Como `leer`, pero anota si la celda nunca se habia escrito.
     pub fn leer_vigilada(&mut self, direccion: u64) -> Result<u64, ErrorEjecucion> {
         let valor = self.leer(direccion)?;
+        if self.vigiladas_lectura.contains(&direccion) {
+            self.accesos.push(AccesoVigilado {
+                direccion,
+                tipo: TipoAcceso::Lectura,
+                pc: self.instruccion_actual,
+            });
+        }
         if self.seguimiento
             && self.origen_de(direccion) == Some(SIN_ESCRIBIR)
             && self.sin_inicializar.len() < MAX_LECTURAS_SIN_INICIALIZAR
@@ -338,6 +376,36 @@ impl Memoria {
     /// Lecturas de celdas sin inicializar desde que se activo el seguimiento.
     pub fn lecturas_sin_inicializar(&self) -> &[LecturaSinInicializar] {
         &self.sin_inicializar
+    }
+
+    /// Empieza a anotar los accesos de las instrucciones a `direccion`. Lo que escribe o carga el
+    /// depurador no cuenta: solo lo que hace el programa.
+    pub fn vigilar(&mut self, direccion: u64, tipo: TipoAcceso) {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.insert(direccion),
+            TipoAcceso::Escritura => self.vigiladas_escritura.insert(direccion),
+        };
+    }
+
+    /// Deja de vigilar. Devuelve `true` si se vigilaba.
+    pub fn dejar_de_vigilar(&mut self, direccion: u64, tipo: TipoAcceso) -> bool {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.remove(&direccion),
+            TipoAcceso::Escritura => self.vigiladas_escritura.remove(&direccion),
+        }
+    }
+
+    /// Direcciones vigiladas para un tipo de acceso, en orden.
+    pub fn vigiladas(&self, tipo: TipoAcceso) -> Vec<u64> {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.iter().copied().collect(),
+            TipoAcceso::Escritura => self.vigiladas_escritura.iter().copied().collect(),
+        }
+    }
+
+    /// Entrega y olvida los accesos vigilados anotados desde la ultima llamada.
+    pub fn tomar_accesos(&mut self) -> Vec<AccesoVigilado> {
+        std::mem::take(&mut self.accesos)
     }
 
     /// Olvida las lecturas sin inicializar anotadas.
