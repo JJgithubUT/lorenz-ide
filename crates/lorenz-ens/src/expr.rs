@@ -18,6 +18,9 @@ pub enum Expr {
     Aqui,
     Unario(char, Box<Expr>),
     Binario(Op, Box<Expr>, Box<Expr>),
+    /// `nombre[expresion]`: lee una posicion de algo indexable, como `mem[0x2000]`. El ensamblador
+    /// no lo usa; el depurador si, en las condiciones de los puntos de ruptura.
+    Indice(String, Box<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +64,10 @@ impl std::error::Error for ErrorExpr {}
 pub trait Entorno {
     fn simbolo(&self, nombre: &str) -> Option<i128>;
     fn aqui(&self) -> i128;
+    /// Valor de `nombre[indice]`; por omision nada es indexable.
+    fn indice(&self, _nombre: &str, _indice: i128) -> Option<i128> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +78,8 @@ enum Ficha {
     Op(String),
     Abre,
     Cierra,
+    AbreCorchete,
+    CierraCorchete,
 }
 
 fn es_inicio_ident(c: char) -> bool {
@@ -135,6 +144,12 @@ fn fichas(texto: &str) -> Result<Vec<Ficha>, ErrorExpr> {
             i += 1;
         } else if ch == ')' {
             salida.push(Ficha::Cierra);
+            i += 1;
+        } else if ch == '[' {
+            salida.push(Ficha::AbreCorchete);
+            i += 1;
+        } else if ch == ']' {
+            salida.push(Ficha::CierraCorchete);
             i += 1;
         } else if (ch == '<' || ch == '>') && c.get(i + 1) == Some(&ch) {
             salida.push(Ficha::Op(format!("{ch}{ch}")));
@@ -231,6 +246,17 @@ impl Analizador {
             }
             Some(Ficha::Ident(s)) => {
                 self.pos += 1;
+                if self.fichas.get(self.pos) == Some(&Ficha::AbreCorchete) {
+                    self.pos += 1;
+                    let e = self.expr(1)?;
+                    return match self.fichas.get(self.pos) {
+                        Some(Ficha::CierraCorchete) => {
+                            self.pos += 1;
+                            Ok(Expr::Indice(s, Box::new(e)))
+                        }
+                        _ => Err(ErrorExpr::Sintaxis("falta cerrar el corchete".to_string())),
+                    };
+                }
                 Ok(Expr::Simbolo(s))
             }
             Some(Ficha::Aqui) => {
@@ -252,6 +278,9 @@ impl Analizador {
             }
             Some(Ficha::Cierra) => Err(ErrorExpr::Sintaxis(
                 "parentesis de cierre sin abrir".to_string(),
+            )),
+            Some(Ficha::AbreCorchete | Ficha::CierraCorchete) => Err(ErrorExpr::Sintaxis(
+                "un corchete solo puede ir despues de un nombre".to_string(),
             )),
             Some(Ficha::Op(o)) => Err(ErrorExpr::Sintaxis(format!(
                 "el operador `{o}` necesita un operando antes"
@@ -287,6 +316,12 @@ impl Expr {
                 .simbolo(s)
                 .ok_or_else(|| ErrorExpr::SimboloIndefinido(s.clone())),
             Expr::Aqui => Ok(entorno.aqui()),
+            Expr::Indice(nombre, e) => {
+                let i = e.evaluar(entorno)?;
+                entorno
+                    .indice(nombre, i)
+                    .ok_or_else(|| ErrorExpr::SimboloIndefinido(format!("{nombre}[{i}]")))
+            }
             Expr::Unario(op, e) => {
                 let v = e.evaluar(entorno)?;
                 match op {
@@ -351,7 +386,7 @@ impl Expr {
     fn recoger<'a>(&'a self, v: &mut Vec<&'a str>) {
         match self {
             Expr::Simbolo(s) if !v.contains(&s.as_str()) => v.push(s),
-            Expr::Unario(_, e) => e.recoger(v),
+            Expr::Unario(_, e) | Expr::Indice(_, e) => e.recoger(v),
             Expr::Binario(_, a, b) => {
                 a.recoger(v);
                 b.recoger(v);
@@ -450,6 +485,44 @@ mod pruebas {
         assert_eq!(ev("1 << 126 << 1"), Err(ErrorExpr::Desborde));
         assert_eq!(ev("-1 >> 500"), Ok(-1));
         assert_eq!(ev("1 >> 500"), Ok(0));
+    }
+
+    struct ConMemoria;
+
+    impl Entorno for ConMemoria {
+        fn simbolo(&self, n: &str) -> Option<i128> {
+            (n == "base").then_some(0x10)
+        }
+        fn aqui(&self) -> i128 {
+            0
+        }
+        fn indice(&self, nombre: &str, i: i128) -> Option<i128> {
+            (nombre == "mem").then_some(i * 2)
+        }
+    }
+
+    #[test]
+    fn un_nombre_con_indice_consulta_al_entorno() {
+        let e = Expr::analizar("mem[base + 1] + 1").unwrap();
+        assert_eq!(e.evaluar(&ConMemoria), Ok(35));
+        let e = Expr::analizar("mem[mem[3]]").unwrap();
+        assert_eq!(e.evaluar(&ConMemoria), Ok(12));
+    }
+
+    #[test]
+    fn un_indice_desconocido_es_un_simbolo_indefinido() {
+        let e = Expr::analizar("otro[1]").unwrap();
+        assert!(matches!(
+            e.evaluar(&ConMemoria),
+            Err(ErrorExpr::SimboloIndefinido(_))
+        ));
+    }
+
+    #[test]
+    fn corchetes_mal_puestos_son_errores_de_sintaxis() {
+        assert!(Expr::analizar("mem[1").is_err());
+        assert!(Expr::analizar("[1]").is_err());
+        assert!(Expr::analizar("1]").is_err());
     }
 
     #[test]
