@@ -4,4 +4,5 @@
 //! texto y devuelve texto. Asi se prueba sin lanzar procesos y asi lo pueden manejar tambien un
 //! guion o, mas adelante, un depurador grafico con las mismas operaciones (RF-DEP-044).
 
+pub mod condicion;
 pub mod error;
