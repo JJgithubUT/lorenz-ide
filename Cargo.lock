@@ -38,6 +38,7 @@ name = "lorenz-cli"
 version = "0.1.0"
 dependencies = [
  "lorenz-arch",
+ "lorenz-dbg",
  "lorenz-emu",
  "lorenz-ens",
  "thiserror",
