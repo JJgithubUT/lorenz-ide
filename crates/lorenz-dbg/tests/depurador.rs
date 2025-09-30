@@ -154,7 +154,7 @@ fn observacion_de_lectura_ignora_la_escritura() {
 #[test]
 fn observar_fuera_de_memoria_es_error() {
     let mut d = depurador(PROGRAMA);
-    assert!(d.observar(0xFFFF_FFF, Vigilar::Acceso).is_err());
+    assert!(d.observar(0x0FFF_FFFF, Vigilar::Acceso).is_err());
 }
 
 #[test]
