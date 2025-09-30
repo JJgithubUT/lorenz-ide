@@ -139,3 +139,13 @@ fn hasta_una_etiqueta() {
     let mut s = sesion();
     assert!(di(&mut s, "hasta suma").contains("se llego a"));
 }
+
+#[test]
+fn puertos_a_mano() {
+    let mut s = sesion();
+    assert!(di(&mut s, "entrada 0x01 0x41").contains("en cola"));
+    assert!(di(&mut s, "puerto 0x02").contains("-> 0x1"));
+    assert!(di(&mut s, "puerto 0x01").contains("-> 0x41"));
+    assert!(di(&mut s, "puerto 0x01").contains("-> 0x0"));
+    assert!(di(&mut s, "puerto 0x77").starts_with("error:"));
+}

@@ -44,6 +44,8 @@ Ordenes (entre parentesis, la forma corta):
   pila [n]                muestra la cima de la pila
   fijar NOMBRE VALOR      cambia un registro o una bandera
   escribir DIR VALOR      cambia una celda de memoria
+  puerto N [VALOR]        lee el puerto N, o le escribe VALOR
+  entrada N VALOR         deja VALOR en la cola de entrada del puerto N
   imprimir EXPR (p)       evalua una expresion con registros, simbolos y mem[...]
   ruptura UBIC [si COND] (b)  pone un punto de ruptura
   observar DIR [lectura|escritura|acceso]  detiene al acceder a una celda
@@ -213,6 +215,28 @@ impl Sesion {
                     .memoria_mut()
                     .escribir_privilegiado(dir, valor)?;
                 Ok(Respuesta::texto(format!("[{dir:#x}] = {valor:#x}")))
+            }
+            "puerto" => {
+                sin_mas(&partes, 3, "puerto")?;
+                let n = numero::analizar(pedir(&partes, 1, "puerto", "el numero")?)?;
+                match partes.get(2) {
+                    Some(t) => {
+                        let v = numero::analizar(t)?;
+                        d.emulador_mut().puertos_mut().escribir(n, v)?;
+                        Ok(Respuesta::texto(format!("puerto {n:#x} <- {v:#x}")))
+                    }
+                    None => {
+                        let v = d.emulador_mut().puertos_mut().leer(n)?;
+                        Ok(Respuesta::texto(format!("puerto {n:#x} -> {v:#x}")))
+                    }
+                }
+            }
+            "entrada" => {
+                sin_mas(&partes, 3, "entrada")?;
+                let n = numero::analizar(pedir(&partes, 1, "entrada", "el numero")?)?;
+                let v = numero::analizar(pedir(&partes, 2, "entrada", "el valor")?)?;
+                d.emulador_mut().puertos_mut().encolar_entrada(n, v)?;
+                Ok(Respuesta::texto(format!("puerto {n:#x}: {v:#x} en cola")))
             }
             "imprimir" | "p" => {
                 let expr = cabeza[nombre.len()..].trim();
