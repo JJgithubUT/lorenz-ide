@@ -12,7 +12,7 @@ pub use error::ErrorEjecucion;
 pub mod memoria;
 
 pub use memoria::{
-    AccesoVigilado, Escritura, LecturaSinInicializar, Memoria, TipoAcceso,
+    AccesoVigilado, Escritura, EscrituraRegistrada, LecturaSinInicializar, Memoria, TipoAcceso,
     MAX_LECTURAS_SIN_INICIALIZAR,
 };
 pub mod estado;
