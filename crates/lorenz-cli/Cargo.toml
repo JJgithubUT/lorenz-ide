@@ -17,4 +17,5 @@ path = "src/main.rs"
 lorenz-arch = { path = "../lorenz-arch" }
 lorenz-emu = { path = "../lorenz-emu" }
 lorenz-ens = { path = "../lorenz-ens" }
+lorenz-dbg = { path = "../lorenz-dbg" }
 thiserror.workspace = true

@@ -1,6 +1,6 @@
 //! Ejecucion de las ordenes de la linea de comandos.
 
-use std::io::Write;
+use std::io::{BufRead, Write};
 
 use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
@@ -32,6 +32,7 @@ Uso:
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
+  lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -51,6 +52,17 @@ fn escribir(salida: &mut dyn Write, texto: &str) {
 
 /// Ejecuta la linea de comandos y devuelve el codigo de salida.
 pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn Write) -> i32 {
+    ejecutar_cli_con_entrada(args, &mut std::io::empty(), salida, errores)
+}
+
+/// Igual que [`ejecutar_cli`], pero las ordenes que leen del usuario (`depurar`) lo hacen de
+/// `entrada`.
+pub fn ejecutar_cli_con_entrada(
+    args: &[String],
+    entrada: &mut dyn BufRead,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> i32 {
     let orden = match interpretar(args) {
         Ok(o) => o,
         Err(e) => {
@@ -68,6 +80,18 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
+        Orden::Depurar {
+            maquina,
+            programa,
+            guion,
+        } => crate::depurar::depurar_cli(
+            &maquina,
+            &programa,
+            guion.as_deref(),
+            entrada,
+            salida,
+            errores,
+        ),
         Orden::Ensamblar {
             maquina,
             fuente,

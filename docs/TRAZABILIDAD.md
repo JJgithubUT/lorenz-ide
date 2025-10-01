@@ -143,6 +143,32 @@ Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensa
 | RF-ENS-029 | Exportar la tabla de simbolos | Hecho | `salidas::tabla_de_simbolos` (TOML) |
 | RF-ENS-030 | Recargar sin reiniciar al cambiar la arquitectura | Pendiente | hace falta el IDE o un modo vigilante |
 
+## Requisitos del depurador (RF-DEP)
+
+Linea de comandos (001-018). La traza, el retroceso y la reproduccion (019-031) siguen pendientes.
+
+| Requisito | Descripcion | Estado | Donde |
+|---|---|---|---|
+| RF-DEP-001 | Depurador de linea de comandos | Hecho | `lorenz depurar` |
+| RF-DEP-002 | Ejecutar una instruccion | Hecho | `Depurador::paso` |
+| RF-DEP-003 | Ejecutar hasta el retorno de la subrutina | Hecho | `Depurador::salir` (por el SP); sin prueba con una maquina que tenga CALL/RET |
+| RF-DEP-004 | Ejecutar hasta una direccion | Hecho | `Depurador::hasta` |
+| RF-DEP-005 | Mostrar todos los registros por nombre | Hecho | `vistas::registros` |
+| RF-DEP-006 | Mostrar cada bandera por nombre y valor | Hecho | `vistas::registros` |
+| RF-DEP-007 | Volcar memoria en hexadecimal y caracteres | Hecho | `vistas::volcar` |
+| RF-DEP-008 | Modificar un registro en pausa | Hecho | orden `fijar` |
+| RF-DEP-009 | Modificar una posicion de memoria en pausa | Hecho | orden `escribir` |
+| RF-DEP-010 | Leer y escribir puertos a mano | Hecho | ordenes `puerto`, `entrada` |
+| RF-DEP-011 | Ruptura por direccion | Hecho | `Depurador::poner_ruptura` |
+| RF-DEP-012 | Ruptura por etiqueta o linea de fuente | Hecho | `Depurador::resolver` |
+| RF-DEP-013 | Ruptura condicional | Hecho | `Condicion` |
+| RF-DEP-014 | Observacion por escritura | Hecho | `Depurador::observar` |
+| RF-DEP-015 | Observacion por lectura | Hecho | `Vigilar::Lectura` |
+| RF-DEP-016 | Detenerse ante un acceso invalido e indicar la instruccion | Hecho | `Parada::Fallo` |
+| RF-DEP-017 | Desensamblado junto al fuente | Hecho | `vistas::listar` |
+| RF-DEP-018 | Pila cuando hay puntero de pila | Hecho | `vistas::pila` |
+| RF-DEP-019 a 031 | Traza, retroceso, busqueda y reproduccion | Pendiente | siguiente bloque |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,
@@ -156,3 +182,8 @@ identificadores provisionales. Equivalencias para leer ese historial:
 | `RF-EMU-039` en la UART | `RF-EMU-032` |
 | `RF-EMU-016`, `017`, `026` en el bucle de ejecucion | `RF-EMU-001`, `044` |
 | `RF-CLI-*` | `RF-EMU-042` a `045` |
+
+Los commits 243 a 251 (depurador) citaron identificadores RF-DEP equivocados en varios casos: por
+ejemplo el 247 cita RF-DEP-007, 010, 017 y 018 para el interprete de ordenes. Los correctos son los
+de la tabla de arriba: volcar es 007, fijar 008, escribir 009, puertos 010 (commit 251),
+desensamblado con fuente 017 y pila 018.

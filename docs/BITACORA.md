@@ -17,6 +17,40 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: depurador de linea de comandos
+
+**Hecho:**
+
+- Nuevo crate `lorenz-dbg`. `Depurador` no imprime nada: ejecuta, detiene y devuelve datos; las
+  vistas y el interprete (`Sesion`) los convierten en texto en español.
+- Paradas: paso, detenida, ruptura, observacion, llegada, retorno, limite, fallo y condicion
+  invalida. Un fallo indica la instruccion que lo causo.
+- Rupturas por direccion, etiqueta o `archivo:linea` (una linea sin codigo usa la siguiente que
+  tenga), con condicion opcional (`ruptura suma si A == 1 && B > 0`).
+- Observaciones de lectura, escritura o ambas sobre la vigilancia de `Memoria`; las lecturas y
+  escrituras del propio depurador no cuentan.
+- `lorenz depurar maquina programa [--guion ARCHIVO]`: sesion interactiva o guion. Una linea
+  vacia repite la ultima orden. `ejecutar_cli_con_entrada` permite probar la entrada sin procesos.
+
+**Decidido:**
+
+- **D-034** — El depurador es una biblioteca sin E/S; la terminal es solo una de sus caras.
+  Asi lo podran usar un guion o un depurador grafico (RF-DEP-044).
+- **D-035** — `salir` usa el puntero de pila (sube por encima del que tenia al empezar), no busca
+  la instruccion de retorno, porque la arquitectura no obliga a tener CALL/RET.
+
+**Pendiente:**
+
+- Probar `salir` con una maquina que tenga CALL/RET.
+- RF-DEP-019 a 031: traza, retroceso, busqueda hacia atras y reproduccion de fallos.
+- Los commits 243 a 247 citan algunos RF-DEP mal; la correccion esta en `TRAZABILIDAD.md`.
+- El commit 243 se rehizo con `reset --soft` porque no compilaba solo.
+
+**Requisitos:** RF-DEP-001 a 018.
+
+**Estado del contador:** 252 de 1000 commits (el numero 236 de la entrada anterior estaba
+desfasado: el real al cerrarla era 237 o mas).
+
 ## 2026-10-16 — Fase 2: ensamblador y desensamblador
 
 **Hecho:**

@@ -1,0 +1,13 @@
+[package]
+name = "lorenz-dbg"
+description = "Depurador de linea de comandos para maquinas descritas con lorenz-arch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+lorenz-ens = { path = "../lorenz-ens" }
+thiserror.workspace = true
