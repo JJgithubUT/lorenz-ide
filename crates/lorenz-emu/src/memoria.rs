@@ -59,6 +59,16 @@ pub struct AccesoVigilado {
     pub pc: u64,
 }
 
+/// Una escritura hecha por una instruccion, con el valor que habia antes (RF-DEP-024).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EscrituraRegistrada {
+    pub direccion: u64,
+    pub antes: u64,
+    pub despues: u64,
+    /// Direccion de la instruccion que escribio.
+    pub pc: u64,
+}
+
 /// Una lectura de una celda que nadie habia escrito (RF-EMU-026).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LecturaSinInicializar {
@@ -79,6 +89,8 @@ pub struct Memoria {
     vigiladas_lectura: BTreeSet<u64>,
     vigiladas_escritura: BTreeSet<u64>,
     accesos: Vec<AccesoVigilado>,
+    registrando: bool,
+    escrituras: Vec<EscrituraRegistrada>,
 }
 
 impl Memoria {
@@ -114,6 +126,8 @@ impl Memoria {
             vigiladas_lectura: BTreeSet::new(),
             vigiladas_escritura: BTreeSet::new(),
             accesos: Vec::new(),
+            registrando: false,
+            escrituras: Vec::new(),
         })
     }
 
@@ -211,7 +225,16 @@ impl Memoria {
             });
         }
         let celda = (direccion - r.desde) as usize;
+        let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
+        if self.registrando {
+            self.escrituras.push(EscrituraRegistrada {
+                direccion,
+                antes,
+                despues: valor & mascara,
+                pc: self.instruccion_actual,
+            });
+        }
         if self.seguimiento {
             r.origen[celda] = DESDE_INSTRUCCION + self.instruccion_actual;
         }
@@ -406,6 +429,20 @@ impl Memoria {
     /// Entrega y olvida los accesos vigilados anotados desde la ultima llamada.
     pub fn tomar_accesos(&mut self) -> Vec<AccesoVigilado> {
         std::mem::take(&mut self.accesos)
+    }
+
+    /// Empieza o deja de anotar cada escritura de las instrucciones, con el valor anterior. Lo que
+    /// escribe el depurador no cuenta.
+    pub fn registrar_escrituras(&mut self, activo: bool) {
+        self.registrando = activo;
+        if !activo {
+            self.escrituras.clear();
+        }
+    }
+
+    /// Entrega y olvida las escrituras anotadas desde la ultima llamada.
+    pub fn tomar_escrituras(&mut self) -> Vec<EscrituraRegistrada> {
+        std::mem::take(&mut self.escrituras)
     }
 
     /// Olvida las lecturas sin inicializar anotadas.
