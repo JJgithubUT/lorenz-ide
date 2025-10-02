@@ -190,20 +190,10 @@ impl Sesion {
                 sin_mas(&partes, 3, "fijar")?;
                 let nombre = pedir(&partes, 1, "fijar", "el nombre")?;
                 let valor = numero::analizar(pedir(&partes, 2, "fijar", "el valor")?)?;
-                let e = d.emulador_mut().estado_mut();
-                if e.tiene_bandera(nombre) {
-                    e.fijar_bandera(nombre, valor != 0)?;
-                } else if nombre.eq_ignore_ascii_case(e.nombre_del_pc()) {
-                    e.fijar_pc(valor);
-                } else if e
-                    .nombre_del_sp()
-                    .is_some_and(|s| s.eq_ignore_ascii_case(nombre))
-                {
-                    e.fijar_sp(valor);
-                } else if e.registro(nombre).is_ok() {
-                    e.fijar_registro(nombre, valor)?;
+                if d.emulador().estado().tiene_bandera(nombre) {
+                    d.fijar_bandera(nombre, valor != 0)?;
                 } else {
-                    return Err(ErrorDepurador::NombreDesconocido(nombre.to_string()));
+                    d.fijar_registro(nombre, valor)?;
                 }
                 Ok(Respuesta::texto(format!("{nombre} = {valor:#x}")))
             }
@@ -222,11 +212,11 @@ impl Sesion {
                 match partes.get(2) {
                     Some(t) => {
                         let v = numero::analizar(t)?;
-                        d.emulador_mut().puertos_mut().escribir(n, v)?;
+                        d.escribir_puerto(n, v)?;
                         Ok(Respuesta::texto(format!("puerto {n:#x} <- {v:#x}")))
                     }
                     None => {
-                        let v = d.emulador_mut().puertos_mut().leer(n)?;
+                        let v = d.leer_puerto(n)?;
                         Ok(Respuesta::texto(format!("puerto {n:#x} -> {v:#x}")))
                     }
                 }
@@ -235,7 +225,7 @@ impl Sesion {
                 sin_mas(&partes, 3, "entrada")?;
                 let n = numero::analizar(pedir(&partes, 1, "entrada", "el numero")?)?;
                 let v = numero::analizar(pedir(&partes, 2, "entrada", "el valor")?)?;
-                d.emulador_mut().puertos_mut().encolar_entrada(n, v)?;
+                d.encolar_entrada(n, v)?;
                 Ok(Respuesta::texto(format!("puerto {n:#x}: {v:#x} en cola")))
             }
             "imprimir" | "p" => {

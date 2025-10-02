@@ -62,6 +62,10 @@ pub enum Intervencion {
         numero: u64,
         valor: u64,
     },
+    /// Una lectura de un puerto, que consume su cola.
+    LecturaDePuerto {
+        numero: u64,
+    },
 }
 
 /// Limites por omision.
