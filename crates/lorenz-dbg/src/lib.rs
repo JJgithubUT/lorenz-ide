@@ -9,6 +9,7 @@ pub mod condicion;
 pub mod depurador;
 pub mod error;
 pub mod numero;
+pub mod traza;
 pub mod vistas;
 
 pub use depurador::{Depurador, Observacion, Parada, Ruptura, Vigilar};
