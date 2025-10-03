@@ -10,6 +10,7 @@ pub mod depurador;
 pub mod error;
 pub mod exportar;
 pub mod numero;
+pub mod reproducir;
 pub mod traza;
 pub mod vistas;
 

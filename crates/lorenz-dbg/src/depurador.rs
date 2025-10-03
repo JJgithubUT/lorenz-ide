@@ -706,6 +706,18 @@ impl Depurador {
         self.ir_a(destino)
     }
 
+    /// Aplica una intervencion guardada, anotandola en la traza como si se hubiera hecho ahora.
+    pub fn aplicar_a_mano(&mut self, i: &Intervencion) -> Result<(), ErrorDepurador> {
+        match i {
+            Intervencion::Registro { nombre, valor } => self.fijar_registro(nombre, *valor),
+            Intervencion::Bandera { nombre, encendida } => self.fijar_bandera(nombre, *encendida),
+            Intervencion::Memoria { direccion, valor } => self.escribir_memoria(*direccion, *valor),
+            Intervencion::Puerto { numero, valor } => self.escribir_puerto(*numero, *valor),
+            Intervencion::Entrada { numero, valor } => self.encolar_entrada(*numero, *valor),
+            Intervencion::LecturaDePuerto { numero } => self.leer_puerto(*numero).map(|_| ()),
+        }
+    }
+
     fn aplicar(&mut self, i: &Intervencion) -> Result<(), ErrorDepurador> {
         match i {
             Intervencion::Registro { nombre, valor } => self.poner_registro(nombre, *valor),
