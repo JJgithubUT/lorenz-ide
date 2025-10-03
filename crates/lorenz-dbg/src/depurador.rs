@@ -846,4 +846,75 @@ impl Depurador {
     fn escribir_en_el_presente_si_hace_falta(&mut self) {
         self.escribir_en_el_presente();
     }
+
+    // --- preguntas a la traza ------------------------------------------------------------
+
+    /// El paso que escribio `direccion` por ultima vez antes del instante actual (RF-DEP-024).
+    pub fn quien_escribio(&self, direccion: u64) -> Result<Option<PasoTraza>, ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        Ok(t.ultima_escritura(direccion, self.cursor).cloned())
+    }
+
+    /// El paso que cambio un registro o una bandera por ultima vez antes del instante actual
+    /// (RF-DEP-025).
+    pub fn quien_cambio(&self, nombre: &str) -> Result<Option<PasoTraza>, ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        let e = self.emu.estado();
+        let paso = if e.tiene_bandera(nombre) {
+            t.ultimo_cambio_de_bandera(nombre, self.cursor)
+        } else if e.registro(nombre).is_ok() {
+            t.ultimo_cambio_de_registro(nombre, self.cursor)
+        } else {
+            return Err(ErrorDepurador::NombreDesconocido(nombre.to_string()));
+        };
+        Ok(paso.cloned())
+    }
+
+    /// El primer instante de la traza en que se cumple la condicion (RF-DEP-026). La maquina
+    /// queda donde estaba.
+    pub fn buscar(&mut self, condicion: &str) -> Result<Option<u64>, ErrorDepurador> {
+        let c = Condicion::analizar(condicion)?;
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        let final_ = t.longitud();
+        let origen = self.cursor;
+        let copia = t.instantanea_hasta(0).1.clone();
+        let intervenciones: Vec<(u64, Intervencion)> = t.intervenciones().to_vec();
+        self.emu.restaurar(&copia)?;
+        let mut hallado = None;
+        let mut fallo = None;
+        for k in 0..=final_ {
+            if k == final_ {
+                for (_, i) in intervenciones.iter().filter(|(t, _)| *t == k) {
+                    self.aplicar(i)?;
+                }
+            }
+            let vista = Vista {
+                emu: &self.emu,
+                simbolos: &self.simbolos,
+            };
+            match c.evaluar(&vista) {
+                Ok(true) => {
+                    hallado = Some(k);
+                    break;
+                }
+                Ok(false) => {}
+                Err(e) => {
+                    fallo = Some(ErrorDepurador::Condicion(e.to_string()));
+                    break;
+                }
+            }
+            if k < final_ {
+                for (_, i) in intervenciones.iter().filter(|(t, _)| *t == k) {
+                    self.aplicar(i)?;
+                }
+                self.emu.paso()?;
+                self.emu.memoria_mut().tomar_escrituras();
+            }
+        }
+        self.ir_a(origen)?;
+        match fallo {
+            Some(e) => Err(e),
+            None => Ok(hallado),
+        }
+    }
 }

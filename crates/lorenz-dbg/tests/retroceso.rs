@@ -254,3 +254,102 @@ fn las_vigilancias_sobreviven_al_retroceso() {
         otra => panic!("{otra:?}"),
     }
 }
+
+// --- preguntas a la traza ---------------------------------------------------------------
+
+#[test]
+fn quien_escribio_una_direccion() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.continuar(100);
+    let p = d.quien_escribio(0x2000).unwrap().unwrap();
+    assert_eq!(p.instante, 5); // el segundo ST
+    assert_eq!(p.escrituras[0].despues, 9);
+    d.ir_a(5).unwrap();
+    let p = d.quien_escribio(0x2000).unwrap().unwrap();
+    assert_eq!(p.instante, 3); // el primero
+    d.ir_a(3).unwrap();
+    assert!(d.quien_escribio(0x2000).unwrap().is_none());
+}
+
+#[test]
+fn quien_cambio_un_registro() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.continuar(100);
+    assert_eq!(d.quien_cambio("A").unwrap().unwrap().instante, 4);
+    assert_eq!(d.quien_cambio("B").unwrap().unwrap().instante, 1);
+    d.ir_a(2).unwrap();
+    assert_eq!(d.quien_cambio("A").unwrap().unwrap().instante, 0);
+}
+
+#[test]
+fn quien_cambio_una_bandera() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.paso(2);
+    d.fijar_registro("A", 200).unwrap();
+    d.fijar_registro("B", 100).unwrap();
+    d.paso(1);
+    let p = d.quien_cambio("C").unwrap().unwrap();
+    assert_eq!(p.mnemonico, "ADD");
+}
+
+#[test]
+fn quien_cambio_algo_que_no_existe() {
+    let mut d = depurador();
+    d.grabar(true);
+    assert!(d.quien_cambio("Q").is_err());
+}
+
+#[test]
+fn preguntar_sin_traza_es_un_error() {
+    let d = depurador();
+    assert!(d.quien_escribio(0x2000).is_err());
+}
+
+#[test]
+fn buscar_el_primer_instante_de_una_condicion() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.continuar(100);
+    assert_eq!(d.buscar("A == 3").unwrap(), Some(3));
+    assert_eq!(d.buscar("A == 9").unwrap(), Some(5));
+    assert_eq!(d.buscar("mem[0x2000] == 3").unwrap(), Some(4));
+    assert_eq!(d.buscar("A == 99").unwrap(), None);
+    // No mueve la maquina.
+    assert_eq!(d.instante(), 7);
+}
+
+#[test]
+fn buscar_desde_el_pasado_vuelve_al_pasado() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.continuar(100);
+    d.ir_a(2).unwrap();
+    assert_eq!(d.buscar("A == 9").unwrap(), Some(5));
+    assert_eq!(d.instante(), 2);
+    assert_eq!(a(&d), 1);
+}
+
+#[test]
+fn buscar_con_condicion_invalida() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.paso(2);
+    assert!(d.buscar("Q == 1").is_err());
+    assert!(d.buscar("A ==").is_err());
+    assert_eq!(d.instante(), 2);
+}
+
+#[test]
+fn buscar_ve_lo_hecho_a_mano() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.paso(1);
+    d.fijar_registro("B", 40).unwrap();
+    d.paso(1);
+    assert_eq!(d.buscar("B == 40").unwrap(), None); // LDI B,2 lo pisa antes de verse
+    d.fijar_registro("B", 41).unwrap();
+    assert_eq!(d.buscar("B == 41").unwrap(), Some(2));
+}
