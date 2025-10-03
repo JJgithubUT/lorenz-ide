@@ -8,6 +8,7 @@ pub mod comandos;
 pub mod condicion;
 pub mod depurador;
 pub mod error;
+pub mod exportar;
 pub mod numero;
 pub mod traza;
 pub mod vistas;
