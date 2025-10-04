@@ -17,6 +17,41 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: traza, retroceso y fallos reproducibles
+
+**Hecho:**
+
+- `Memoria::registrar_escrituras` anota cada escritura de una instruccion con el valor anterior.
+- `Traza`: un `PasoTraza` por instruccion (registros, banderas y escrituras que cambian) mas
+  instantaneas periodicas con tope de 64; al pasar el tope se adelgazan y se duplica el intervalo.
+- `Depurador`: `grabar`, `ir_a`, `atras`, `adelante`, `quien_escribio`, `quien_cambio` y `buscar`.
+  Ir a un instante restaura la instantanea mas cercana y reejecuta; el estado de ese instante se
+  ve con las ordenes de siempre (`registros`, `volcar`, `pantalla`).
+- Lo que el usuario cambia a mano durante la grabacion (registros, banderas, memoria, puertos) se
+  anota como intervencion y se repite al reejecutar. Ejecutar desde un instante pasado descarta el
+  futuro grabado.
+- Exportacion en CSV y JSON; fallos reproducibles en `lorenz-fallo-0.1` (TOML con estado inicial,
+  intervenciones, numero de pasos, fallo esperado y estado final).
+- Ordenes: `traza`, `atras`, `adelante`, `instante`, `quien-escribio`, `quien-cambio`, `buscar`,
+  `pantalla`, `fallo guardar|reproducir`.
+
+**Decidido:**
+
+- **D-036** — El estado en el instante k no incluye lo hecho a mano en k (se aplica al salir de k);
+  en el extremo vivo si. Asi lo que se ve al volver coincide con lo que se vio entonces.
+- **D-037** — Un fallo guardado solo lleva registros y memoria. Colas de puertos, temporizadores y
+  dispositivos de bloques deben partir del estado inicial; queda como limite documentado.
+
+**Pendiente:**
+
+- RF-DEP-022: el control deslizante necesita el IDE; la orden `instante N` cubre la funcion.
+- Guardar tambien puertos y dispositivos en el archivo de fallo.
+- RF-TST: pruebas de proyecto, conformidad, cobertura y salida JSON.
+
+**Requisitos:** RF-DEP-019 a 031.
+
+**Estado del contador:** 263 de 1000 commits.
+
 ## 2026-10-16 — Fase 2: depurador de linea de comandos
 
 **Hecho:**
