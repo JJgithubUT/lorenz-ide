@@ -706,6 +706,16 @@ impl Depurador {
         self.ir_a(destino)
     }
 
+    /// Pone otra maquina en marcha en lugar de la actual, por ejemplo la que sale de reproducir un
+    /// fallo. Se pierden la traza y los puntos de observacion; las rupturas se conservan.
+    pub fn reemplazar_emulador(&mut self, emulador: Emulador) {
+        self.maquina = emulador.maquina().clone();
+        self.emu = emulador;
+        self.traza = None;
+        self.cursor = 0;
+        self.observaciones.clear();
+    }
+
     /// Aplica una intervencion guardada, anotandola en la traza como si se hubiera hecho ahora.
     pub fn aplicar_a_mano(&mut self, i: &Intervencion) -> Result<(), ErrorDepurador> {
         match i {
