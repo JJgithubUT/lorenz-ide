@@ -16,6 +16,7 @@ pub use memoria::{
     MAX_LECTURAS_SIN_INICIALIZAR,
 };
 pub mod estado;
+pub mod programa;
 
 pub use estado::Estado;
 
