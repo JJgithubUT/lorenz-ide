@@ -65,6 +65,11 @@ pub fn registros(d: &Depurador) -> String {
         let _ = writeln!(s, "{n} = {v:0aw$x}", aw = ancho_hex(d));
     }
     for n in e.nombres() {
+        let es_pc = n.eq_ignore_ascii_case(e.nombre_del_pc());
+        let es_sp = e.nombre_del_sp().is_some_and(|s| s.eq_ignore_ascii_case(n));
+        if es_pc || es_sp {
+            continue;
+        }
         if let Ok(v) = e.registro(n) {
             let _ = writeln!(s, "{n} = {v:0w$x}  ({v})");
         }
@@ -203,4 +208,43 @@ pub fn parada(d: &Depurador, p: &Parada) -> String {
             format!("la condicion de la ruptura {id} no se pudo evaluar: {motivo}")
         }
     }
+}
+
+/// Los ultimos `n` pasos de la traza, uno por linea.
+pub fn traza(t: &crate::traza::Traza, n: usize) -> String {
+    let pasos = t.pasos();
+    let desde = pasos.len().saturating_sub(n);
+    let mut s = String::new();
+    for p in &pasos[desde..] {
+        let mut cambios: Vec<String> = p
+            .registros
+            .iter()
+            .map(|r| format!("{} {:#x}->{:#x}", r.nombre, r.antes, r.despues))
+            .collect();
+        cambios.extend(p.banderas.iter().map(|b| {
+            format!(
+                "{} {}->{}",
+                b.nombre,
+                u8::from(b.antes),
+                u8::from(b.despues)
+            )
+        }));
+        cambios.extend(
+            p.escrituras
+                .iter()
+                .map(|e| format!("[{:#x}] {:#x}->{:#x}", e.direccion, e.antes, e.despues)),
+        );
+        let _ = writeln!(
+            s,
+            "{:>6}  {:#06x}  {:<6} {}",
+            p.instante,
+            p.pc,
+            p.mnemonico,
+            cambios.join(", ")
+        );
+    }
+    if s.is_empty() {
+        s.push_str("la traza no tiene pasos\n");
+    }
+    s
 }

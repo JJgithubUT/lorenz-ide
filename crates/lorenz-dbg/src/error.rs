@@ -22,6 +22,15 @@ pub enum ErrorDepurador {
     #[error("la maquina no tiene puntero de pila")]
     SinPila,
 
+    #[error("la traza no esta grabando; activala con `traza on`")]
+    SinTraza,
+
+    #[error("el instante {instante} no existe: la traza llega hasta el {maximo}")]
+    InstanteInvalido { instante: u64, maximo: u64 },
+
+    #[error("no se puede reproducir el fallo: {0}")]
+    Reproduccion(String),
+
     #[error("no hay ningun punto con el numero {0}")]
     PuntoInexistente(u32),
 

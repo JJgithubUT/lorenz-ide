@@ -145,7 +145,7 @@ Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensa
 
 ## Requisitos del depurador (RF-DEP)
 
-Linea de comandos (001-018). La traza, el retroceso y la reproduccion (019-031) siguen pendientes.
+Linea de comandos (001-018), traza, retroceso y reproduccion (019-031).
 
 | Requisito | Descripcion | Estado | Donde |
 |---|---|---|---|
@@ -167,7 +167,19 @@ Linea de comandos (001-018). La traza, el retroceso y la reproduccion (019-031) 
 | RF-DEP-016 | Detenerse ante un acceso invalido e indicar la instruccion | Hecho | `Parada::Fallo` |
 | RF-DEP-017 | Desensamblado junto al fuente | Hecho | `vistas::listar` |
 | RF-DEP-018 | Pila cuando hay puntero de pila | Hecho | `vistas::pila` |
-| RF-DEP-019 a 031 | Traza, retroceso, busqueda y reproduccion | Pendiente | siguiente bloque |
+| RF-DEP-019 | Registrar una traza completa mientras la grabacion esta activa | Hecho | `Traza`, `PasoTraza` |
+| RF-DEP-020 | Activar y desactivar la grabacion | Hecho | `Depurador::grabar`, `traza on/off` |
+| RF-DEP-021 | Retroceder un paso | Hecho | `Depurador::atras` |
+| RF-DEP-022 | Situarse en cualquier instante con un control deslizante | Parcial | `instante N` y `Depurador::ir_a`; el control grafico espera al IDE |
+| RF-DEP-023 | Mostrar registros, memoria y pantalla de ese instante | Hecho | `ir_a` restaura la maquina; `registros`, `volcar`, `pantalla` |
+| RF-DEP-024 | Quien escribio por ultima vez una direccion, y saltar | Hecho | `quien_escribio`, `Memoria::registrar_escrituras` |
+| RF-DEP-025 | Quien modifico por ultima vez un registro o bandera | Hecho | `quien_cambio` |
+| RF-DEP-026 | Buscar el primer instante en que se cumple una condicion | Hecho | `Depurador::buscar` |
+| RF-DEP-027 | Limitar la memoria de la traza con instantaneas y reejecucion | Hecho | `Traza::adelgazar` (tope de 64 instantaneas) |
+| RF-DEP-028 | Avisar al llegar al limite configurado | Hecho | `Depurador::tomar_avisos` |
+| RF-DEP-029 | Exportar la traza | Hecho | `exportar` (CSV y JSON) |
+| RF-DEP-030 | Guardar un fallo como archivo reproducible | Hecho | `reproducir::Fallo` (`lorenz-fallo-0.1`) |
+| RF-DEP-031 | Reproducirlo identico en otra instalacion | Hecho | `Fallo::reproducir`; limite: puertos y dispositivos parten vacios |
 
 ## Concordancia con los commits anteriores
 
@@ -183,7 +195,7 @@ identificadores provisionales. Equivalencias para leer ese historial:
 | `RF-EMU-016`, `017`, `026` en el bucle de ejecucion | `RF-EMU-001`, `044` |
 | `RF-CLI-*` | `RF-EMU-042` a `045` |
 
-Los commits 243 a 251 (depurador) citaron identificadores RF-DEP equivocados en varios casos: por
+Los commits 243 a 251 (depurador de linea de comandos) citaron identificadores RF-DEP equivocados en varios casos: por
 ejemplo el 247 cita RF-DEP-007, 010, 017 y 018 para el interprete de ordenes. Los correctos son los
 de la tabla de arriba: volcar es 007, fijar 008, escribir 009, puertos 010 (commit 251),
 desensamblado con fuente 017 y pila 018.

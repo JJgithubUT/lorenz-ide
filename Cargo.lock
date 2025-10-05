@@ -51,7 +51,9 @@ dependencies = [
  "lorenz-arch",
  "lorenz-emu",
  "lorenz-ens",
+ "serde",
  "thiserror",
+ "toml",
 ]
 
 [[package]]

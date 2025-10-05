@@ -5,12 +5,13 @@
 use std::collections::BTreeMap;
 
 use lorenz_arch::modelo::{Maquina, SentidoPila};
-use lorenz_emu::{AccesoVigilado, Emulador, ErrorEjecucion, TipoAcceso};
+use lorenz_emu::{AccesoVigilado, Emulador, ErrorEjecucion, Estado, TipoAcceso};
 use lorenz_ens::ensamblador::Objeto;
 use lorenz_ens::expr::Entorno;
 
 use crate::condicion::Condicion;
 use crate::error::ErrorDepurador;
+use crate::traza::{CambioBandera, CambioRegistro, Intervencion, PasoTraza, Traza};
 
 /// Que accesos a una celda detienen la ejecucion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,6 +121,11 @@ pub struct Depurador {
     rupturas: Vec<Ruptura>,
     observaciones: Vec<Observacion>,
     siguiente_id: u32,
+    traza: Option<Traza>,
+    /// Instante en el que esta la maquina cuando hay traza; si es menor que la longitud de la
+    /// traza, se esta mirando el pasado.
+    cursor: u64,
+    avisos: Vec<String>,
 }
 
 /// Lo que las condiciones ven de la maquina.
@@ -177,6 +183,9 @@ impl Depurador {
             rupturas: Vec::new(),
             observaciones: Vec::new(),
             siguiente_id: 1,
+            traza: None,
+            cursor: 0,
+            avisos: Vec::new(),
         }
     }
 
@@ -410,6 +419,7 @@ impl Depurador {
 
     fn correr(&mut self, modo: Modo, limite: u64) -> Parada {
         let mut hechas = 0u64;
+        self.escribir_en_el_presente();
         loop {
             if self.emu.estado().detenida() {
                 return Parada::Detenida;
@@ -420,6 +430,11 @@ impl Depurador {
                 };
             }
             let pc = self.emu.estado().pc();
+            let antes = self
+                .traza
+                .as_ref()
+                .filter(|t| !t.llena())
+                .map(|_| self.emu.estado().clone());
             let paso = match self.emu.paso() {
                 Ok(Some(p)) => p,
                 Ok(None) => return Parada::Detenida,
@@ -433,6 +448,9 @@ impl Depurador {
                 }
             };
             hechas += 1;
+            if let Some(antes) = antes {
+                self.anotar_paso(&antes, &paso);
+            }
             if let Some(p) = self.observacion_activada() {
                 return p;
             }
@@ -525,5 +543,400 @@ impl Depurador {
             simbolos: &self.simbolos,
         })
         .map_err(|e| ErrorDepurador::Condicion(e.to_string()))
+    }
+}
+
+// --- traza y retroceso -----------------------------------------------------------------------
+
+impl Depurador {
+    /// Activa o desactiva la grabacion de la traza (RF-DEP-020).
+    ///
+    /// Al activarla se empieza una traza nueva desde el estado actual; al desactivarla se descarta.
+    pub fn grabar(&mut self, activa: bool) {
+        if activa {
+            if self.traza.is_none() {
+                self.traza = Some(Traza::nueva(self.emu.instantanea()));
+                self.cursor = 0;
+                self.emu.memoria_mut().registrar_escrituras(true);
+            }
+        } else {
+            self.traza = None;
+            self.cursor = 0;
+            self.emu.memoria_mut().registrar_escrituras(false);
+        }
+    }
+
+    pub fn traza(&self) -> Option<&Traza> {
+        self.traza.as_ref()
+    }
+
+    pub fn traza_mut(&mut self) -> Option<&mut Traza> {
+        self.traza.as_mut()
+    }
+
+    /// Instante en el que esta la maquina, contado en pasos desde que empezo la grabacion.
+    pub fn instante(&self) -> u64 {
+        self.cursor
+    }
+
+    /// `true` si se esta mirando un instante anterior al final de la traza.
+    pub fn en_el_pasado(&self) -> bool {
+        self.traza
+            .as_ref()
+            .is_some_and(|t| self.cursor < t.longitud())
+    }
+
+    /// Avisos pendientes de mostrar, como el de la traza llena (RF-DEP-028).
+    pub fn tomar_avisos(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.avisos)
+    }
+
+    /// Si se estaba mirando el pasado y se ejecuta, esa historia se descarta: desde ahi sigue otra.
+    fn escribir_en_el_presente(&mut self) {
+        if let Some(t) = self.traza.as_mut() {
+            if self.cursor < t.longitud() {
+                t.truncar(self.cursor);
+            }
+        }
+    }
+
+    fn anotar_paso(&mut self, antes: &Estado, paso: &lorenz_emu::Paso) {
+        let despues = self.emu.estado();
+        let pc = despues.nombre_del_pc().to_string();
+        let registros: Vec<CambioRegistro> = antes
+            .nombres()
+            .iter()
+            .filter(|n| !n.eq_ignore_ascii_case(&pc))
+            .filter_map(|n| {
+                let a = antes.registro(n).ok()?;
+                let d = despues.registro(n).ok()?;
+                (a != d).then(|| CambioRegistro {
+                    nombre: n.clone(),
+                    antes: a,
+                    despues: d,
+                })
+            })
+            .collect();
+        let banderas: Vec<CambioBandera> = antes
+            .nombres_de_banderas()
+            .into_iter()
+            .filter_map(|n| {
+                let a = antes.bandera(n).ok()?;
+                let d = despues.bandera(n).ok()?;
+                (a != d).then(|| CambioBandera {
+                    nombre: n.to_string(),
+                    antes: a,
+                    despues: d,
+                })
+            })
+            .collect();
+        let escrituras = self.emu.memoria_mut().tomar_escrituras();
+        let registro = PasoTraza {
+            instante: self.cursor,
+            pc: paso.direccion,
+            mnemonico: paso.mnemonico.clone(),
+            ciclos: paso.ciclos,
+            registros,
+            banderas,
+            escrituras,
+        };
+        let emu = &self.emu;
+        let Some(t) = self.traza.as_mut() else { return };
+        if t.anotar(registro, || emu.instantanea()) {
+            self.cursor += 1;
+        }
+        if t.llena() {
+            self.avisos.push(format!(
+                "la traza alcanzo su limite de {} pasos; ya no se graba (usa `traza limite N` o `traza borrar`)",
+                t.limite()
+            ));
+        }
+    }
+
+    /// Lleva la maquina al instante `destino` de la traza (RF-DEP-021, RF-DEP-022, RF-DEP-023).
+    pub fn ir_a(&mut self, destino: u64) -> Result<(), ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        if destino > t.longitud() {
+            return Err(ErrorDepurador::InstanteInvalido {
+                instante: destino,
+                maximo: t.longitud(),
+            });
+        }
+        let final_ = t.longitud();
+        let (desde, copia) = {
+            let (d, c) = t.instantanea_hasta(destino);
+            (d, c.clone())
+        };
+        let intervenciones: Vec<(u64, Intervencion)> = t
+            .intervenciones()
+            .iter()
+            .filter(|(k, _)| *k >= desde && *k <= destino)
+            .cloned()
+            .collect();
+        self.emu.restaurar(&copia)?;
+        for k in desde..=destino {
+            // Lo hecho a mano en el instante k se aplica antes de ejecutar el paso k; en el
+            // instante final tambien, porque ahi esta la maquina viva.
+            if k < destino || destino == final_ {
+                for (_, i) in intervenciones.iter().filter(|(t, _)| *t == k) {
+                    self.aplicar(i)?;
+                }
+            }
+            if k < destino {
+                self.emu.paso()?;
+                self.emu.memoria_mut().tomar_escrituras();
+            }
+        }
+        self.emu.memoria_mut().tomar_accesos();
+        self.restablecer_vigilancia();
+        self.cursor = destino;
+        Ok(())
+    }
+
+    /// Retrocede `n` pasos (RF-DEP-021).
+    pub fn atras(&mut self, n: u64) -> Result<(), ErrorDepurador> {
+        let destino = self.cursor.saturating_sub(n.max(1));
+        self.ir_a(destino)
+    }
+
+    /// Avanza `n` pasos por la traza ya grabada, sin ejecutar nada nuevo.
+    pub fn adelante(&mut self, n: u64) -> Result<(), ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        let destino = (self.cursor + n.max(1)).min(t.longitud());
+        self.ir_a(destino)
+    }
+
+    /// Pone otra maquina en marcha en lugar de la actual, por ejemplo la que sale de reproducir un
+    /// fallo. Se pierden la traza y los puntos de observacion; las rupturas se conservan.
+    pub fn reemplazar_emulador(&mut self, emulador: Emulador) {
+        self.maquina = emulador.maquina().clone();
+        self.emu = emulador;
+        self.traza = None;
+        self.cursor = 0;
+        self.observaciones.clear();
+    }
+
+    /// Aplica una intervencion guardada, anotandola en la traza como si se hubiera hecho ahora.
+    pub fn aplicar_a_mano(&mut self, i: &Intervencion) -> Result<(), ErrorDepurador> {
+        match i {
+            Intervencion::Registro { nombre, valor } => self.fijar_registro(nombre, *valor),
+            Intervencion::Bandera { nombre, encendida } => self.fijar_bandera(nombre, *encendida),
+            Intervencion::Memoria { direccion, valor } => self.escribir_memoria(*direccion, *valor),
+            Intervencion::Puerto { numero, valor } => self.escribir_puerto(*numero, *valor),
+            Intervencion::Entrada { numero, valor } => self.encolar_entrada(*numero, *valor),
+            Intervencion::LecturaDePuerto { numero } => self.leer_puerto(*numero).map(|_| ()),
+        }
+    }
+
+    fn aplicar(&mut self, i: &Intervencion) -> Result<(), ErrorDepurador> {
+        match i {
+            Intervencion::Registro { nombre, valor } => self.poner_registro(nombre, *valor),
+            Intervencion::Bandera { nombre, encendida } => {
+                self.emu.estado_mut().fijar_bandera(nombre, *encendida)?;
+            }
+            Intervencion::Memoria { direccion, valor } => {
+                self.emu
+                    .memoria_mut()
+                    .escribir_privilegiado(*direccion, *valor)?;
+            }
+            Intervencion::Puerto { numero, valor } => {
+                self.emu.puertos_mut().escribir(*numero, *valor)?;
+            }
+            Intervencion::Entrada { numero, valor } => {
+                self.emu.puertos_mut().encolar_entrada(*numero, *valor)?;
+            }
+            Intervencion::LecturaDePuerto { numero } => {
+                self.emu.puertos_mut().leer(*numero)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn poner_registro(&mut self, nombre: &str, valor: u64) {
+        let e = self.emu.estado_mut();
+        if nombre.eq_ignore_ascii_case(e.nombre_del_pc()) {
+            e.fijar_pc(valor);
+        } else if e
+            .nombre_del_sp()
+            .is_some_and(|s| s.eq_ignore_ascii_case(nombre))
+        {
+            e.fijar_sp(valor);
+        } else {
+            let _ = e.fijar_registro(nombre, valor);
+        }
+    }
+
+    /// Tras restaurar una instantanea la memoria trae las vigilancias de su momento: se vuelven a
+    /// poner las de ahora.
+    fn restablecer_vigilancia(&mut self) {
+        let m = self.emu.memoria_mut();
+        for tipo in [TipoAcceso::Lectura, TipoAcceso::Escritura] {
+            for d in m.vigiladas(tipo) {
+                m.dejar_de_vigilar(d, tipo);
+            }
+        }
+        for o in &self.observaciones {
+            if o.tipo.cubre(TipoAcceso::Lectura) {
+                m.vigilar(o.direccion, TipoAcceso::Lectura);
+            }
+            if o.tipo.cubre(TipoAcceso::Escritura) {
+                m.vigilar(o.direccion, TipoAcceso::Escritura);
+            }
+        }
+        m.registrar_escrituras(self.traza.is_some());
+    }
+
+    // --- cambios hechos a mano, anotados en la traza -------------------------------------
+
+    fn anotar_intervencion(&mut self, i: Intervencion) {
+        if let Some(t) = self.traza.as_mut() {
+            t.intervenir(self.cursor, i);
+        }
+    }
+
+    /// Cambia un registro (RF-DEP-008). Con grabacion activa queda anotado.
+    pub fn fijar_registro(&mut self, nombre: &str, valor: u64) -> Result<(), ErrorDepurador> {
+        let e = self.emu.estado();
+        let existe = e.registro(nombre).is_ok();
+        if !existe {
+            return Err(ErrorDepurador::NombreDesconocido(nombre.to_string()));
+        }
+        self.escribir_en_el_presente_si_hace_falta();
+        let e = self.emu.estado_mut();
+        if nombre.eq_ignore_ascii_case(e.nombre_del_pc()) {
+            e.fijar_pc(valor);
+        } else if e
+            .nombre_del_sp()
+            .is_some_and(|s| s.eq_ignore_ascii_case(nombre))
+        {
+            e.fijar_sp(valor);
+        } else {
+            e.fijar_registro(nombre, valor)?;
+        }
+        self.anotar_intervencion(Intervencion::Registro {
+            nombre: nombre.to_string(),
+            valor,
+        });
+        Ok(())
+    }
+
+    /// Enciende o apaga una bandera (RF-DEP-008).
+    pub fn fijar_bandera(&mut self, nombre: &str, encendida: bool) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.estado_mut().fijar_bandera(nombre, encendida)?;
+        self.anotar_intervencion(Intervencion::Bandera {
+            nombre: nombre.to_string(),
+            encendida,
+        });
+        Ok(())
+    }
+
+    /// Cambia una celda de memoria sin mirar los permisos (RF-DEP-009).
+    pub fn escribir_memoria(&mut self, direccion: u64, valor: u64) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu
+            .memoria_mut()
+            .escribir_privilegiado(direccion, valor)?;
+        self.anotar_intervencion(Intervencion::Memoria { direccion, valor });
+        Ok(())
+    }
+
+    /// Escribe en un puerto (RF-DEP-010).
+    pub fn escribir_puerto(&mut self, numero: u64, valor: u64) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.puertos_mut().escribir(numero, valor)?;
+        self.anotar_intervencion(Intervencion::Puerto { numero, valor });
+        Ok(())
+    }
+
+    /// Deja un valor en la cola de entrada de un puerto (RF-DEP-010).
+    pub fn encolar_entrada(&mut self, numero: u64, valor: u64) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.puertos_mut().encolar_entrada(numero, valor)?;
+        self.anotar_intervencion(Intervencion::Entrada { numero, valor });
+        Ok(())
+    }
+
+    /// Leer un puerto consume su cola, asi que tambien es un cambio de estado que hay que anotar.
+    pub fn leer_puerto(&mut self, numero: u64) -> Result<u64, ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        let v = self.emu.puertos_mut().leer(numero)?;
+        self.anotar_intervencion(Intervencion::LecturaDePuerto { numero });
+        Ok(v)
+    }
+
+    fn escribir_en_el_presente_si_hace_falta(&mut self) {
+        self.escribir_en_el_presente();
+    }
+
+    // --- preguntas a la traza ------------------------------------------------------------
+
+    /// El paso que escribio `direccion` por ultima vez antes del instante actual (RF-DEP-024).
+    pub fn quien_escribio(&self, direccion: u64) -> Result<Option<PasoTraza>, ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        Ok(t.ultima_escritura(direccion, self.cursor).cloned())
+    }
+
+    /// El paso que cambio un registro o una bandera por ultima vez antes del instante actual
+    /// (RF-DEP-025).
+    pub fn quien_cambio(&self, nombre: &str) -> Result<Option<PasoTraza>, ErrorDepurador> {
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        let e = self.emu.estado();
+        let paso = if e.tiene_bandera(nombre) {
+            t.ultimo_cambio_de_bandera(nombre, self.cursor)
+        } else if e.registro(nombre).is_ok() {
+            t.ultimo_cambio_de_registro(nombre, self.cursor)
+        } else {
+            return Err(ErrorDepurador::NombreDesconocido(nombre.to_string()));
+        };
+        Ok(paso.cloned())
+    }
+
+    /// El primer instante de la traza en que se cumple la condicion (RF-DEP-026). La maquina
+    /// queda donde estaba.
+    pub fn buscar(&mut self, condicion: &str) -> Result<Option<u64>, ErrorDepurador> {
+        let c = Condicion::analizar(condicion)?;
+        let t = self.traza.as_ref().ok_or(ErrorDepurador::SinTraza)?;
+        let final_ = t.longitud();
+        let origen = self.cursor;
+        let copia = t.instantanea_hasta(0).1.clone();
+        let intervenciones: Vec<(u64, Intervencion)> = t.intervenciones().to_vec();
+        self.emu.restaurar(&copia)?;
+        let mut hallado = None;
+        let mut fallo = None;
+        for k in 0..=final_ {
+            if k == final_ {
+                for (_, i) in intervenciones.iter().filter(|(t, _)| *t == k) {
+                    self.aplicar(i)?;
+                }
+            }
+            let vista = Vista {
+                emu: &self.emu,
+                simbolos: &self.simbolos,
+            };
+            match c.evaluar(&vista) {
+                Ok(true) => {
+                    hallado = Some(k);
+                    break;
+                }
+                Ok(false) => {}
+                Err(e) => {
+                    fallo = Some(ErrorDepurador::Condicion(e.to_string()));
+                    break;
+                }
+            }
+            if k < final_ {
+                for (_, i) in intervenciones.iter().filter(|(t, _)| *t == k) {
+                    self.aplicar(i)?;
+                }
+                self.emu.paso()?;
+                self.emu.memoria_mut().tomar_escrituras();
+            }
+        }
+        self.ir_a(origen)?;
+        match fallo {
+            Some(e) => Err(e),
+            None => Ok(hallado),
+        }
     }
 }
