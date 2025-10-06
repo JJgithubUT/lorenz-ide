@@ -353,3 +353,44 @@ fn buscar_ve_lo_hecho_a_mano() {
     d.fijar_registro("B", 41).unwrap();
     assert_eq!(d.buscar("B == 41").unwrap(), Some(2));
 }
+
+// --- eventos externos --------------------------------------------------------------------
+
+#[test]
+fn una_tecla_pulsada_sobrevive_al_retroceso() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.paso(1);
+    d.pulsar_tecla("teclado", 0x41).unwrap();
+    d.paso(2);
+    d.ir_a(0).unwrap();
+    d.ir_a(3).unwrap();
+    // El teclado deja el codigo en su puerto de datos (0x01 en el ejemplo).
+    let datos = d.emulador_mut().puertos_mut().pendientes(0x01).unwrap();
+    assert_eq!(datos, 1);
+    d.ir_a(1).unwrap();
+    assert_eq!(d.emulador_mut().puertos_mut().pendientes(0x01).unwrap(), 0);
+}
+
+#[test]
+fn una_interrupcion_levantada_se_repite() {
+    let mut d = depurador();
+    d.grabar(true);
+    d.paso(1);
+    d.levantar_interrupcion(1).unwrap();
+    assert_eq!(d.emulador().interrupciones_pendientes(), vec![1]);
+    d.paso(1);
+    d.ir_a(0).unwrap();
+    assert!(d.emulador().interrupciones_pendientes().is_empty());
+    d.ir_a(2).unwrap();
+    // Las interrupciones estan inhabilitadas al arrancar, asi que sigue pendiente.
+    assert_eq!(d.emulador().interrupciones_pendientes(), vec![1]);
+}
+
+#[test]
+fn tecla_en_un_dispositivo_que_no_existe() {
+    let mut d = depurador();
+    d.grabar(true);
+    assert!(d.pulsar_tecla("nada", 1).is_err());
+    assert!(d.traza().unwrap().intervenciones().is_empty());
+}

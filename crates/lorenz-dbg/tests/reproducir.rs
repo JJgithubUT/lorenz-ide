@@ -190,3 +190,34 @@ fn capturar_no_mueve_la_maquina() {
     assert_eq!(d.emulador().estado().registro("A").unwrap(), 5);
     assert_eq!(d.emulador().estado().registro("B").unwrap(), 0);
 }
+
+#[test]
+fn guarda_teclas_serie_e_interrupciones() {
+    let t = std::fs::read_to_string("../../ejemplos/ejemplo-8-serie/maquina.toml").unwrap();
+    let m = lorenz_arch::cargar(&t).unwrap();
+    let mut d = Depurador::nuevo(Emulador::nuevo(m.clone()).unwrap());
+    d.grabar(true);
+    d.pulsar_tecla("teclado", 0x41).unwrap();
+    d.recibir_serie("serie", b"hola").unwrap();
+    d.levantar_interrupcion(0).unwrap();
+    d.paso(1);
+    let f = Fallo::capturar(&mut d, None).unwrap();
+    let texto = f.a_toml();
+    assert!(texto.contains("tipo = \"serie\""), "{texto}");
+    assert!(texto.contains("686f6c61"), "{texto}"); // "hola" en hexadecimal
+    let g = Fallo::desde_toml(&texto).unwrap();
+    let r = g.reproducir(&m).unwrap();
+    assert!(r.identica, "{:?}", r.diferencias);
+}
+
+#[test]
+fn serie_con_bytes_invalidos() {
+    let t = std::fs::read_to_string("../../ejemplos/ejemplo-8-serie/maquina.toml").unwrap();
+    let m = lorenz_arch::cargar(&t).unwrap();
+    let mut d = Depurador::nuevo(Emulador::nuevo(m).unwrap());
+    d.grabar(true);
+    d.recibir_serie("serie", b"a").unwrap();
+    let texto = Fallo::capturar(&mut d, None).unwrap().a_toml();
+    assert!(Fallo::desde_toml(&texto.replace("\"61\"", "\"6\"")).is_err());
+    assert!(Fallo::desde_toml(&texto.replace("\"61\"", "\"zz\"")).is_err());
+}
