@@ -1,0 +1,16 @@
+[package]
+name = "lorenz-tst"
+description = "Pruebas de proyecto, conformidad, cobertura y generacion aleatoria para maquinas Lorenz"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+lorenz-ens = { path = "../lorenz-ens" }
+lorenz-dbg = { path = "../lorenz-dbg" }
+thiserror.workspace = true
+toml.workspace = true
+serde.workspace = true
