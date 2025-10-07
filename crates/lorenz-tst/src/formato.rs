@@ -330,6 +330,14 @@ fn validar(m: &Maquina, def: &PruebaDef) -> Result<Vec<(Momento, Evento)>, Error
             ));
         }
     }
+    for p in &def.espera.puertos {
+        if p.valores.is_empty() {
+            return Err(error_prueba(
+                n,
+                "espera: un puerto sin valores no comprueba nada",
+            ));
+        }
+    }
     for s in &def.espera.salida {
         if !m.dispositivos.iter().any(|d| d.nombre == s.dispositivo) {
             return Err(error_prueba(
@@ -345,6 +353,19 @@ fn validar(m: &Maquina, def: &PruebaDef) -> Result<Vec<(Momento, Evento)>, Error
                 n,
                 format!(
                     "espera: la salida de `{}` debe tener `texto` o `codigos`, uno de los dos",
+                    s.dispositivo
+                ),
+            ));
+        }
+        let es_uart = m
+            .dispositivos
+            .iter()
+            .any(|d| d.nombre == s.dispositivo && matches!(d.tipo, TipoDispositivo::Uart));
+        if !es_uart {
+            return Err(error_prueba(
+                n,
+                format!(
+                    "espera: no se puede comprobar la salida de `{}`; solo las UART producen salida de texto (para otros puertos usa `puertos`)",
                     s.dispositivo
                 ),
             ));
