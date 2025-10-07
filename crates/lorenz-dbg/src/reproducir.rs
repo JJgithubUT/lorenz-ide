@@ -42,6 +42,9 @@ struct IntervencionToml {
     direccion: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     valor: Option<String>,
+    /// Bytes en hexadecimal, sin separadores.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bytes: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -326,6 +329,7 @@ fn a_toml_intervencion(instante: u64, i: &Intervencion) -> IntervencionToml {
         numero: None,
         direccion: None,
         valor: None,
+        bytes: None,
     };
     match i {
         Intervencion::Registro { nombre, valor } => IntervencionToml {
@@ -356,6 +360,23 @@ fn a_toml_intervencion(instante: u64, i: &Intervencion) -> IntervencionToml {
         Intervencion::LecturaDePuerto { numero } => IntervencionToml {
             numero: Some(hex(*numero)),
             ..vacia("lectura")
+        },
+        Intervencion::Tecla {
+            dispositivo,
+            codigo,
+        } => IntervencionToml {
+            nombre: Some(dispositivo.clone()),
+            valor: Some(hex(*codigo)),
+            ..vacia("tecla")
+        },
+        Intervencion::Serie { dispositivo, bytes } => IntervencionToml {
+            nombre: Some(dispositivo.clone()),
+            bytes: Some(bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()),
+            ..vacia("serie")
+        },
+        Intervencion::Interrupcion { linea } => IntervencionToml {
+            numero: Some(hex(u64::from(*linea))),
+            ..vacia("interrupcion")
         },
     }
 }
@@ -388,6 +409,29 @@ fn de_toml_intervencion(i: &IntervencionToml) -> Result<(u64, Intervencion), Str
             valor: valor()?,
         },
         "lectura" => Intervencion::LecturaDePuerto { numero: numero()? },
+        "tecla" => Intervencion::Tecla {
+            dispositivo: nombre()?,
+            codigo: valor()?,
+        },
+        "serie" => {
+            let hexa = i.bytes.clone().ok_or_else(|| falta("bytes"))?;
+            if hexa.len() % 2 != 0 || !hexa.is_ascii() {
+                return Err(format!("`{hexa}` no son bytes en hexadecimal"));
+            }
+            let bytes = (0..hexa.len() / 2)
+                .map(|k| {
+                    u8::from_str_radix(&hexa[2 * k..2 * k + 2], 16)
+                        .map_err(|_| format!("`{hexa}` no son bytes en hexadecimal"))
+                })
+                .collect::<Result<Vec<u8>, String>>()?;
+            Intervencion::Serie {
+                dispositivo: nombre()?,
+                bytes,
+            }
+        }
+        "interrupcion" => Intervencion::Interrupcion {
+            linea: u32::try_from(numero()?).map_err(|_| "linea demasiado grande".to_string())?,
+        },
         otro => return Err(format!("intervencion `{otro}` desconocida")),
     };
     Ok((i.instante, que))

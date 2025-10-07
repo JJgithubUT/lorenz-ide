@@ -725,6 +725,12 @@ impl Depurador {
             Intervencion::Puerto { numero, valor } => self.escribir_puerto(*numero, *valor),
             Intervencion::Entrada { numero, valor } => self.encolar_entrada(*numero, *valor),
             Intervencion::LecturaDePuerto { numero } => self.leer_puerto(*numero).map(|_| ()),
+            Intervencion::Tecla {
+                dispositivo,
+                codigo,
+            } => self.pulsar_tecla(dispositivo, *codigo),
+            Intervencion::Serie { dispositivo, bytes } => self.recibir_serie(dispositivo, bytes),
+            Intervencion::Interrupcion { linea } => self.levantar_interrupcion(*linea),
         }
     }
 
@@ -748,6 +754,14 @@ impl Depurador {
             Intervencion::LecturaDePuerto { numero } => {
                 self.emu.puertos_mut().leer(*numero)?;
             }
+            Intervencion::Tecla {
+                dispositivo,
+                codigo,
+            } => self.emu.pulsar_tecla(dispositivo, *codigo)?,
+            Intervencion::Serie { dispositivo, bytes } => {
+                self.emu.recibir_en_uart(dispositivo, bytes)?
+            }
+            Intervencion::Interrupcion { linea } => self.emu.levantar_interrupcion(*linea)?,
         }
         Ok(())
     }
@@ -863,6 +877,36 @@ impl Depurador {
         let v = self.emu.puertos_mut().leer(numero)?;
         self.anotar_intervencion(Intervencion::LecturaDePuerto { numero });
         Ok(v)
+    }
+
+    /// Pulsa una tecla en un teclado de la maquina.
+    pub fn pulsar_tecla(&mut self, dispositivo: &str, codigo: u64) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.pulsar_tecla(dispositivo, codigo)?;
+        self.anotar_intervencion(Intervencion::Tecla {
+            dispositivo: dispositivo.to_string(),
+            codigo,
+        });
+        Ok(())
+    }
+
+    /// Entrega bytes a una UART como si llegaran por su linea serie.
+    pub fn recibir_serie(&mut self, dispositivo: &str, bytes: &[u8]) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.recibir_en_uart(dispositivo, bytes)?;
+        self.anotar_intervencion(Intervencion::Serie {
+            dispositivo: dispositivo.to_string(),
+            bytes: bytes.to_vec(),
+        });
+        Ok(())
+    }
+
+    /// Levanta una linea de interrupcion desde fuera de la maquina.
+    pub fn levantar_interrupcion(&mut self, linea: u32) -> Result<(), ErrorDepurador> {
+        self.escribir_en_el_presente_si_hace_falta();
+        self.emu.levantar_interrupcion(linea)?;
+        self.anotar_intervencion(Intervencion::Interrupcion { linea });
+        Ok(())
     }
 
     fn escribir_en_el_presente_si_hace_falta(&mut self) {

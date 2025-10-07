@@ -66,6 +66,20 @@ pub enum Intervencion {
     LecturaDePuerto {
         numero: u64,
     },
+    /// Una tecla pulsada en un teclado.
+    Tecla {
+        dispositivo: String,
+        codigo: u64,
+    },
+    /// Bytes que llegan por la linea serie de una UART.
+    Serie {
+        dispositivo: String,
+        bytes: Vec<u8>,
+    },
+    /// Una linea de interrupcion levantada desde fuera.
+    Interrupcion {
+        linea: u32,
+    },
 }
 
 /// Limites por omision.
