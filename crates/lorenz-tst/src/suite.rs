@@ -85,34 +85,7 @@ impl Informe {
         use std::fmt::Write;
         let mut s = String::new();
         for r in &self.pruebas {
-            let marca = match r.veredicto {
-                Veredicto::Pasa => "ok     ",
-                Veredicto::Falla => "FALLA  ",
-                Veredicto::Error => "ERROR  ",
-            };
-            let _ = writeln!(s, "{marca}{}", r.nombre);
-            if let Some(m) = &r.motivo {
-                for linea in m.lines() {
-                    let _ = writeln!(s, "         {linea}");
-                }
-            }
-            for f in &r.fallos {
-                let _ = writeln!(s, "         {}:", f.que);
-                let _ = writeln!(s, "           esperado: {}", f.esperado);
-                let _ = writeln!(s, "           obtenido: {}", f.obtenido);
-                if let Some(d) = &f.donde {
-                    let fuente = d
-                        .fuente
-                        .as_ref()
-                        .map(|(a, l)| format!(" ({a}:{l})"))
-                        .unwrap_or_default();
-                    let _ = writeln!(
-                        s,
-                        "           en la instruccion {} {:#06x}: {}{fuente}",
-                        d.instante, d.direccion, d.instruccion
-                    );
-                }
-            }
+            s.push_str(&texto_de(r));
         }
         let r = &self.resumen;
         let _ = write!(
@@ -126,6 +99,41 @@ impl Informe {
         let _ = writeln!(s, " ({} ms)", self.milisegundos);
         s
     }
+}
+
+/// El resultado de una prueba como texto: una linea con el veredicto y, si no paso, el detalle.
+pub fn texto_de(r: &Resultado) -> String {
+    use std::fmt::Write;
+    let mut s = String::new();
+    let marca = match r.veredicto {
+        Veredicto::Pasa => "ok     ",
+        Veredicto::Falla => "FALLA  ",
+        Veredicto::Error => "ERROR  ",
+    };
+    let _ = writeln!(s, "{marca}{}", r.nombre);
+    if let Some(m) = &r.motivo {
+        for linea in m.lines() {
+            let _ = writeln!(s, "         {linea}");
+        }
+    }
+    for f in &r.fallos {
+        let _ = writeln!(s, "         {}:", f.que);
+        let _ = writeln!(s, "           esperado: {}", f.esperado);
+        let _ = writeln!(s, "           obtenido: {}", f.obtenido);
+        if let Some(d) = &f.donde {
+            let fuente = d
+                .fuente
+                .as_ref()
+                .map(|(a, l)| format!(" ({a}:{l})"))
+                .unwrap_or_default();
+            let _ = writeln!(
+                s,
+                "           en la instruccion {} {:#06x}: {}{fuente}",
+                d.instante, d.direccion, d.instruccion
+            );
+        }
+    }
+    s
 }
 
 fn hilos_para(n: usize, trabajo: usize) -> usize {

@@ -257,13 +257,13 @@ impl Proyecto {
         self.pruebas
             .iter()
             .filter(|p| {
-                nombre.is_none_or(|n| {
+                nombre.map_or(true, |n| {
                     p.nombre()
                         .to_ascii_lowercase()
                         .contains(&n.to_ascii_lowercase())
                 })
             })
-            .filter(|p| etiqueta.is_none_or(|e| p.tiene_etiqueta(e)))
+            .filter(|p| etiqueta.map_or(true, |e| p.tiene_etiqueta(e)))
             .collect()
     }
 }
@@ -320,7 +320,7 @@ fn validar(m: &Maquina, def: &PruebaDef) -> Result<Vec<(Momento, Evento)>, Error
             return Err(error_prueba(n, "un tramo de memoria no tiene palabras"));
         }
         let ultima = t.direccion.0.checked_add(t.palabras.len() as u64 - 1);
-        if ultima.is_none_or(|u| u > m.direccion_maxima()) {
+        if ultima.map_or(true, |u| u > m.direccion_maxima()) {
             return Err(error_prueba(
                 n,
                 format!(

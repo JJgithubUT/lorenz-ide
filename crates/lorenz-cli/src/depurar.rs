@@ -79,8 +79,25 @@ pub fn depurar_cli(
             .collect();
         depurador.con_fuente(o, &pares);
     }
-    let mut sesion = Sesion::nueva(depurador);
+    sesion_de_ordenes(
+        Sesion::nueva(depurador),
+        &format!("{ruta_programa} cargado"),
+        guion,
+        entrada,
+        salida,
+        errores,
+    )
+}
 
+/// Lee ordenes de un guion o de la entrada y las ejecuta hasta `fin` o hasta que se acaben.
+pub fn sesion_de_ordenes(
+    mut sesion: Sesion,
+    titulo: &str,
+    guion: Option<&str>,
+    entrada: &mut dyn BufRead,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> i32 {
     // Las ordenes vienen de un guion o de la entrada; del guion se muestra cada orden para que la
     // salida se lea como una sesion.
     let (mut lector, es_guion): (Box<dyn BufRead>, bool) = match guion {
@@ -95,10 +112,7 @@ pub fn depurar_cli(
     };
     escribir(
         salida,
-        &format!(
-            "{} cargado; escribe `ayuda` para ver las ordenes\n",
-            ruta_programa
-        ),
+        &format!("{titulo}; escribe `ayuda` para ver las ordenes\n"),
     );
     loop {
         escribir(salida, INDICADOR);
