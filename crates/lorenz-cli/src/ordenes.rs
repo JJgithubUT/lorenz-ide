@@ -33,6 +33,8 @@ Uso:
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
+  lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
+                [--salida RESULTADOS.json] [--depurar PRUEBA]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -43,6 +45,8 @@ Codigos de salida:
   2  argumentos, archivos o arquitectura invalidos
   3  se alcanzo el limite de instrucciones
   4  comparar: las dos maquinas difieren
+  5  probar: alguna prueba no se pudo preparar (el programa no ensambla, falta un archivo...)
+     (probar usa 1 si alguna prueba falla y 0 si todas pasan)
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -80,6 +84,28 @@ pub fn ejecutar_cli_con_entrada(
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
+        Orden::Probar {
+            pruebas,
+            nombre,
+            etiqueta,
+            hilos,
+            json,
+            salida: archivo,
+            depurar,
+        } => crate::probar::probar_cli(
+            &pruebas,
+            &crate::probar::OpcionesProbar {
+                nombre,
+                etiqueta,
+                hilos,
+                json,
+                salida: archivo,
+                depurar,
+            },
+            entrada,
+            salida,
+            errores,
+        ),
         Orden::Depurar {
             maquina,
             programa,

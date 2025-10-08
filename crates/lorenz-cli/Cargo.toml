@@ -18,4 +18,8 @@ lorenz-arch = { path = "../lorenz-arch" }
 lorenz-emu = { path = "../lorenz-emu" }
 lorenz-ens = { path = "../lorenz-ens" }
 lorenz-dbg = { path = "../lorenz-dbg" }
+lorenz-tst = { path = "../lorenz-tst" }
 thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

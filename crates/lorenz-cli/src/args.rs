@@ -52,6 +52,19 @@ pub enum Orden {
         direccion: Option<u64>,
         simbolos: Option<String>,
     },
+    /// Ejecutar las pruebas de un proyecto.
+    Probar {
+        pruebas: String,
+        nombre: Option<String>,
+        etiqueta: Option<String>,
+        hilos: usize,
+        /// Escribir el informe en JSON por la salida estandar en lugar del texto.
+        json: bool,
+        /// Guardar ademas el informe JSON en este archivo.
+        salida: Option<String>,
+        /// Abrir el depurador en el estado en que fallo esta prueba.
+        depurar: Option<String>,
+    },
     /// Depurar un programa desde la linea de comandos.
     Depurar {
         maquina: String,
@@ -156,6 +169,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ensamblar" => interpretar_ensamblar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
+        "probar" => interpretar_probar(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -335,6 +349,44 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
         maquina,
         fuente,
         opciones,
+    })
+}
+
+fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let (mut nombre, mut etiqueta, mut salida, mut depurar) = (None, None, None, None);
+    let (mut hilos, mut json) = (0usize, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--nombre" => nombre = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--etiqueta" => etiqueta = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--depurar" => depurar = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--json" => json = true,
+            "--hilos" => {
+                let v = valor_de(resto, &mut i, a)?;
+                hilos = numero("--hilos", v)? as usize;
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let pruebas = it.next().ok_or(ErrorUso::Falta("archivo de pruebas"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Probar {
+        pruebas,
+        nombre,
+        etiqueta,
+        hilos,
+        json,
+        salida,
+        depurar,
     })
 }
 
