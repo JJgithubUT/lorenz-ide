@@ -9,6 +9,7 @@ use lorenz_dbg::{Depurador, Parada};
 use lorenz_emu::{Emulador, ErrorEjecucion};
 use lorenz_ens::ensamblador::Ensamblador;
 use lorenz_ens::preprocesar::CargadorDeDisco;
+use serde::{Deserialize, Serialize};
 
 use crate::formato::{Evento, Momento, Proyecto, Prueba};
 
@@ -18,7 +19,8 @@ pub const EXTENSIONES_FUENTE: [&str; 3] = ["s", "asm", "lasm"];
 /// Cuanto se deja crecer la traza cuando hay que localizar un fallo.
 const MAX_PASOS_DE_TRAZA: u64 = 5_000_000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Veredicto {
     Pasa,
     /// Alguna afirmacion no se cumplio.
@@ -28,7 +30,7 @@ pub enum Veredicto {
 }
 
 /// La instruccion donde se origino una divergencia (RF-TST-013).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Donde {
     /// Instante de la ejecucion, contado en instrucciones desde el principio.
     pub instante: u64,
@@ -38,23 +40,25 @@ pub struct Donde {
 }
 
 /// Una afirmacion que no se cumplio.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Fallo {
     /// Que se comprobaba, por ejemplo `registro A`.
     pub que: String,
     pub esperado: String,
     pub obtenido: String,
     /// La ultima instruccion que toco lo comprobado, o donde termino la ejecucion.
+    #[serde(default)]
     pub donde: Option<Donde>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Resultado {
     pub nombre: String,
     pub etiquetas: Vec<String>,
     pub veredicto: Veredicto,
     pub fallos: Vec<Fallo>,
     /// Por que no se pudo ejecutar, si `veredicto` es `Error`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub motivo: Option<String>,
     pub instrucciones: u64,
     pub ciclos: u64,
