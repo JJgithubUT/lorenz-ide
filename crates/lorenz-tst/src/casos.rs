@@ -4,6 +4,8 @@
 //! Todo es determinista: la misma arquitectura da siempre los mismos casos, de modo que un fallo
 //! se puede repetir y comparar entre ejecuciones.
 
+use std::collections::BTreeMap;
+
 use lorenz_arch::modelo::{Instruccion, Maquina, Operando, Region, RolRegistro, TipoOperando};
 
 /// Cuantas palabras de RAM libre hacen falta como minimo para poner a prueba una instruccion.
@@ -154,14 +156,45 @@ pub fn candidatos(maquina: &Maquina, ins: &Instruccion, operando: &Operando) -> 
 }
 
 /// Los valores justo fuera del rango de un operando, que el ensamblador debe rechazar.
-pub fn fuera_de_rango(operando: &Operando) -> Vec<i128> {
+///
+/// Los desplazamientos se dan como desplazamiento, igual que en [`candidatos`].
+pub fn fuera_de_rango(maquina: &Maquina, ins: &Instruccion, operando: &Operando) -> Vec<i128> {
+    let bits = bits_del_operando(ins, &operando.nombre).min(64);
     match &operando.tipo {
         TipoOperando::Inmediato { rango, .. } => {
             vec![i128::from(rango.0) - 1, i128::from(rango.1) + 1]
         }
         TipoOperando::Registro { permitidos } => vec![-1, permitidos.len() as i128],
-        _ => Vec::new(),
+        TipoOperando::Direccion => vec![-1, i128::from(maquina.direccion_maxima()) + 1],
+        TipoOperando::Desplazamiento if bits > 0 => {
+            vec![-(1i128 << (bits - 1)) - 1, (1i128 << (bits - 1))]
+        }
+        TipoOperando::Desplazamiento => Vec::new(),
+        TipoOperando::Puerto => vec![-1, (1i128 << bits)],
     }
+}
+
+/// Los valores tal como los pide el codificador: un desplazamiento se da como la direccion a la
+/// que se salta, medida desde la instruccion siguiente.
+pub fn valores_de_codificacion(
+    ins: &Instruccion,
+    operandos: &[(String, i128)],
+    direccion: u64,
+) -> BTreeMap<String, i128> {
+    let siguiente = i128::from(direccion) + ins.codificacion.longitud_en_palabras() as i128;
+    operandos
+        .iter()
+        .map(|(n, v)| {
+            let es_desplazamiento = ins
+                .operandos
+                .iter()
+                .any(|o| &o.nombre == n && o.tipo == TipoOperando::Desplazamiento);
+            (
+                n.clone(),
+                if es_desplazamiento { v + siguiente } else { *v },
+            )
+        })
+        .collect()
 }
 
 /// Todas las combinaciones de valores de los operandos, o `tope` de ellas repartidas por todo el

@@ -65,7 +65,7 @@ fn fuera_de_rango_da_los_vecinos_de_los_extremos() {
         unreachable!()
     };
     assert_eq!(
-        fuera_de_rango(imm),
+        fuera_de_rango(&m, ldi, imm),
         vec![i128::from(rango.0) - 1, i128::from(rango.1) + 1]
     );
 }
