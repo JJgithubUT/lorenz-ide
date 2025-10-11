@@ -4,6 +4,7 @@
 //! espera al terminar. Se declara en un archivo TOML junto a la arquitectura (RF-TST-001).
 
 pub mod casos;
+pub mod conformidad;
 pub mod ejecutor;
 pub mod error;
 pub mod formato;
