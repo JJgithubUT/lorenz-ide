@@ -1,6 +1,7 @@
 //! Ejecutar proyectos completos (RF-TST-011, RF-TST-012, RF-TST-015, RF-TST-031, RF-TST-032).
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use lorenz_tst::ejecutor::Veredicto;
 use lorenz_tst::formato::Proyecto;
@@ -10,7 +11,12 @@ use lorenz_tst::suite::{
 };
 
 fn proyecto(nombre: &str, pruebas: &str) -> Proyecto {
-    let dir = std::env::temp_dir().join(format!("lorenz-suite-{}-{nombre}", std::process::id()));
+    // Cada llamada usa su propia carpeta: las pruebas corren en paralelo y reescribir los mismos
+    // archivos mientras otra prueba los lee daba fallos esporadicos.
+    static CONTADOR: AtomicUsize = AtomicUsize::new(0);
+    let n = CONTADOR.fetch_add(1, Ordering::SeqCst);
+    let dir =
+        std::env::temp_dir().join(format!("lorenz-suite-{}-{nombre}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("suma.s"),
