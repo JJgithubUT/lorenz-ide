@@ -221,3 +221,26 @@ codigo = "0000 0000"
     let mut d = Depurador::nuevo(Emulador::nuevo(m).unwrap());
     assert!(d.salir(10).is_err());
 }
+
+#[test]
+fn se_pueden_recoger_las_instrucciones_ejecutadas() {
+    let mut d = depurador(PROGRAMA);
+    assert!(d.tomar_pasos().is_empty(), "sin pedirlo no se recoge nada");
+    d.recoger_pasos(true);
+    d.paso(2);
+    let primeros = d.tomar_pasos();
+    assert_eq!(
+        primeros
+            .iter()
+            .map(|p| p.mnemonico.as_str())
+            .collect::<Vec<_>>(),
+        ["LDI", "LDI"]
+    );
+    assert_eq!(primeros[0].direccion, 0);
+    assert!(d.tomar_pasos().is_empty(), "tomar vacia la lista");
+    d.continuar(100);
+    let resto: Vec<_> = d.tomar_pasos().into_iter().map(|p| p.mnemonico).collect();
+    assert_eq!(resto, ["ADD", "ST", "LD", "HLT"]);
+    d.recoger_pasos(false);
+    assert!(d.tomar_pasos().is_empty());
+}
