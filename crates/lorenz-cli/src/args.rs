@@ -65,6 +65,16 @@ pub enum Orden {
         /// Abrir el depurador en el estado en que fallo esta prueba.
         depurar: Option<String>,
     },
+    /// Comprobar el emulador contra la semantica de la arquitectura.
+    Conformidad {
+        maquina: String,
+        instruccion: Option<String>,
+        /// Combinaciones de operandos por instruccion como maximo.
+        casos: Option<usize>,
+        repeticiones: Option<usize>,
+        json: bool,
+        salida: Option<String>,
+    },
     /// Depurar un programa desde la linea de comandos.
     Depurar {
         maquina: String,
@@ -170,6 +180,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
+        "conformidad" => interpretar_conformidad(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -387,6 +398,45 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
         json,
         salida,
         depurar,
+    })
+}
+
+fn interpretar_conformidad(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let (mut instruccion, mut salida) = (None, None);
+    let (mut casos, mut repeticiones, mut json) = (None, None, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--instruccion" => instruccion = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--json" => json = true,
+            "--casos" => {
+                let v = valor_de(resto, &mut i, a)?;
+                casos = Some(numero("--casos", v)? as usize);
+            }
+            "--repeticiones" => {
+                let v = valor_de(resto, &mut i, a)?;
+                repeticiones = Some(numero("--repeticiones", v)? as usize);
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Conformidad {
+        maquina,
+        instruccion,
+        casos,
+        repeticiones,
+        json,
+        salida,
     })
 }
 

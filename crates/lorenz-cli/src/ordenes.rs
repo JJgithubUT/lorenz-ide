@@ -35,6 +35,8 @@ Uso:
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
   lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
                 [--salida RESULTADOS.json] [--depurar PRUEBA]
+  lorenz conformidad <maquina.toml> [--instruccion MNEMONICO] [--casos N] [--repeticiones N]
+                     [--json] [--salida INFORME.json]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -46,7 +48,7 @@ Codigos de salida:
   3  se alcanzo el limite de instrucciones
   4  comparar: las dos maquinas difieren
   5  probar: alguna prueba no se pudo preparar (el programa no ensambla, falta un archivo...)
-     (probar usa 1 si alguna prueba falla y 0 si todas pasan)
+     (probar usa 1 si alguna prueba falla y 0 si todas pasan; conformidad usa 1 si algun caso falla)
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -103,6 +105,25 @@ pub fn ejecutar_cli_con_entrada(
                 depurar,
             },
             entrada,
+            salida,
+            errores,
+        ),
+        Orden::Conformidad {
+            maquina,
+            instruccion,
+            casos,
+            repeticiones,
+            json,
+            salida: archivo,
+        } => crate::conformidad::conformidad_cli(
+            &maquina,
+            &crate::conformidad::OpcionesConformidad {
+                instruccion,
+                casos,
+                repeticiones,
+                json,
+                salida: archivo,
+            },
             salida,
             errores,
         ),
