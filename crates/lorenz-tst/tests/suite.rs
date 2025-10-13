@@ -276,3 +276,116 @@ fn texto_menciona_las_omitidas() {
     );
     assert!(i.a_texto().contains("1 omitidas"));
 }
+
+#[test]
+fn sin_pedirla_el_informe_no_trae_cobertura() {
+    let i = ejecutar_suite(&mixto(), &Opciones::default());
+    assert!(i.cobertura.is_none());
+    assert!(!i.a_json().contains("cobertura"));
+}
+
+#[test]
+fn la_cobertura_junta_lo_ejecutado_por_todas_las_pruebas() {
+    let i = ejecutar_suite(
+        &mixto(),
+        &Opciones {
+            cobertura: true,
+            ..Default::default()
+        },
+    );
+    let c = i.cobertura.as_ref().expect("se pidio la cobertura");
+    // Tres pruebas ejecutan LDI, LDI, ADD, HLT; la cuarta no ensambla y no ejecuta nada.
+    let veces = |m: &str| {
+        c.instrucciones
+            .iter()
+            .find(|x| x.mnemonico == m)
+            .unwrap()
+            .ejecuciones
+    };
+    assert_eq!(veces("LDI"), 6);
+    assert_eq!(veces("ADD"), 3);
+    assert_eq!(veces("HLT"), 3);
+    assert_eq!(c.instrucciones_ejercitadas, 3);
+    assert!(c.no_ejercitadas().contains(&"JZ"));
+    let t = i.a_texto();
+    assert!(t.contains("cobertura de instrucciones: 3/11"), "{t}");
+}
+
+#[test]
+fn la_cobertura_es_la_misma_con_uno_o_varios_hilos() {
+    let p = mixto();
+    let con = |hilos| {
+        ejecutar_suite(
+            &p,
+            &Opciones {
+                hilos,
+                cobertura: true,
+                ..Default::default()
+            },
+        )
+        .cobertura
+    };
+    assert_eq!(con(1), con(4));
+}
+
+#[test]
+fn la_cobertura_viaja_en_el_json_y_se_lee_de_nuevo() {
+    let i = ejecutar_suite(
+        &mixto(),
+        &Opciones {
+            cobertura: true,
+            ..Default::default()
+        },
+    );
+    let otra = Informe::desde_json(&i.a_json()).unwrap();
+    assert_eq!(otra.cobertura, i.cobertura);
+}
+
+#[test]
+fn un_salto_condicional_se_ve_tomado_y_sin_tomar_en_pruebas_distintas() {
+    let t = [
+        prueba("sin saltar", "", "salto.s", "registros = { A = 1 }"),
+        prueba("saltando", "", "salto.s", "registros = { A = 1 }"),
+    ]
+    .concat();
+    let dir = std::env::temp_dir().join(format!("lorenz-suite-cob-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    // El primer programa deja Z apagada (1 + 1 != 0); con A=255 y B=1 la suma da cero y salta.
+    std::fs::write(
+        dir.join("salto.s"),
+        "LDI A, 1\nLDI B, 1\nADD A, B\nJZ fin\nLDI A, 1\nfin: HLT\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("salta.s"),
+        "LDI A, 255\nLDI B, 1\nADD A, B\nJZ fin\nLDI A, 1\nfin: HLT\n",
+    )
+    .unwrap();
+    let m = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../ejemplos/ejemplo-8/maquina.toml");
+    let con_dos = format!(
+        "formato = \"lorenz-pruebas-0.1\"\nmaquina = {:?}\n{t}[[prueba]]\nnombre = \"salta\"\nprograma = \"salta.s\"\n[prueba.espera]\nregistros = {{ A = 0 }}\n",
+        m.to_string_lossy()
+    );
+    let p = Proyecto::desde_texto(&con_dos, "pruebas.toml", &dir).unwrap();
+    let i = ejecutar_suite(
+        &p,
+        &Opciones {
+            cobertura: true,
+            ..Default::default()
+        },
+    );
+    let c = i.cobertura.unwrap();
+    assert_eq!(c.ramas.len(), 2, "un JZ por programa: {:?}", c.ramas);
+    let salta = c
+        .ramas
+        .iter()
+        .find(|r| r.programa.ends_with("salta.s"))
+        .unwrap();
+    assert_eq!((salta.tomada, salta.no_tomada), (1, 0));
+    let no = c
+        .ramas
+        .iter()
+        .find(|r| r.programa.ends_with("salto.s"))
+        .unwrap();
+    assert_eq!((no.tomada, no.no_tomada), (0, 2));
+}
