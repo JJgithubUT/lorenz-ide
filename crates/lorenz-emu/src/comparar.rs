@@ -65,6 +65,12 @@ impl Vista {
 pub trait Ejecutor {
     fn paso(&mut self) -> Result<Option<Paso>, ErrorEjecucion>;
     fn vista(&self) -> Vista;
+
+    /// `true` si la ejecucion toco algo que esta implementacion no modela y por tanto sus
+    /// diferencias con otra no son un error (por ejemplo, un dispositivo).
+    fn no_comparable(&self) -> bool {
+        false
+    }
 }
 
 impl Ejecutor for Emulador {

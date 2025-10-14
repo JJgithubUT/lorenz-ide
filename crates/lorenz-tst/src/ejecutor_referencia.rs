@@ -211,6 +211,10 @@ impl Ejecutor for EjecutorReferencia<'_> {
         }
     }
 
+    fn no_comparable(&self) -> bool {
+        self.no_modelado
+    }
+
     fn vista(&self) -> Vista {
         let registros = self
             .maquina
