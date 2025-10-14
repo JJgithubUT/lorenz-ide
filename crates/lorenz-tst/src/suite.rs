@@ -146,6 +146,9 @@ pub fn texto_de(r: &Resultado) -> String {
     s
 }
 
+/// Resultado de una prueba y, si se pidio, lo que cubrio.
+type Corrida = (Resultado, Option<Cobertura>);
+
 fn hilos_para(n: usize, trabajo: usize) -> usize {
     let disponibles = if n == 0 {
         std::thread::available_parallelism().map_or(1, |x| x.get())
@@ -162,8 +165,7 @@ pub fn ejecutar_suite(proyecto: &Proyecto, opciones: &Opciones) -> Informe {
     let elegidas = proyecto.seleccionar(opciones.nombre.as_deref(), opciones.etiqueta.as_deref());
     let omitidas = proyecto.pruebas.len() - elegidas.len();
     let n = hilos_para(opciones.hilos, elegidas.len());
-    let resultados: Mutex<Vec<Option<(Resultado, Option<Cobertura>)>>> =
-        Mutex::new(vec![None; elegidas.len()]);
+    let resultados: Mutex<Vec<Option<Corrida>>> = Mutex::new(vec![None; elegidas.len()]);
     let siguiente = AtomicUsize::new(0);
     std::thread::scope(|s| {
         for _ in 0..n {
@@ -183,7 +185,7 @@ pub fn ejecutar_suite(proyecto: &Proyecto, opciones: &Opciones) -> Informe {
             });
         }
     });
-    let hechas: Vec<(Resultado, Option<Cobertura>)> = resultados
+    let hechas: Vec<Corrida> = resultados
         .into_inner()
         .expect("ningun hilo entra en panico con el candado")
         .into_iter()
