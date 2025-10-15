@@ -91,6 +91,17 @@ pub struct Memoria {
     accesos: Vec<AccesoVigilado>,
     registrando: bool,
     escrituras: Vec<EscrituraRegistrada>,
+    /// Resumen del contenido, puesto al dia en cada escritura (ver `suma_de_verificacion`).
+    suma: u64,
+}
+
+/// Aporte de una celda al resumen: depende de la direccion y del valor, de modo que dos memorias
+/// distintas casi nunca dan lo mismo y un cambio se puede restar y sumar sin recorrer todo.
+fn aporte(direccion: u64, valor: u64) -> u64 {
+    let mut z = valor.wrapping_add(direccion.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 impl Memoria {
@@ -117,6 +128,10 @@ impl Memoria {
             });
         }
         regiones.sort_by_key(|r| r.desde);
+        let suma = regiones
+            .iter()
+            .flat_map(|r| (0..r.celdas.len() as u64).map(move |i| aporte(r.desde + i, 0)))
+            .fold(0u64, u64::wrapping_add);
         Ok(Self {
             regiones,
             mascara_palabra: maquina.palabra_maxima(),
@@ -128,6 +143,7 @@ impl Memoria {
             accesos: Vec::new(),
             registrando: false,
             escrituras: Vec::new(),
+            suma,
         })
     }
 
@@ -169,19 +185,11 @@ impl Memoria {
             .map(|i| direccion - self.regiones[i].desde)
     }
 
-    /// Resumen de todo el contenido (FNV-1a sobre las celdas en orden de direccion). Dos memorias
-    /// con el mismo contenido dan el mismo valor; sirve para comparar sin recorrerlas a mano.
+    /// Resumen de todo el contenido. Dos memorias con el mismo contenido dan el mismo valor; sirve
+    /// para comparar sin recorrerlas a mano. Se mantiene al dia en cada escritura, asi que consultarlo
+    /// cuesta lo mismo con una memoria pequena que con una de 64 KiB.
     pub fn suma_de_verificacion(&self) -> u64 {
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for r in &self.regiones {
-            for celda in &r.celdas {
-                for b in celda.to_le_bytes() {
-                    h ^= u64::from(b);
-                    h = h.wrapping_mul(0x0000_0100_0000_01b3);
-                }
-            }
-        }
-        h
+        self.suma
     }
 
     /// Si la direccion cae en alguna region.
@@ -227,6 +235,10 @@ impl Memoria {
         let celda = (direccion - r.desde) as usize;
         let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
+        self.suma = self
+            .suma
+            .wrapping_sub(aporte(direccion, antes))
+            .wrapping_add(aporte(direccion, valor & mascara));
         if self.registrando {
             self.escrituras.push(EscrituraRegistrada {
                 direccion,
@@ -270,7 +282,12 @@ impl Memoria {
             .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &mut self.regiones[i];
         let celda = (direccion - r.desde) as usize;
+        let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
+        self.suma = self
+            .suma
+            .wrapping_sub(aporte(direccion, antes))
+            .wrapping_add(aporte(direccion, valor & mascara));
         if self.seguimiento {
             r.origen[celda] = CARGADA;
         }
