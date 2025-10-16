@@ -34,7 +34,7 @@ Uso:
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
   lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
-                [--salida RESULTADOS.json] [--depurar PRUEBA]
+                [--salida RESULTADOS.json] [--depurar PRUEBA] [--cobertura]
   lorenz conformidad <maquina.toml> [--instruccion MNEMONICO] [--casos N] [--repeticiones N]
                      [--json] [--salida INFORME.json]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
@@ -94,6 +94,7 @@ pub fn ejecutar_cli_con_entrada(
             json,
             salida: archivo,
             depurar,
+            cobertura,
         } => crate::probar::probar_cli(
             &pruebas,
             &crate::probar::OpcionesProbar {
@@ -103,6 +104,7 @@ pub fn ejecutar_cli_con_entrada(
                 json,
                 salida: archivo,
                 depurar,
+                cobertura,
             },
             entrada,
             salida,

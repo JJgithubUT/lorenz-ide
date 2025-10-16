@@ -64,6 +64,8 @@ pub enum Orden {
         salida: Option<String>,
         /// Abrir el depurador en el estado en que fallo esta prueba.
         depurar: Option<String>,
+        /// Medir la cobertura de instrucciones y ramas.
+        cobertura: bool,
     },
     /// Comprobar el emulador contra la semantica de la arquitectura.
     Conformidad {
@@ -366,11 +368,12 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
 fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut posicionales: Vec<String> = Vec::new();
     let (mut nombre, mut etiqueta, mut salida, mut depurar) = (None, None, None, None);
-    let (mut hilos, mut json) = (0usize, false);
+    let (mut hilos, mut json, mut cobertura) = (0usize, false, false);
     let mut i = 0;
     while i < resto.len() {
         let a = &resto[i];
         match a.as_str() {
+            "--cobertura" => cobertura = true,
             "--nombre" => nombre = Some(valor_de(resto, &mut i, a)?.clone()),
             "--etiqueta" => etiqueta = Some(valor_de(resto, &mut i, a)?.clone()),
             "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
@@ -398,6 +401,7 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
         json,
         salida,
         depurar,
+        cobertura,
     })
 }
 

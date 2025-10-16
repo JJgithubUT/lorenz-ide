@@ -11,6 +11,7 @@ use lorenz_ens::ensamblador::Ensamblador;
 use lorenz_ens::preprocesar::CargadorDeDisco;
 use serde::{Deserialize, Serialize};
 
+use crate::cobertura::Cobertura;
 use crate::formato::{Evento, Momento, Proyecto, Prueba};
 
 /// Extensiones que se ensamblan; cualquier otra se lee como hexadecimal.
@@ -168,7 +169,11 @@ fn aplicar(d: &mut Depurador, e: &Evento) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 
-fn correr(d: &mut Depurador, prueba: &Prueba) -> Result<Corrida, String> {
+/// Donde se anota la cobertura de una corrida: lo que se mide y el programa al que se atribuye.
+type Medida<'a> = Option<(&'a mut Cobertura, String)>;
+
+fn correr(d: &mut Depurador, prueba: &Prueba, mut medida: Medida<'_>) -> Result<Corrida, String> {
+    d.recoger_pasos(medida.is_some());
     let limite = prueba.limite();
     let mut siguiente = 0;
     let mut corrida = Corrida {
@@ -199,7 +204,13 @@ fn correr(d: &mut Depurador, prueba: &Prueba) -> Result<Corrida, String> {
             corrida.limite_alcanzado = true;
             return Ok(corrida);
         }
-        match d.paso(1) {
+        let parada = d.paso(1);
+        if let Some((cobertura, programa)) = medida.as_mut() {
+            for p in d.tomar_pasos() {
+                cobertura.registrar(programa, &p);
+            }
+        }
+        match parada {
             Parada::Fallo {
                 error, direccion, ..
             } => {
@@ -459,6 +470,23 @@ pub fn ejecutar_con_depurador(
     proyecto: &Proyecto,
     prueba: &Prueba,
 ) -> (Resultado, Option<Depurador>) {
+    ejecutar_midiendo(proyecto, prueba, None)
+}
+
+/// Ejecuta una prueba y anota en `cobertura` las instrucciones que ejecuto (RF-TST-021).
+pub fn ejecutar_con_cobertura(
+    proyecto: &Proyecto,
+    prueba: &Prueba,
+    cobertura: &mut Cobertura,
+) -> Resultado {
+    ejecutar_midiendo(proyecto, prueba, Some(cobertura)).0
+}
+
+fn ejecutar_midiendo(
+    proyecto: &Proyecto,
+    prueba: &Prueba,
+    cobertura: Option<&mut Cobertura>,
+) -> (Resultado, Option<Depurador>) {
     let inicio = Instant::now();
     let base = |veredicto, motivo, fallos, ins, ciclos| Resultado {
         nombre: prueba.nombre().to_string(),
@@ -474,7 +502,8 @@ pub fn ejecutar_con_depurador(
         Ok(d) => d,
         Err(e) => return (base(Veredicto::Error, Some(e), vec![], 0, 0), None),
     };
-    let corrida = match correr(&mut d, prueba) {
+    let medida = cobertura.map(|c| (c, prueba.programa.to_string_lossy().into_owned()));
+    let corrida = match correr(&mut d, prueba, medida) {
         Ok(c) => c,
         Err(e) => return (base(Veredicto::Error, Some(e), vec![], 0, 0), None),
     };
@@ -486,7 +515,7 @@ pub fn ejecutar_con_depurador(
     }
     // Segunda pasada, con traza, solo para localizar.
     let depurador = match preparar(proyecto, prueba, true) {
-        Ok(mut d2) => match correr(&mut d2, prueba) {
+        Ok(mut d2) => match correr(&mut d2, prueba, None) {
             Ok(c2) => {
                 localizar(&mut d2, prueba, &c2, &mut fallos);
                 Some(d2)

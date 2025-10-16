@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use lorenz_arch::modelo::{Maquina, SentidoPila};
-use lorenz_emu::{AccesoVigilado, Emulador, ErrorEjecucion, Estado, TipoAcceso};
+use lorenz_emu::{AccesoVigilado, Emulador, ErrorEjecucion, Estado, Paso, TipoAcceso};
 use lorenz_ens::ensamblador::Objeto;
 use lorenz_ens::expr::Entorno;
 
@@ -126,6 +126,8 @@ pub struct Depurador {
     /// traza, se esta mirando el pasado.
     cursor: u64,
     avisos: Vec<String>,
+    /// Las instrucciones ejecutadas desde que se pidio recogerlas; `None` si no se recogen.
+    pasos_recogidos: Option<Vec<Paso>>,
 }
 
 /// Lo que las condiciones ven de la maquina.
@@ -186,7 +188,21 @@ impl Depurador {
             traza: None,
             cursor: 0,
             avisos: Vec::new(),
+            pasos_recogidos: None,
         }
+    }
+
+    /// Empieza o deja de recoger cada instruccion ejecutada, para medir cobertura (RF-TST-021).
+    pub fn recoger_pasos(&mut self, activa: bool) {
+        self.pasos_recogidos = activa.then(Vec::new);
+    }
+
+    /// Entrega las instrucciones recogidas desde la ultima vez y vacia la lista.
+    pub fn tomar_pasos(&mut self) -> Vec<Paso> {
+        self.pasos_recogidos
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     pub fn emulador(&self) -> &Emulador {
@@ -448,6 +464,9 @@ impl Depurador {
                 }
             };
             hechas += 1;
+            if let Some(v) = &mut self.pasos_recogidos {
+                v.push(paso.clone());
+            }
             if let Some(antes) = antes {
                 self.anotar_paso(&antes, &paso);
             }

@@ -203,3 +203,26 @@ fn funciona_sin_entorno_grafico() {
     let (c, _, _) = correr(&["probar", &ejemplo()], "");
     assert_eq!(c, SALIDA_OK);
 }
+
+#[test]
+fn con_cobertura_el_informe_cuenta_instrucciones_y_nombra_las_que_faltan() {
+    let (codigo, salida, errores) = correr(&["probar", &ejemplo(), "--cobertura"], "");
+    assert_eq!(codigo, SALIDA_OK, "{errores}\n{salida}");
+    assert!(salida.contains("cobertura de instrucciones:"), "{salida}");
+    assert!(salida.contains("sin ejercitar:"), "{salida}");
+    assert!(salida.contains("cobertura de ramas:"), "{salida}");
+}
+
+#[test]
+fn sin_la_opcion_no_hay_cobertura() {
+    let (_, salida, _) = correr(&["probar", &ejemplo()], "");
+    assert!(!salida.contains("cobertura"));
+}
+
+#[test]
+fn la_cobertura_tambien_sale_en_json() {
+    let (codigo, salida, _) = correr(&["probar", &ejemplo(), "--cobertura", "--json"], "");
+    assert_eq!(codigo, SALIDA_OK);
+    let v: serde_json::Value = serde_json::from_str(&salida).unwrap();
+    assert!(v["cobertura"]["instrucciones"].as_array().unwrap().len() > 5);
+}

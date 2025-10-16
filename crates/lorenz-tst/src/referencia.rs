@@ -41,9 +41,30 @@ pub struct ResultadoRef {
     pub ciclos: u64,
 }
 
+/// Como la referencia ve la memoria: cuanto vale una celda y si se puede escribir en ella.
+///
+/// Cualquier funcion `Fn(u64) -> u64` sirve como memoria sin permisos; el ejecutor de referencia
+/// da una que respeta las regiones.
+pub trait AccesoMemoria {
+    fn leer(&self, direccion: u64) -> Result<u64, ErrorRef>;
+    fn comprobar_escritura(&self, direccion: u64) -> Result<(), ErrorRef>;
+}
+
+impl<F: Fn(u64) -> u64> AccesoMemoria for F {
+    fn leer(&self, direccion: u64) -> Result<u64, ErrorRef> {
+        Ok(self(direccion))
+    }
+
+    fn comprobar_escritura(&self, _direccion: u64) -> Result<(), ErrorRef> {
+        Ok(())
+    }
+}
+
 /// Por que la referencia no pudo terminar la instruccion.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorRef {
+    /// Un acceso a memoria rechazado por la memoria que se dio.
+    Memoria(lorenz_emu::ErrorEjecucion),
     DivisionEntreCero,
     NombreDesconocido(String),
     DestinoNoAsignable(String),
@@ -233,8 +254,23 @@ impl<'a> Referencia<'a> {
         operandos: &[ValorDeOperando],
         mut estado: EstadoRef,
         pc_siguiente: u64,
-        memoria: &dyn Fn(u64) -> u64,
+        memoria: &dyn AccesoMemoria,
     ) -> Result<ResultadoRef, ErrorRef> {
+        let ciclos =
+            self.ejecutar_en(instruccion, operandos, &mut estado, pc_siguiente, memoria)?;
+        Ok(ResultadoRef { estado, ciclos })
+    }
+
+    /// Como [`Referencia::ejecutar`], pero modifica `estado` en el sitio: si la instruccion falla a
+    /// medias, `estado` conserva lo que alcanzo a hacer, igual que el emulador.
+    pub fn ejecutar_en(
+        &self,
+        instruccion: &Instruccion,
+        operandos: &[ValorDeOperando],
+        estado: &mut EstadoRef,
+        pc_siguiente: u64,
+        memoria: &dyn AccesoMemoria,
+    ) -> Result<u64, ErrorRef> {
         if usa_puertos(instruccion) {
             return Err(ErrorRef::UsaPuertos);
         }
@@ -247,18 +283,17 @@ impl<'a> Referencia<'a> {
             &instruccion.programa.sentencias,
             instruccion,
             operandos,
-            &mut estado,
+            estado,
             memoria,
             &mut ultimo,
         )?;
-        self.convenciones(instruccion, &mut estado, &ultimo);
-        let ciclos = match instruccion.ciclos {
+        self.convenciones(instruccion, estado, &ultimo);
+        Ok(match instruccion.ciclos {
             Ciclos::Fijo(n) => u64::from(n),
             Ciclos::SegunSalto { tomado, no_tomado } => {
                 u64::from(if estado.salto { tomado } else { no_tomado })
             }
-        };
-        Ok(ResultadoRef { estado, ciclos })
+        })
     }
 
     fn convenciones(&self, instruccion: &Instruccion, e: &mut EstadoRef, u: &Ultimo) {
@@ -285,7 +320,7 @@ impl<'a> Referencia<'a> {
         ins: &Instruccion,
         ops: &[ValorDeOperando],
         e: &mut EstadoRef,
-        mem: &dyn Fn(u64) -> u64,
+        mem: &dyn AccesoMemoria,
         u: &mut Ultimo,
     ) -> Result<(), ErrorRef> {
         for s in lista {
@@ -367,7 +402,7 @@ impl<'a> Referencia<'a> {
         ins: &Instruccion,
         ops: &[ValorDeOperando],
         e: &mut EstadoRef,
-        mem: &dyn Fn(u64) -> u64,
+        mem: &dyn AccesoMemoria,
     ) -> Result<i128, ErrorRef> {
         Ok(match x {
             Expr::Literal(n) => i128::from(*n),
@@ -379,7 +414,7 @@ impl<'a> Referencia<'a> {
                     i128::from(*v)
                 } else {
                     e.lecturas_iniciales.insert(d);
-                    i128::from(mem(d) & mascara(self.maquina.bits_palabra))
+                    i128::from(mem.leer(d)? & mascara(self.maquina.bits_palabra))
                 }
             }
             Expr::Entrada(_) => return Err(ErrorRef::UsaPuertos),
@@ -418,7 +453,7 @@ impl<'a> Referencia<'a> {
         ins: &Instruccion,
         ops: &[ValorDeOperando],
         e: &mut EstadoRef,
-        mem: &dyn Fn(u64) -> u64,
+        mem: &dyn AccesoMemoria,
         u: &mut Ultimo,
     ) -> Result<bool, ErrorRef> {
         match d {
@@ -464,6 +499,7 @@ impl<'a> Referencia<'a> {
                 let dir = self.direccion(self.expr(a, ins, ops, e, mem)?);
                 let m = mascara(self.maquina.bits_palabra);
                 let t = (valor as u64) & m;
+                mem.comprobar_escritura(dir)?;
                 e.accedidas.insert(dir);
                 e.escrituras.insert(dir, t);
                 u.valor = Some((valor, t, m.count_ones()));

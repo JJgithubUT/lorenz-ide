@@ -25,6 +25,7 @@ pub struct OpcionesProbar {
     pub json: bool,
     pub salida: Option<String>,
     pub depurar: Option<String>,
+    pub cobertura: bool,
 }
 
 pub fn probar_cli(
@@ -50,6 +51,7 @@ pub fn probar_cli(
             nombre: o.nombre.clone(),
             etiqueta: o.etiqueta.clone(),
             hilos: o.hilos,
+            cobertura: o.cobertura,
         },
     );
     if let Some(archivo) = &o.salida {

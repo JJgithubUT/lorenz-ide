@@ -7,7 +7,8 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
-use crate::ejecutor::{ejecutar, Resultado, Veredicto};
+use crate::cobertura::{Cobertura, InformeCobertura};
+use crate::ejecutor::{ejecutar, ejecutar_con_cobertura, Resultado, Veredicto};
 use crate::formato::Proyecto;
 
 pub const FORMATO_RESULTADOS: &str = "lorenz-resultados-0.1";
@@ -27,6 +28,8 @@ pub struct Opciones {
     pub etiqueta: Option<String>,
     /// Cuantas pruebas a la vez; 0 elige segun los procesadores disponibles.
     pub hilos: usize,
+    /// Medir la cobertura de instrucciones y ramas de todas las pruebas (RF-TST-021).
+    pub cobertura: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,6 +51,9 @@ pub struct Informe {
     pub resumen: Resumen,
     pub milisegundos: u64,
     pub pruebas: Vec<Resultado>,
+    /// Solo si se pidio medirla.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cobertura: Option<InformeCobertura>,
 }
 
 impl Informe {
@@ -97,6 +103,10 @@ impl Informe {
             let _ = write!(s, ", {} omitidas", r.omitidas);
         }
         let _ = writeln!(s, " ({} ms)", self.milisegundos);
+        if let Some(c) = &self.cobertura {
+            s.push('\n');
+            s.push_str(&c.a_texto());
+        }
         s
     }
 }
@@ -136,6 +146,9 @@ pub fn texto_de(r: &Resultado) -> String {
     s
 }
 
+/// Resultado de una prueba y, si se pidio, lo que cubrio.
+type Corrida = (Resultado, Option<Cobertura>);
+
 fn hilos_para(n: usize, trabajo: usize) -> usize {
     let disponibles = if n == 0 {
         std::thread::available_parallelism().map_or(1, |x| x.get())
@@ -152,26 +165,42 @@ pub fn ejecutar_suite(proyecto: &Proyecto, opciones: &Opciones) -> Informe {
     let elegidas = proyecto.seleccionar(opciones.nombre.as_deref(), opciones.etiqueta.as_deref());
     let omitidas = proyecto.pruebas.len() - elegidas.len();
     let n = hilos_para(opciones.hilos, elegidas.len());
-    let resultados: Mutex<Vec<Option<Resultado>>> = Mutex::new(vec![None; elegidas.len()]);
+    let resultados: Mutex<Vec<Option<Corrida>>> = Mutex::new(vec![None; elegidas.len()]);
     let siguiente = AtomicUsize::new(0);
     std::thread::scope(|s| {
         for _ in 0..n {
             s.spawn(|| loop {
                 let i = siguiente.fetch_add(1, Ordering::SeqCst);
                 let Some(prueba) = elegidas.get(i) else { break };
-                let r = ejecutar(proyecto, prueba);
+                let r = if opciones.cobertura {
+                    let mut c = Cobertura::nueva(&proyecto.maquina);
+                    let r = ejecutar_con_cobertura(proyecto, prueba, &mut c);
+                    (r, Some(c))
+                } else {
+                    (ejecutar(proyecto, prueba), None)
+                };
                 resultados
                     .lock()
                     .expect("ningun hilo entra en panico con el candado")[i] = Some(r);
             });
         }
     });
-    let pruebas: Vec<Resultado> = resultados
+    let hechas: Vec<Corrida> = resultados
         .into_inner()
         .expect("ningun hilo entra en panico con el candado")
         .into_iter()
         .flatten()
         .collect();
+    let cobertura = opciones.cobertura.then(|| {
+        let mut total = Cobertura::nueva(&proyecto.maquina);
+        for (_, c) in &hechas {
+            if let Some(c) = c {
+                total.fusionar(c);
+            }
+        }
+        total.informe()
+    });
+    let pruebas: Vec<Resultado> = hechas.into_iter().map(|(r, _)| r).collect();
     let cuenta = |v: Veredicto| pruebas.iter().filter(|r| r.veredicto == v).count();
     Informe {
         formato: FORMATO_RESULTADOS.to_string(),
@@ -187,5 +216,6 @@ pub fn ejecutar_suite(proyecto: &Proyecto, opciones: &Opciones) -> Informe {
         },
         milisegundos: inicio.elapsed().as_millis() as u64,
         pruebas,
+        cobertura,
     }
 }
