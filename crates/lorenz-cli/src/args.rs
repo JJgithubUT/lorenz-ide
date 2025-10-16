@@ -77,6 +77,17 @@ pub enum Orden {
         json: bool,
         salida: Option<String>,
     },
+    /// Comparar el emulador con la referencia sobre programas aleatorios.
+    Aleatorio {
+        maquina: String,
+        semilla: u64,
+        programas: Option<usize>,
+        longitud: Option<usize>,
+        limite: Option<u64>,
+        sin_reducir: bool,
+        json: bool,
+        salida: Option<String>,
+    },
     /// Depurar un programa desde la linea de comandos.
     Depurar {
         maquina: String,
@@ -183,6 +194,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
         "conformidad" => interpretar_conformidad(resto),
+        "aleatorio" => interpretar_aleatorio(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -439,6 +451,56 @@ fn interpretar_conformidad(resto: &[String]) -> Result<Orden, ErrorUso> {
         instruccion,
         casos,
         repeticiones,
+        json,
+        salida,
+    })
+}
+
+fn interpretar_aleatorio(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut salida = None;
+    let (mut semilla, mut programas, mut longitud, mut limite) = (0u64, None, None, None);
+    let (mut sin_reducir, mut json) = (false, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--json" => json = true,
+            "--sin-reducir" => sin_reducir = true,
+            "--semilla" => {
+                let v = valor_de(resto, &mut i, a)?;
+                semilla = numero("--semilla", v)?;
+            }
+            "--programas" => {
+                let v = valor_de(resto, &mut i, a)?;
+                programas = Some(numero("--programas", v)? as usize);
+            }
+            "--longitud" => {
+                let v = valor_de(resto, &mut i, a)?;
+                longitud = Some(numero("--longitud", v)? as usize);
+            }
+            "--limite" => {
+                let v = valor_de(resto, &mut i, a)?;
+                limite = Some(numero("--limite", v)?);
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Aleatorio {
+        maquina,
+        semilla,
+        programas,
+        longitud,
+        limite,
+        sin_reducir,
         json,
         salida,
     })

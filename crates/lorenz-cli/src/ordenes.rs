@@ -37,6 +37,8 @@ Uso:
                 [--salida RESULTADOS.json] [--depurar PRUEBA] [--cobertura]
   lorenz conformidad <maquina.toml> [--instruccion MNEMONICO] [--casos N] [--repeticiones N]
                      [--json] [--salida INFORME.json]
+  lorenz aleatorio <maquina.toml> [--semilla N] [--programas N] [--longitud N] [--limite N]
+                   [--sin-reducir] [--json] [--salida INFORME.json]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -48,7 +50,8 @@ Codigos de salida:
   3  se alcanzo el limite de instrucciones
   4  comparar: las dos maquinas difieren
   5  probar: alguna prueba no se pudo preparar (el programa no ensambla, falta un archivo...)
-     (probar usa 1 si alguna prueba falla y 0 si todas pasan; conformidad usa 1 si algun caso falla)
+     (probar usa 1 si alguna prueba falla y 0 si todas pasan; conformidad usa 1 si algun caso falla;
+      aleatorio usa 1 si el emulador y la referencia divergen)
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -123,6 +126,29 @@ pub fn ejecutar_cli_con_entrada(
                 instruccion,
                 casos,
                 repeticiones,
+                json,
+                salida: archivo,
+            },
+            salida,
+            errores,
+        ),
+        Orden::Aleatorio {
+            maquina,
+            semilla,
+            programas,
+            longitud,
+            limite,
+            sin_reducir,
+            json,
+            salida: archivo,
+        } => crate::aleatorio::aleatorio_cli(
+            &maquina,
+            &crate::aleatorio::OpcionesAleatorio {
+                semilla,
+                programas,
+                longitud,
+                limite,
+                sin_reducir,
                 json,
                 salida: archivo,
             },
