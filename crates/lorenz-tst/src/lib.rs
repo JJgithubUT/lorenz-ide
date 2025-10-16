@@ -13,4 +13,5 @@ pub mod error;
 pub mod formato;
 pub mod numero;
 pub mod referencia;
+pub mod regresion;
 pub mod suite;
