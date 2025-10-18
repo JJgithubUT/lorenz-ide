@@ -6,6 +6,7 @@
 pub mod aleatorio;
 pub mod casos;
 pub mod cobertura;
+pub mod compatibilidad;
 pub mod conformidad;
 pub mod ejecutor;
 pub mod ejecutor_referencia;
