@@ -42,6 +42,7 @@ fn informe(pruebas: Vec<Resultado>) -> Informe {
         milisegundos: 1,
         pruebas,
         cobertura: None,
+        regresion: None,
     }
 }
 

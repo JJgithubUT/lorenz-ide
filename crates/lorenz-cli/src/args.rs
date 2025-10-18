@@ -23,7 +23,7 @@ pub struct Disparo {
 }
 
 /// Lo que el usuario pidio hacer.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Orden {
     Ayuda,
     Version,
@@ -66,6 +66,12 @@ pub enum Orden {
         depurar: Option<String>,
         /// Medir la cobertura de instrucciones y ramas.
         cobertura: bool,
+        /// Comparar con los resultados guardados en este archivo.
+        comparar: Option<String>,
+        /// Comparar con la ultima ejecucion de este proyecto y guardar esta para la proxima.
+        historial: bool,
+        /// Aumento de ciclos tolerado antes de contar como lentitud, en porcentaje.
+        umbral: f64,
     },
     /// Comprobar el emulador contra la semantica de la arquitectura.
     Conformidad {
@@ -381,11 +387,25 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut posicionales: Vec<String> = Vec::new();
     let (mut nombre, mut etiqueta, mut salida, mut depurar) = (None, None, None, None);
     let (mut hilos, mut json, mut cobertura) = (0usize, false, false);
+    let (mut comparar, mut historial, mut umbral) = (None, false, 0.0f64);
     let mut i = 0;
     while i < resto.len() {
         let a = &resto[i];
         match a.as_str() {
             "--cobertura" => cobertura = true,
+            "--historial" => historial = true,
+            "--comparar" => comparar = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--umbral" => {
+                let v = valor_de(resto, &mut i, a)?;
+                umbral = v
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|x| x.is_finite() && *x >= 0.0)
+                    .ok_or_else(|| ErrorUso::NumeroInvalido {
+                        opcion: "--umbral".into(),
+                        valor: v.clone(),
+                    })?;
+            }
             "--nombre" => nombre = Some(valor_de(resto, &mut i, a)?.clone()),
             "--etiqueta" => etiqueta = Some(valor_de(resto, &mut i, a)?.clone()),
             "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
@@ -414,6 +434,9 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
         salida,
         depurar,
         cobertura,
+        comparar,
+        historial,
+        umbral,
     })
 }
 
