@@ -35,10 +35,12 @@ Uso:
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
   lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
                 [--salida RESULTADOS.json] [--depurar PRUEBA] [--cobertura]
+                [--comparar ANTERIOR.json] [--historial] [--umbral PORCENTAJE]
   lorenz conformidad <maquina.toml> [--instruccion MNEMONICO] [--casos N] [--repeticiones N]
                      [--json] [--salida INFORME.json]
   lorenz aleatorio <maquina.toml> [--semilla N] [--programas N] [--longitud N] [--limite N]
                    [--sin-reducir] [--json] [--salida INFORME.json]
+  lorenz compatibilidad <anterior.toml> <nueva.toml> <programa.hex | fuente.s> [--direccion A] [--json]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -49,9 +51,11 @@ Codigos de salida:
   2  argumentos, archivos o arquitectura invalidos
   3  se alcanzo el limite de instrucciones
   4  comparar: las dos maquinas difieren
+  6  probar --comparar: ninguna prueba se rompio pero alguna gasta mas ciclos que antes
   5  probar: alguna prueba no se pudo preparar (el programa no ensambla, falta un archivo...)
      (probar usa 1 si alguna prueba falla y 0 si todas pasan; conformidad usa 1 si algun caso falla;
-      aleatorio usa 1 si el emulador y la referencia divergen)
+      aleatorio usa 1 si el emulador y la referencia divergen;
+      compatibilidad usa 1 si algun binario anterior deja de valer)
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -98,6 +102,9 @@ pub fn ejecutar_cli_con_entrada(
             salida: archivo,
             depurar,
             cobertura,
+            comparar,
+            historial,
+            umbral,
         } => crate::probar::probar_cli(
             &pruebas,
             &crate::probar::OpcionesProbar {
@@ -108,6 +115,9 @@ pub fn ejecutar_cli_con_entrada(
                 salida: archivo,
                 depurar,
                 cobertura,
+                comparar,
+                historial,
+                umbral,
             },
             entrada,
             salida,
@@ -154,6 +164,15 @@ pub fn ejecutar_cli_con_entrada(
             },
             salida,
             errores,
+        ),
+        Orden::Compatibilidad {
+            anterior,
+            nueva,
+            programa,
+            direccion,
+            json,
+        } => crate::compatibilidad::compatibilidad_cli(
+            &anterior, &nueva, &programa, direccion, json, salida, errores,
         ),
         Orden::Depurar {
             maquina,

@@ -76,7 +76,7 @@ impl Cambio {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InformeRegresion {
     pub cambios: Vec<Cambio>,
     /// Pruebas que se compararon y no cambiaron.

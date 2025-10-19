@@ -23,7 +23,7 @@ pub struct Disparo {
 }
 
 /// Lo que el usuario pidio hacer.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Orden {
     Ayuda,
     Version,
@@ -66,6 +66,12 @@ pub enum Orden {
         depurar: Option<String>,
         /// Medir la cobertura de instrucciones y ramas.
         cobertura: bool,
+        /// Comparar con los resultados guardados en este archivo.
+        comparar: Option<String>,
+        /// Comparar con la ultima ejecucion de este proyecto y guardar esta para la proxima.
+        historial: bool,
+        /// Aumento de ciclos tolerado antes de contar como lentitud, en porcentaje.
+        umbral: f64,
     },
     /// Comprobar el emulador contra la semantica de la arquitectura.
     Conformidad {
@@ -87,6 +93,14 @@ pub enum Orden {
         sin_reducir: bool,
         json: bool,
         salida: Option<String>,
+    },
+    /// Avisar de los binarios anteriores que una arquitectura nueva deja de entender.
+    Compatibilidad {
+        anterior: String,
+        nueva: String,
+        programa: String,
+        direccion: Option<u64>,
+        json: bool,
     },
     /// Depurar un programa desde la linea de comandos.
     Depurar {
@@ -195,6 +209,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "probar" => interpretar_probar(resto),
         "conformidad" => interpretar_conformidad(resto),
         "aleatorio" => interpretar_aleatorio(resto),
+        "compatibilidad" => interpretar_compatibilidad(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -381,11 +396,25 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut posicionales: Vec<String> = Vec::new();
     let (mut nombre, mut etiqueta, mut salida, mut depurar) = (None, None, None, None);
     let (mut hilos, mut json, mut cobertura) = (0usize, false, false);
+    let (mut comparar, mut historial, mut umbral) = (None, false, 0.0f64);
     let mut i = 0;
     while i < resto.len() {
         let a = &resto[i];
         match a.as_str() {
             "--cobertura" => cobertura = true,
+            "--historial" => historial = true,
+            "--comparar" => comparar = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--umbral" => {
+                let v = valor_de(resto, &mut i, a)?;
+                umbral = v
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|x| x.is_finite() && *x >= 0.0)
+                    .ok_or_else(|| ErrorUso::NumeroInvalido {
+                        opcion: "--umbral".into(),
+                        valor: v.clone(),
+                    })?;
+            }
             "--nombre" => nombre = Some(valor_de(resto, &mut i, a)?.clone()),
             "--etiqueta" => etiqueta = Some(valor_de(resto, &mut i, a)?.clone()),
             "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
@@ -414,6 +443,9 @@ fn interpretar_probar(resto: &[String]) -> Result<Orden, ErrorUso> {
         salida,
         depurar,
         cobertura,
+        comparar,
+        historial,
+        umbral,
     })
 }
 
@@ -503,6 +535,39 @@ fn interpretar_aleatorio(resto: &[String]) -> Result<Orden, ErrorUso> {
         sin_reducir,
         json,
         salida,
+    })
+}
+
+fn interpretar_compatibilidad(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let (mut direccion, mut json) = (None, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--json" => json = true,
+            "--direccion" => {
+                let v = valor_de(resto, &mut i, a)?;
+                direccion = Some(numero("--direccion", v)?);
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let anterior = it.next().ok_or(ErrorUso::Falta("maquina-anterior"))?;
+    let nueva = it.next().ok_or(ErrorUso::Falta("maquina-nueva"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Compatibilidad {
+        anterior,
+        nueva,
+        programa,
+        direccion,
+        json,
     })
 }
 

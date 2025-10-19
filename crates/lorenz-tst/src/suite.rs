@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::cobertura::{Cobertura, InformeCobertura};
 use crate::ejecutor::{ejecutar, ejecutar_con_cobertura, Resultado, Veredicto};
 use crate::formato::Proyecto;
+use crate::regresion::InformeRegresion;
 
 pub const FORMATO_RESULTADOS: &str = "lorenz-resultados-0.1";
 
@@ -54,6 +55,9 @@ pub struct Informe {
     /// Solo si se pidio medirla.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cobertura: Option<InformeCobertura>,
+    /// Solo si se comparo con una ejecucion anterior (RF-TST-027, RF-TST-028).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub regresion: Option<InformeRegresion>,
 }
 
 impl Informe {
@@ -106,6 +110,10 @@ impl Informe {
         if let Some(c) = &self.cobertura {
             s.push('\n');
             s.push_str(&c.a_texto());
+        }
+        if let Some(r) = &self.regresion {
+            s.push('\n');
+            s.push_str(&r.a_texto());
         }
         s
     }
@@ -217,5 +225,6 @@ pub fn ejecutar_suite(proyecto: &Proyecto, opciones: &Opciones) -> Informe {
         milisegundos: inicio.elapsed().as_millis() as u64,
         pruebas,
         cobertura,
+        regresion: None,
     }
 }

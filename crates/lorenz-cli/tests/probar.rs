@@ -226,3 +226,142 @@ fn la_cobertura_tambien_sale_en_json() {
     let v: serde_json::Value = serde_json::from_str(&salida).unwrap();
     assert!(v["cobertura"]["instrucciones"].as_array().unwrap().len() > 5);
 }
+
+/// Un proyecto de una sola prueba cuyo programa se puede cambiar entre ejecuciones.
+fn proyecto_variable(nombre: &str, programa: &str) -> (String, PathBuf) {
+    let dir = std::env::temp_dir().join(format!("lorenz-probar-{}-{nombre}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("p.s"), programa).unwrap();
+    let m = raiz().join("ejemplos/ejemplo-8/maquina.toml");
+    let ruta = dir.join("pruebas.toml");
+    std::fs::write(
+        &ruta,
+        format!(
+            "formato = \"lorenz-pruebas-0.1\"\nmaquina = {:?}\n\
+             [[prueba]]\nnombre = \"suma\"\nprograma = \"p.s\"\n[prueba.espera]\nregistros = {{ A = 44 }}\n",
+            m.to_string_lossy()
+        ),
+    )
+    .unwrap();
+    (ruta.to_string_lossy().into_owned(), dir.join("p.s"))
+}
+
+const SUMA: &str = "LDI A, 200\nLDI B, 100\nADD A, B\nHLT\n";
+
+#[test]
+fn con_historial_la_primera_vez_guarda_y_avisa_que_no_hay_con_que_comparar() {
+    let (p, _) = proyecto_variable("hist1", SUMA);
+    let (c, salida, errores) = correr(&["probar", &p, "--historial"], "");
+    assert_eq!(c, 0, "{salida}");
+    assert!(
+        errores.contains("no hay una ejecucion anterior"),
+        "{errores}"
+    );
+    assert!(!salida.contains("comparacion con la ejecucion anterior"));
+    assert!(PathBuf::from(&p)
+        .parent()
+        .unwrap()
+        .join(".lorenz/ultimo.json")
+        .exists());
+}
+
+#[test]
+fn con_historial_la_segunda_vez_compara_y_no_ve_cambios() {
+    let (p, _) = proyecto_variable("hist2", SUMA);
+    correr(&["probar", &p, "--historial"], "");
+    let (c, salida, _) = correr(&["probar", &p, "--historial"], "");
+    assert_eq!(c, 0, "{salida}");
+    assert!(
+        salida.contains("comparacion con la ejecucion anterior"),
+        "{salida}"
+    );
+    assert!(salida.contains("1 sin cambios; sin regresion"), "{salida}");
+}
+
+#[test]
+fn un_programa_mas_lento_devuelve_seis() {
+    let (p, fuente) = proyecto_variable("lenta", SUMA);
+    correr(&["probar", &p, "--historial"], "");
+    std::fs::write(&fuente, "LDI A, 200\nNOP\nNOP\nLDI B, 100\nADD A, B\nHLT\n").unwrap();
+    let (c, salida, _) = correr(&["probar", &p, "--historial"], "");
+    assert_eq!(c, 6, "{salida}");
+    assert!(salida.contains("MAS LENTA  suma:"), "{salida}");
+    // Con un umbral grande el aumento se tolera.
+    let (c, _, _) = correr(
+        &[
+            "probar",
+            &p,
+            "--comparar",
+            &historial(&p),
+            "--umbral",
+            "1000",
+        ],
+        "",
+    );
+    assert_eq!(c, 0);
+}
+
+fn historial(pruebas: &str) -> String {
+    lorenz_cli::probar::ruta_del_historial(pruebas)
+        .to_string_lossy()
+        .into_owned()
+}
+
+#[test]
+fn una_prueba_rota_devuelve_uno_y_dice_cual() {
+    let (p, fuente) = proyecto_variable("rota", SUMA);
+    correr(&["probar", &p, "--historial"], "");
+    std::fs::write(&fuente, "LDI A, 1\nHLT\n").unwrap();
+    let (c, salida, _) = correr(&["probar", &p, "--historial"], "");
+    assert_eq!(c, 1, "{salida}");
+    assert!(
+        salida.contains("SE ROMPE   suma: pasaba y ahora falla"),
+        "{salida}"
+    );
+}
+
+#[test]
+fn comparar_con_un_archivo_no_toca_el_historial() {
+    let (p, _) = proyecto_variable("archivo", SUMA);
+    let base = temporal("base-archivo.json", "");
+    correr(&["probar", &p, "--salida", &base], "");
+    let (c, salida, _) = correr(&["probar", &p, "--comparar", &base], "");
+    assert_eq!(c, 0, "{salida}");
+    assert!(salida.contains("sin regresion"), "{salida}");
+    assert!(!PathBuf::from(historial(&p)).exists());
+}
+
+#[test]
+fn el_json_lleva_la_comparacion() {
+    let (p, fuente) = proyecto_variable("jsonreg", SUMA);
+    let base = temporal("base-json.json", "");
+    correr(&["probar", &p, "--salida", &base], "");
+    std::fs::write(&fuente, "LDI A, 200\nNOP\nLDI B, 100\nADD A, B\nHLT\n").unwrap();
+    let (c, salida, _) = correr(&["probar", &p, "--comparar", &base, "--json"], "");
+    assert_eq!(c, 6);
+    let v: serde_json::Value = serde_json::from_str(&salida).unwrap();
+    assert_eq!(v["regresion"]["cambios"][0]["tipo"], "mas_lenta");
+}
+
+#[test]
+fn un_archivo_de_comparacion_ilegible_es_un_error_de_uso() {
+    let (p, _) = proyecto_variable("ilegible", SUMA);
+    let (c, _, errores) = correr(&["probar", &p, "--comparar", "no-existe.json"], "");
+    assert_eq!(c, 2);
+    assert!(errores.contains("no-existe.json"));
+    let malo = temporal("malo.json", "{ no es json");
+    let (c, _, _) = correr(&["probar", &p, "--comparar", &malo], "");
+    assert_eq!(c, 2);
+    let (c, _, errores) = correr(&["probar", &p, "--umbral", "mucho"], "");
+    assert_eq!(c, 2);
+    assert!(errores.contains("--umbral"));
+}
+
+#[test]
+fn filtrar_no_hace_desaparecer_las_demas_pruebas() {
+    let p = proyecto_con_fallo("filtro");
+    correr(&["probar", &p, "--historial"], "");
+    let (_, salida, _) = correr(&["probar", &p, "--historial", "--nombre", "bien"], "");
+    assert!(!salida.contains("desaparece"), "{salida}");
+}
