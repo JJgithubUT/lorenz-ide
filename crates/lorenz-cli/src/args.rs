@@ -94,6 +94,14 @@ pub enum Orden {
         json: bool,
         salida: Option<String>,
     },
+    /// Avisar de los binarios anteriores que una arquitectura nueva deja de entender.
+    Compatibilidad {
+        anterior: String,
+        nueva: String,
+        programa: String,
+        direccion: Option<u64>,
+        json: bool,
+    },
     /// Depurar un programa desde la linea de comandos.
     Depurar {
         maquina: String,
@@ -201,6 +209,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "probar" => interpretar_probar(resto),
         "conformidad" => interpretar_conformidad(resto),
         "aleatorio" => interpretar_aleatorio(resto),
+        "compatibilidad" => interpretar_compatibilidad(resto),
         otra => Err(ErrorUso::OrdenDesconocida(otra.to_string())),
     }
 }
@@ -526,6 +535,39 @@ fn interpretar_aleatorio(resto: &[String]) -> Result<Orden, ErrorUso> {
         sin_reducir,
         json,
         salida,
+    })
+}
+
+fn interpretar_compatibilidad(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let (mut direccion, mut json) = (None, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--json" => json = true,
+            "--direccion" => {
+                let v = valor_de(resto, &mut i, a)?;
+                direccion = Some(numero("--direccion", v)?);
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let anterior = it.next().ok_or(ErrorUso::Falta("maquina-anterior"))?;
+    let nueva = it.next().ok_or(ErrorUso::Falta("maquina-nueva"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Compatibilidad {
+        anterior,
+        nueva,
+        programa,
+        direccion,
+        json,
     })
 }
 

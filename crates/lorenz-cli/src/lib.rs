@@ -27,3 +27,5 @@ pub mod probar;
 pub mod conformidad;
 
 pub mod aleatorio;
+
+pub mod compatibilidad;
