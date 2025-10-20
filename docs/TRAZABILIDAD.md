@@ -181,6 +181,49 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031).
 | RF-DEP-030 | Guardar un fallo como archivo reproducible | Hecho | `reproducir::Fallo` (`lorenz-fallo-0.1`) |
 | RF-DEP-031 | Reproducirlo identico en otra instalacion | Hecho | `Fallo::reproducir`; limite: puertos y dispositivos parten vacios |
 
+## Requisitos de pruebas (RF-TST)
+
+Pruebas declarativas (001-015), conformidad y cobertura (016-023), generacion aleatoria (024-026), regresion y compatibilidad (027-029), linea de comandos e integracion (030-036).
+
+| Requisito | Descripcion | Estado | Donde |
+|---|---|---|---|
+| RF-TST-001 | Declarar pruebas en un proyecto | Hecho | `formato::Proyecto`, `lorenz-pruebas-0.1` |
+| RF-TST-002 | Afirmar registros al terminar | Hecho | `EsperaDef.registros` |
+| RF-TST-003 | Afirmar un rango de memoria | Hecho | `EsperaDef.memoria` |
+| RF-TST-004 | Afirmar banderas | Hecho | `EsperaDef.banderas` |
+| RF-TST-005 | Afirmar la salida de un dispositivo | Hecho | `EsperaDef.salida` |
+| RF-TST-006 | Afirmar ciclos con tolerancia | Hecho | `CiclosDef` |
+| RF-TST-007 | Entradas simuladas como pulsaciones | Hecho | `EntradaDef` |
+| RF-TST-008 | Interrupciones en instantes dados | Hecho con limitaciones | `InterrupcionDef`; sin pulso de reloj como tal |
+| RF-TST-009 | Estado inicial de registros y memoria | Hecho | `InicialDef` |
+| RF-TST-010 | Limite de instrucciones | Hecho | `Prueba::limite` |
+| RF-TST-011 | Ejecutar todas las pruebas | Hecho | `suite::ejecutar_suite`, `lorenz probar` |
+| RF-TST-012 | Seleccionar por nombre o etiqueta | Hecho | `Opciones.nombre/etiqueta` |
+| RF-TST-013 | Fallo con esperado, obtenido y lugar | Hecho | `Resultado.fallos` |
+| RF-TST-014 | Abrir el depurador en el estado del fallo | Hecho | `lorenz probar --depurar` |
+| RF-TST-015 | Pruebas en paralelo | Hecho | `Opciones.hilos` |
+| RF-TST-016 | Suite de conformidad generada | Hecho | `conformidad::ejecutar_conformidad`, `lorenz conformidad` |
+| RF-TST-017 | Efecto declarado de cada instruccion | Hecho | `Referencia` independiente |
+| RF-TST-018 | Solo las banderas declaradas | Hecho | verificacion `BanderasAjenas` |
+| RF-TST-019 | Codificar y decodificar son inversas | Hecho | verificacion `IdaYVuelta` |
+| RF-TST-020 | Valores limite de operandos | Hecho | verificacion `Limites` |
+| RF-TST-021 | Cobertura de instrucciones | Hecho | `cobertura::Cobertura`, `--cobertura` |
+| RF-TST-022 | Cobertura de ramas | Hecho | `Cobertura` por (programa, direccion) |
+| RF-TST-023 | Instrucciones sin ejercitar | Hecho | `InformeCobertura` |
+| RF-TST-024 | Programas aleatorios validos | Hecho | `aleatorio::generar_programa`, `lorenz aleatorio` |
+| RF-TST-025 | Comparar dos implementaciones | Hecho | `EjecutorReferencia` + `comparar` |
+| RF-TST-026 | Reducir casos de fallo | Hecho | `aleatorio::reducir` (ddmin) |
+| RF-TST-027 | Detectar programas mas lentos | Hecho | `regresion::Cambio::MasLenta`, codigo 6 |
+| RF-TST-028 | Detectar programas rotos | Hecho | `regresion::Cambio::Rompe`, codigo 1 |
+| RF-TST-029 | Avisar de binarios inutilizados por la ISA | Hecho | `compatibilidad`, `lorenz compatibilidad` |
+| RF-TST-030 | CLI que compile, ejecute y pruebe | Hecho | `lorenz-cli` |
+| RF-TST-031 | Codigos de salida distinguibles | Hecho | `suite::SALIDA_*` |
+| RF-TST-032 | Resultados legibles por maquina | Hecho | `--json`, `lorenz-resultados-0.1` |
+| RF-TST-033 | Sin entorno grafico | Hecho | `lorenz-cli` sin dependencias graficas |
+| RF-TST-034 | Ejemplo de integracion continua | Hecho | `docs/CI.md`, `ejemplos/ci/` |
+| RF-TST-035 | Semilla fijable | Hecho | `semilla` del proyecto, `--semilla` |
+| RF-TST-036 | Conservar la ultima ejecucion | Hecho | `.lorenz/ultimo.json`, `--historial` |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,
