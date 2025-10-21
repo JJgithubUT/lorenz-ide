@@ -17,6 +17,39 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: pruebas, conformidad, aleatorio, regresion y compatibilidad
+
+**Hecho:** `lorenz-tst` completo: archivo de pruebas, ejecucion paralela, cobertura de instrucciones
+y ramas, suite de conformidad, generador de programas aleatorios con reduccion, comparacion con una
+referencia independiente, regresion contra la ultima ejecucion y compatibilidad de binarios al
+cambiar la ISA. Ordenes nuevas: `conformidad`, `aleatorio`, `compatibilidad`, y `probar` con
+`--cobertura`, `--comparar`, `--historial`, `--umbral`. Ejemplo de CI en `docs/CI.md`.
+**Decidido:**
+- **D-038** — La referencia (`Referencia`) se escribe aparte del emulador y no comparte su evaluador;
+  asi un error comun no pasa inadvertido. No modela puertos ni dispositivos.
+- **D-039** — El acceso a memoria de la referencia es el trait `AccesoMemoria`; cualquier closure
+  `Fn(u64)->u64` sirve sin permisos. `ejecutar_en` conserva el estado parcial tras un error.
+- **D-040** — La suma de verificacion de la memoria es incremental (`aporte(dir, valor)`), porque
+  recalcularla en cada paso hacia inviable la generacion aleatoria.
+- **D-041** — El programa k de una tanda usa la semilla `semilla + k`; se reproduce con
+  `--semilla S+k --programas 1`. Los programas son lineales y acaban en HLT.
+- **D-042** — La reduccion es ddmin sobre instrucciones y despues pone registros a cero.
+- **D-043** — El historial vive en `<carpeta del proyecto>/.lorenz/ultimo.json`.
+- **D-044** — Codigo de salida 6 para "mas lenta que el umbral"; 1 para "rompe"; 4 para `comparar`.
+- **D-045** — `Ejecutor::no_comparable()` (false por omision) deja fuera de `comparar` a
+  implementaciones que no modelan puertos.
+- **D-046** — Una rama condicional cuenta como cubierta si se vio tomada y no tomada; la no tomada
+  incluye saltar a la instruccion siguiente.
+- **D-047** — Compatibilidad: se desensambla con la ISA anterior y se relee con la nueva; distinto
+  ancho de palabra o endianness es incompatibilidad global.
+**Pendiente:** enlazador (RF-ENS-019/020), `salir` probado con CALL/RET, `ejecutar --cobertura`,
+guardar puertos y dispositivos en los fallos, respaldo del repositorio (solo existe en el
+contenedor), liberar develop a deploy y main con etiqueta.
+**Requisitos:** RF-TST-001 a RF-TST-036 (006 y 008 con limitaciones: sin pulso de reloj).
+**Commits:** ramas feat/tst-*, feat/cli-*; contador real 300 (incluye fusiones).
+
+---
+
 ## 2026-10-16 — Fase 2: traza, retroceso y fallos reproducibles
 
 **Hecho:**
