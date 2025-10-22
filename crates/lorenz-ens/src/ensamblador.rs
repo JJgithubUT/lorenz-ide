@@ -61,12 +61,39 @@ pub struct Simbolo {
     pub linea: usize,
 }
 
+/// Un simbolo que este archivo usa pero define otro (`.externo`), listo para que lo resuelva el
+/// enlazador (RF-ENS-019).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Externo {
+    pub archivo: String,
+    pub linea: usize,
+}
+
+/// Una instruccion que quedo sin codificar porque usa un simbolo externo. Lleva el texto fuente
+/// para que el enlazador la ensamble de nuevo, en la misma direccion, cuando ya conozca el valor
+/// (RF-ENS-019). Como el tamano de una instruccion no depende de sus valores, el hueco que deja en
+/// el segmento tiene el tamano exacto.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reubicacion {
+    pub direccion: u64,
+    pub longitud: usize,
+    pub archivo: String,
+    pub linea: usize,
+    pub fuente: String,
+    /// Simbolos externos que la instruccion necesita.
+    pub simbolos: Vec<String>,
+}
+
 /// El resultado de ensamblar.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Objeto {
     pub segmentos: Vec<Segmento>,
     pub simbolos: BTreeMap<String, Simbolo>,
     pub mapa: Vec<EntradaMapa>,
+    /// Simbolos declarados con `.externo`.
+    pub externos: BTreeMap<String, Externo>,
+    /// Instrucciones pendientes de enlazar.
+    pub reubicaciones: Vec<Reubicacion>,
 }
 
 impl Objeto {
@@ -707,6 +734,8 @@ impl<'m> Ensamblador<'m> {
             segmentos,
             simbolos,
             mapa,
+            externos: BTreeMap::new(),
+            reubicaciones: Vec::new(),
         }
     }
 

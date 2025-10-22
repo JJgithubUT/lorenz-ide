@@ -55,3 +55,34 @@ fn las_palabras_de_un_segmento_se_conservan_en_orden() {
     let (_, leido) = Objeto::desde_toml(&o.a_toml(&m.nombre)).unwrap();
     assert_eq!(leido.segmentos[0].palabras, vec![9, 8, 7, 255, 0]);
 }
+
+#[test]
+fn externos_y_reubicaciones_sobreviven_al_guardado() {
+    use lorenz_ens::ensamblador::{Externo, Reubicacion};
+    let m = ejemplo_8();
+    let mut o = ensamblar(&m, "NOP").unwrap();
+    o.externos.insert(
+        "rutina".into(),
+        Externo {
+            archivo: "a.s".into(),
+            linea: 3,
+        },
+    );
+    o.reubicaciones.push(Reubicacion {
+        direccion: 0x10,
+        longitud: 2,
+        archivo: "a.s".into(),
+        linea: 4,
+        fuente: "JMP rutina".into(),
+        simbolos: vec!["rutina".into()],
+    });
+    let (_, leido) = Objeto::desde_toml(&o.a_toml(&m.nombre)).unwrap();
+    assert_eq!(leido, o);
+}
+
+#[test]
+fn un_objeto_sin_externos_no_escribe_esas_tablas() {
+    let m = ejemplo_8();
+    let t = ensamblar(&m, "NOP").unwrap().a_toml(&m.nombre);
+    assert!(!t.contains("[[externo]]") && !t.contains("[[reubicacion]]"));
+}
