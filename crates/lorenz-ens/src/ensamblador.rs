@@ -278,6 +278,69 @@ impl<'m> Ensamblador<'m> {
         }
     }
 
+    /// Ensambla una sola instruccion escrita como texto (`LDI A, K`) en `direccion`, con los
+    /// simbolos dados. Es lo que usa el enlazador para completar las reubicaciones (RF-ENS-019).
+    pub fn ensamblar_instruccion_en(
+        &self,
+        fuente: &str,
+        direccion: u64,
+        simbolos: &BTreeMap<String, i128>,
+        archivo: &str,
+        linea: usize,
+    ) -> Result<Vec<u64>, Vec<ErrorEns>> {
+        let origen = Origen {
+            archivo: archivo.to_string(),
+            linea,
+        };
+        let mut errores = Vec::new();
+        let analizada = match analizar_linea(linea, fuente) {
+            Ok(l) => l,
+            Err((col, causa)) => return Err(vec![Self::error(&origen, col, causa)]),
+        };
+        let Some(Sentencia::Instruccion {
+            mnemonico,
+            operandos,
+        }) = analizada.sentencia
+        else {
+            return Err(vec![Self::error(
+                &origen,
+                1,
+                Causa::Otra(format!("`{fuente}` no es una instruccion")),
+            )]);
+        };
+        let Some((contenido, _)) = self.instruccion(&origen, &mnemonico, &operandos, &mut errores)
+        else {
+            return Err(errores);
+        };
+        let tabla_simbolos: BTreeMap<String, Simbolo> = simbolos
+            .iter()
+            .map(|(n, v)| {
+                (
+                    n.clone(),
+                    Simbolo {
+                        valor: *v,
+                        etiqueta: false,
+                        archivo: archivo.to_string(),
+                        linea,
+                    },
+                )
+            })
+            .collect();
+        let el = Elemento {
+            origen,
+            direccion,
+            contenido,
+        };
+        let tabla = Tabla {
+            simbolos: &tabla_simbolos,
+            aqui: direccion as i128,
+        };
+        match self.emitir(&el, &tabla, &mut errores) {
+            Some(p) if errores.is_empty() => Ok(p),
+            _ => Err(errores),
+        }
+    }
+
     fn error(origen: &Origen, columna: usize, causa: Causa) -> ErrorEns {
         ErrorEns {
             archivo: origen.archivo.clone(),

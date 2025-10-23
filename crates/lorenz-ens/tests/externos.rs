@@ -60,3 +60,23 @@ fn un_simbolo_no_declarado_sigue_siendo_un_error() {
     let m = ejemplo_8();
     assert!(!errores(&m, "LDI A, K").is_empty());
 }
+
+#[test]
+fn una_instruccion_suelta_se_ensambla_con_los_simbolos_dados() {
+    use lorenz_ens::ensamblador::Ensamblador;
+    use std::collections::BTreeMap;
+    let m = ejemplo_8();
+    let e = Ensamblador::nuevo(&m).unwrap();
+    let mut s = BTreeMap::new();
+    s.insert("K".to_string(), 7i128);
+    let p = e
+        .ensamblar_instruccion_en("LDI A, K", 0x10, &s, "x.s", 1)
+        .unwrap();
+    assert_eq!(p, bytes(&m, ".org 0x10\nLDI A, 7"));
+    assert!(e
+        .ensamblar_instruccion_en("LDI A, Z", 0, &s, "x.s", 1)
+        .is_err());
+    assert!(e
+        .ensamblar_instruccion_en("K = 1", 0, &s, "x.s", 1)
+        .is_err());
+}
