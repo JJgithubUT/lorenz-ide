@@ -33,7 +33,7 @@ pub fn depurar_cli(
     let inicio = maquina.arranque;
     let mut objeto = None;
     let segmentos = if crate::ensamblar::es_fuente(ruta_programa) {
-        match crate::ensamblar::ensamblar_archivo(&maquina, ruta_programa) {
+        match crate::ensamblar::ensamblar_ejecutable(&maquina, ruta_programa) {
             Ok((o, fuentes)) => {
                 let segs = o
                     .segmentos

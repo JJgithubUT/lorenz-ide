@@ -45,6 +45,12 @@ pub enum Orden {
         fuente: String,
         opciones: crate::ensamblar::OpcionesEnsamblar,
     },
+    /// Enlazar varios objetos (o fuentes) en un programa.
+    Enlazar {
+        maquina: String,
+        entradas: Vec<String>,
+        opciones: crate::ensamblar::OpcionesEnsamblar,
+    },
     /// Desensamblar un programa en hexadecimal.
     Desensamblar {
         maquina: String,
@@ -204,6 +210,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ejecutar" => interpretar_ejecutar(resto),
         "comparar" => interpretar_comparar(resto),
         "ensamblar" => interpretar_ensamblar(resto),
+        "enlazar" => interpretar_enlazar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
@@ -388,6 +395,35 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Ensamblar {
         maquina,
         fuente,
+        opciones,
+    })
+}
+
+fn interpretar_enlazar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut opciones = crate::ensamblar::OpcionesEnsamblar::default();
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "-o" | "--salida" => opciones.salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--mapa" => opciones.mapa = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--simbolos" => opciones.simbolos = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--objeto" => opciones.objeto = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let entradas: Vec<String> = it.collect();
+    if entradas.is_empty() {
+        return Err(ErrorUso::Falta("objeto"));
+    }
+    Ok(Orden::Enlazar {
+        maquina,
+        entradas,
         opciones,
     })
 }
