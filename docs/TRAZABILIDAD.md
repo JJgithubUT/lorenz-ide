@@ -130,8 +130,8 @@ Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensa
 | RF-ENS-016 | Archivo objeto con codigo, simbolos y ubicacion | Hecho | `objeto.rs` |
 | RF-ENS-017 | Mapa de direccion a archivo y linea | Hecho | `salidas::mapa` |
 | RF-ENS-018 | Listado con direccion, bytes y fuente | Hecho | `salidas::listado` |
-| RF-ENS-019 | Enlazador | Pendiente | |
-| RF-ENS-020 | Simbolos no resueltos y duplicados al enlazar | Pendiente | |
+| RF-ENS-019 | Enlazador | Hecho | `enlazador::enlazar`, `lorenz enlazar`; objetos ya ubicados (con `.org`), sin reubicar codigo; externos solo en operandos de instrucciones |
+| RF-ENS-020 | Simbolos no resueltos y duplicados al enlazar | Hecho | `ErrorEnlace::{NoResuelto, Duplicado, Solape}` |
 | RF-ENS-021 | Desensamblador generado de la misma descripcion | Hecho | `Desensamblador` |
 | RF-ENS-022 | Reconstruir el texto desde la codificacion | Hecho | `Plantilla::componer` |
 | RF-ENS-023 | Marcar como datos lo que no es instruccion | Hecho | `Linea::Dato` |
