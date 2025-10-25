@@ -17,6 +17,28 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: enlazador
+
+**Hecho:** `.externo`, reubicaciones en el objeto, `enlazador::enlazar` y la orden `lorenz enlazar`
+(acepta objetos TOML o fuentes). Reporta duplicados, no resueltos y solapes juntos.
+**Decidido:**
+- **D-048** — No hay reubicacion de codigo: los objetos ya vienen ubicados con `.org`. El
+  enlazador resuelve simbolos y comprueba solapes; el "mapa de memoria" es el de la maquina.
+- **D-049** — Una instruccion con un externo no se codifica: deja un hueco del tamano exacto
+  (el tamano no depende de los valores) y una reubicacion con su texto fuente; el enlazador la
+  ensambla otra vez en su direccion (`ensamblar_instruccion_en`).
+- **D-050** — Los externos solo valen en operandos de instrucciones; en `.db`, `.dir` o `.espacio`
+  es un error explicito.
+- **D-051** — Una constante repetida con el mismo valor no choca; una etiqueta repetida o una
+  constante con otro valor, si.
+- **D-052** — `ensamblar` sin `--objeto`, `ejecutar` y `depurar` rechazan los fuentes con externos
+  para no ejecutar huecos en ceros.
+**Pendiente:** externos en datos y tablas de direcciones; listado del programa enlazado.
+**Requisitos:** RF-ENS-019, RF-ENS-020.
+**Commits:** feat/enlazador; contador real 308.
+
+---
+
 ## 2026-10-16 — Fase 2: pruebas, conformidad, aleatorio, regresion y compatibilidad
 
 **Hecho:** `lorenz-tst` completo: archivo de pruebas, ejecucion paralela, cobertura de instrucciones
