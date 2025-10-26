@@ -20,6 +20,8 @@ pub mod guion;
 
 pub mod ensamblar;
 
+pub mod enlazar;
+
 pub mod depurar;
 
 pub mod probar;

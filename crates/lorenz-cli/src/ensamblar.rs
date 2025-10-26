@@ -44,6 +44,28 @@ pub fn ensamblar_archivo(maquina: &Maquina, ruta: &str) -> Result<(Objeto, Vec<F
         })
 }
 
+/// Como [`ensamblar_archivo`], pero para programas que se van a ejecutar: no admite simbolos
+/// externos sin enlazar, porque sus instrucciones estarian vacias.
+pub fn ensamblar_ejecutable(
+    maquina: &Maquina,
+    ruta: &str,
+) -> Result<(Objeto, Vec<Fuente>), String> {
+    let (objeto, fuentes) = ensamblar_archivo(maquina, ruta)?;
+    if objeto.reubicaciones.is_empty() {
+        Ok((objeto, fuentes))
+    } else {
+        Err(format!(
+            "{ruta}: usa simbolos externos ({}); enlazalo con `lorenz enlazar` antes de ejecutarlo",
+            objeto
+                .externos
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))
+    }
+}
+
 /// Opciones de `lorenz ensamblar`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct OpcionesEnsamblar {
@@ -105,6 +127,30 @@ pub fn ensamblar_cli(
             return SALIDA_ERROR_USO;
         }
     };
+    if !objeto.reubicaciones.is_empty() {
+        // El programa depende de simbolos de otros archivos: solo el objeto sirve para enlazar.
+        let Some(ruta) = &opciones.objeto else {
+            escribir(
+                errores,
+                &format!(
+                    "{ruta_fuente}: usa simbolos externos ({}); guardalo con --objeto y enlazalo con `lorenz enlazar`\n",
+                    objeto.externos.keys().cloned().collect::<Vec<_>>().join(", ")
+                ),
+            );
+            return SALIDA_ERROR_USO;
+        };
+        if !escribir_archivo(ruta, &objeto.a_toml(&maquina.nombre), errores) {
+            return SALIDA_ERROR_USO;
+        }
+        escribir(
+            salida,
+            &format!(
+                "{ruta_fuente}: objeto con {} instruccion(es) por enlazar\n",
+                objeto.reubicaciones.len()
+            ),
+        );
+        return SALIDA_OK;
+    }
     let hex = imagen_hex(&objeto, &maquina);
     match &opciones.salida {
         Some(ruta) => {
@@ -213,7 +259,7 @@ pub fn cargar_segmentos(
     inicio: u64,
 ) -> Result<Vec<(u64, Vec<u64>)>, String> {
     if es_fuente(ruta) {
-        let (objeto, _) = ensamblar_archivo(maquina, ruta)?;
+        let (objeto, _) = ensamblar_ejecutable(maquina, ruta)?;
         return Ok(objeto
             .segmentos
             .into_iter()

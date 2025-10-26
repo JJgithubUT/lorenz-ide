@@ -61,12 +61,39 @@ pub struct Simbolo {
     pub linea: usize,
 }
 
+/// Un simbolo que este archivo usa pero define otro (`.externo`), listo para que lo resuelva el
+/// enlazador (RF-ENS-019).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Externo {
+    pub archivo: String,
+    pub linea: usize,
+}
+
+/// Una instruccion que quedo sin codificar porque usa un simbolo externo. Lleva el texto fuente
+/// para que el enlazador la ensamble de nuevo, en la misma direccion, cuando ya conozca el valor
+/// (RF-ENS-019). Como el tamano de una instruccion no depende de sus valores, el hueco que deja en
+/// el segmento tiene el tamano exacto.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reubicacion {
+    pub direccion: u64,
+    pub longitud: usize,
+    pub archivo: String,
+    pub linea: usize,
+    pub fuente: String,
+    /// Simbolos externos que la instruccion necesita.
+    pub simbolos: Vec<String>,
+}
+
 /// El resultado de ensamblar.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Objeto {
     pub segmentos: Vec<Segmento>,
     pub simbolos: BTreeMap<String, Simbolo>,
     pub mapa: Vec<EntradaMapa>,
+    /// Simbolos declarados con `.externo`.
+    pub externos: BTreeMap<String, Externo>,
+    /// Instrucciones pendientes de enlazar.
+    pub reubicaciones: Vec<Reubicacion>,
 }
 
 impl Objeto {
@@ -128,6 +155,8 @@ enum Contenido {
     Instruccion {
         forma: usize,
         operandos: Vec<(String, Texto, Option<Expr>)>,
+        /// Mnemonico y operandos tal como se escribieron, por si hay que ensamblarla otra vez.
+        fuente: String,
     },
     Datos(Vec<DatoFuente>),
     Direcciones(Vec<(Texto, Expr)>),
@@ -222,15 +251,93 @@ impl<'m> Ensamblador<'m> {
     ) -> Result<Objeto, Vec<ErrorEns>> {
         let mut errores = Vec::new();
         let mut simbolos: BTreeMap<String, Simbolo> = BTreeMap::new();
-        let elementos = self.primera_pasada(lineas, &mut simbolos, &mut errores);
+        let mut externos: BTreeMap<String, Externo> = BTreeMap::new();
+        let elementos = self.primera_pasada(lineas, &mut simbolos, &mut externos, &mut errores);
+        for (nombre, e) in &externos {
+            if let Some(s) = simbolos.get(nombre) {
+                errores.push(ErrorEns {
+                    archivo: e.archivo.clone(),
+                    linea: e.linea,
+                    columna: 1,
+                    causa: Causa::Otra(format!(
+                        "`{nombre}` se declara externo y tambien se define en {}:{}",
+                        s.archivo, s.linea
+                    )),
+                });
+            }
+        }
         if !errores.is_empty() {
             return Err(errores);
         }
-        let objeto = self.segunda_pasada(elementos, simbolos, &mut errores);
+        let mut objeto = self.segunda_pasada(elementos, simbolos, &externos, &mut errores);
+        objeto.externos = externos;
         if errores.is_empty() {
             Ok(objeto)
         } else {
             Err(errores)
+        }
+    }
+
+    /// Ensambla una sola instruccion escrita como texto (`LDI A, K`) en `direccion`, con los
+    /// simbolos dados. Es lo que usa el enlazador para completar las reubicaciones (RF-ENS-019).
+    pub fn ensamblar_instruccion_en(
+        &self,
+        fuente: &str,
+        direccion: u64,
+        simbolos: &BTreeMap<String, i128>,
+        archivo: &str,
+        linea: usize,
+    ) -> Result<Vec<u64>, Vec<ErrorEns>> {
+        let origen = Origen {
+            archivo: archivo.to_string(),
+            linea,
+        };
+        let mut errores = Vec::new();
+        let analizada = match analizar_linea(linea, fuente) {
+            Ok(l) => l,
+            Err((col, causa)) => return Err(vec![Self::error(&origen, col, causa)]),
+        };
+        let Some(Sentencia::Instruccion {
+            mnemonico,
+            operandos,
+        }) = analizada.sentencia
+        else {
+            return Err(vec![Self::error(
+                &origen,
+                1,
+                Causa::Otra(format!("`{fuente}` no es una instruccion")),
+            )]);
+        };
+        let Some((contenido, _)) = self.instruccion(&origen, &mnemonico, &operandos, &mut errores)
+        else {
+            return Err(errores);
+        };
+        let tabla_simbolos: BTreeMap<String, Simbolo> = simbolos
+            .iter()
+            .map(|(n, v)| {
+                (
+                    n.clone(),
+                    Simbolo {
+                        valor: *v,
+                        etiqueta: false,
+                        archivo: archivo.to_string(),
+                        linea,
+                    },
+                )
+            })
+            .collect();
+        let el = Elemento {
+            origen,
+            direccion,
+            contenido,
+        };
+        let tabla = Tabla {
+            simbolos: &tabla_simbolos,
+            aqui: direccion as i128,
+        };
+        match self.emitir(&el, &tabla, &mut errores) {
+            Some(p) if errores.is_empty() => Ok(p),
+            _ => Err(errores),
         }
     }
 
@@ -303,6 +410,7 @@ impl<'m> Ensamblador<'m> {
         &self,
         lineas: &[(String, usize, String)],
         simbolos: &mut BTreeMap<String, Simbolo>,
+        externos: &mut BTreeMap<String, Externo>,
         errores: &mut Vec<ErrorEns>,
     ) -> Vec<Elemento> {
         let m = self.maquina;
@@ -331,6 +439,29 @@ impl<'m> Ensamblador<'m> {
                 Sentencia::Constante { nombre, valor } => {
                     if let Some(v) = Self::evaluar_ahora(simbolos, &origen, &valor, dir, errores) {
                         Self::definir(simbolos, &origen, &nombre, v, false, errores);
+                    }
+                }
+                Sentencia::Directiva { nombre, argumentos }
+                    if matches!(
+                        nombre.texto.to_ascii_lowercase().as_str(),
+                        "externo" | "extern"
+                    ) =>
+                {
+                    if argumentos.is_empty() {
+                        errores.push(Self::error(
+                            &origen,
+                            nombre.columna,
+                            Causa::ArgumentosDeDirectiva {
+                                directiva: format!(".{}", nombre.texto),
+                                esperado: "uno o mas simbolos".to_string(),
+                            },
+                        ));
+                    }
+                    for a in &argumentos {
+                        externos.entry(a.texto.clone()).or_insert(Externo {
+                            archivo: origen.archivo.clone(),
+                            linea: origen.linea,
+                        });
                     }
                 }
                 Sentencia::Directiva { nombre, argumentos } => {
@@ -630,6 +761,9 @@ impl<'m> Ensamblador<'m> {
                 Contenido::Instruccion {
                     forma: *pos,
                     operandos: resueltos,
+                    fuente: format!("{} {}", mnemonico.texto, operandos.texto.trim())
+                        .trim()
+                        .to_string(),
                 },
                 longitud,
             ));
@@ -656,18 +790,47 @@ impl<'m> Ensamblador<'m> {
         &self,
         elementos: Vec<Elemento>,
         simbolos: BTreeMap<String, Simbolo>,
+        externos: &BTreeMap<String, Externo>,
         errores: &mut Vec<ErrorEns>,
     ) -> Objeto {
         let m = self.maquina;
         let mut segmentos: Vec<Segmento> = Vec::new();
         let mut mapa = Vec::new();
         let mut escritas: BTreeMap<u64, usize> = BTreeMap::new();
+        let mut reubicaciones = Vec::new();
         for el in &elementos {
             let tabla = Tabla {
                 simbolos: &simbolos,
                 aqui: el.direccion as i128,
             };
-            let Some(palabras) = self.emitir(el, &tabla, errores) else {
+            let usados = Self::externos_usados(el, externos);
+            let palabras = if usados.is_empty() {
+                self.emitir(el, &tabla, errores)
+            } else if let Contenido::Instruccion { forma, fuente, .. } = &el.contenido {
+                let n = m.instrucciones[self.formas[*forma].indice]
+                    .codificacion
+                    .longitud_en_palabras();
+                reubicaciones.push(Reubicacion {
+                    direccion: el.direccion,
+                    longitud: n,
+                    archivo: el.origen.archivo.clone(),
+                    linea: el.origen.linea,
+                    fuente: fuente.clone(),
+                    simbolos: usados,
+                });
+                Some(vec![0; n])
+            } else {
+                errores.push(Self::error(
+                    &el.origen,
+                    1,
+                    Causa::Otra(
+                        "un simbolo externo solo se puede usar en los operandos de una instruccion"
+                            .into(),
+                    ),
+                ));
+                None
+            };
+            let Some(palabras) = palabras else {
                 continue;
             };
             if palabras.is_empty() {
@@ -707,7 +870,48 @@ impl<'m> Ensamblador<'m> {
             segmentos,
             simbolos,
             mapa,
+            externos: BTreeMap::new(),
+            reubicaciones,
         }
+    }
+
+    /// Los simbolos externos que un elemento necesita, sin repetir.
+    fn externos_usados(el: &Elemento, externos: &BTreeMap<String, Externo>) -> Vec<String> {
+        let mut usados: Vec<String> = Vec::new();
+        let mut mirar = |e: &Expr| {
+            for s in e.simbolos() {
+                if externos.contains_key(s) && !usados.iter().any(|u| u == s) {
+                    usados.push(s.to_string());
+                }
+            }
+        };
+        match &el.contenido {
+            Contenido::Instruccion { operandos, .. } => {
+                for (_, _, e) in operandos {
+                    if let Some(e) = e {
+                        mirar(e);
+                    }
+                }
+            }
+            Contenido::Datos(ds) => {
+                for d in ds {
+                    if let DatoFuente::Valor(_, e) = d {
+                        mirar(e);
+                    }
+                }
+            }
+            Contenido::Direcciones(items) => {
+                for (_, e) in items {
+                    mirar(e);
+                }
+            }
+            Contenido::Espacio { relleno, .. } => {
+                if let Some((_, e)) = relleno {
+                    mirar(e);
+                }
+            }
+        }
+        usados
     }
 
     /// El codigo solo puede caer en regiones que existan, que se puedan leer y que no sean un
@@ -760,7 +964,9 @@ impl<'m> Ensamblador<'m> {
     ) -> Option<Vec<u64>> {
         let m = self.maquina;
         match &el.contenido {
-            Contenido::Instruccion { forma, operandos } => {
+            Contenido::Instruccion {
+                forma, operandos, ..
+            } => {
                 let ins: &Instruccion = &m.instrucciones[self.formas[*forma].indice];
                 let mut valores: BTreeMap<String, i128> = BTreeMap::new();
                 let mut hubo_error = false;

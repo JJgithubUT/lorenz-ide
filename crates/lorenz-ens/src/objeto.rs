@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ensamblador::{EntradaMapa, Objeto, Segmento, Simbolo};
+use crate::ensamblador::{EntradaMapa, Externo, Objeto, Reubicacion, Segmento, Simbolo};
 
 /// Version del formato del archivo objeto.
 pub const FORMATO_OBJETO: &str = "lorenz-objeto-0.1";
@@ -21,6 +21,27 @@ struct Archivo {
     simbolos: Vec<SimboloToml>,
     #[serde(default, rename = "ubicacion")]
     mapa: Vec<UbicacionToml>,
+    #[serde(default, rename = "externo", skip_serializing_if = "Vec::is_empty")]
+    externos: Vec<ExternoToml>,
+    #[serde(default, rename = "reubicacion", skip_serializing_if = "Vec::is_empty")]
+    reubicaciones: Vec<ReubicacionToml>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ExternoToml {
+    nombre: String,
+    archivo: String,
+    linea: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ReubicacionToml {
+    direccion: u64,
+    longitud: usize,
+    archivo: String,
+    linea: usize,
+    fuente: String,
+    simbolos: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,6 +102,27 @@ impl Objeto {
                     linea: e.linea,
                 })
                 .collect(),
+            externos: self
+                .externos
+                .iter()
+                .map(|(n, e)| ExternoToml {
+                    nombre: n.clone(),
+                    archivo: e.archivo.clone(),
+                    linea: e.linea,
+                })
+                .collect(),
+            reubicaciones: self
+                .reubicaciones
+                .iter()
+                .map(|r| ReubicacionToml {
+                    direccion: r.direccion,
+                    longitud: r.longitud,
+                    archivo: r.archivo.clone(),
+                    linea: r.linea,
+                    fuente: r.fuente.clone(),
+                    simbolos: r.simbolos.clone(),
+                })
+                .collect(),
         };
         toml::to_string(&archivo).expect("el objeto siempre se puede serializar")
     }
@@ -126,6 +168,31 @@ impl Objeto {
                     longitud: u.longitud,
                     archivo: u.archivo,
                     linea: u.linea,
+                })
+                .collect(),
+            externos: a
+                .externos
+                .into_iter()
+                .map(|e| {
+                    (
+                        e.nombre,
+                        Externo {
+                            archivo: e.archivo,
+                            linea: e.linea,
+                        },
+                    )
+                })
+                .collect(),
+            reubicaciones: a
+                .reubicaciones
+                .into_iter()
+                .map(|r| Reubicacion {
+                    direccion: r.direccion,
+                    longitud: r.longitud,
+                    archivo: r.archivo,
+                    linea: r.linea,
+                    fuente: r.fuente,
+                    simbolos: r.simbolos,
                 })
                 .collect(),
         };
