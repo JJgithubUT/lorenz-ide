@@ -24,7 +24,7 @@ fn carpeta() -> PathBuf {
     d
 }
 
-fn escribir(dir: &PathBuf, nombre: &str, texto: &str) -> String {
+fn escribir(dir: &std::path::Path, nombre: &str, texto: &str) -> String {
     let r = dir.join(nombre);
     std::fs::write(&r, texto).unwrap();
     r.to_string_lossy().into_owned()
