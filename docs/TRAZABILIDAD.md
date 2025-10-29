@@ -151,7 +151,7 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031).
 |---|---|---|---|
 | RF-DEP-001 | Depurador de linea de comandos | Hecho | `lorenz depurar` |
 | RF-DEP-002 | Ejecutar una instruccion | Hecho | `Depurador::paso` |
-| RF-DEP-003 | Ejecutar hasta el retorno de la subrutina | Hecho | `Depurador::salir` (por el SP); sin prueba con una maquina que tenga CALL/RET |
+| RF-DEP-003 | Ejecutar hasta el retorno de la subrutina | Hecho | `Depurador::salir` (por el SP); probado con CALL/RET anidados en `tests/salir.rs` |
 | RF-DEP-004 | Ejecutar hasta una direccion | Hecho | `Depurador::hasta` |
 | RF-DEP-005 | Mostrar todos los registros por nombre | Hecho | `vistas::registros` |
 | RF-DEP-006 | Mostrar cada bandera por nombre y valor | Hecho | `vistas::registros` |

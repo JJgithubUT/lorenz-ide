@@ -136,7 +136,7 @@ fn un_valor_que_no_cabe_se_descubre_al_enlazar() {
 fn enlazar_un_solo_objeto_sin_externos_lo_deja_igual() {
     let m = ejemplo_8();
     let a = obj(&m, "a.s", "inicio: NOP\n.org 0x20\nNOP");
-    let o = enlazado(&m, &[a.clone()]).unwrap();
+    let o = enlazado(&m, std::slice::from_ref(&a)).unwrap();
     assert_eq!(o.palabras(), a.1.palabras());
     assert_eq!(o.simbolos, a.1.simbolos);
 }
