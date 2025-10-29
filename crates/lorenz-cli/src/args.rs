@@ -127,6 +127,8 @@ pub enum Orden {
         pantalla: bool,
         /// Avisar de las lecturas de memoria que nadie habia escrito.
         vigilar: bool,
+        /// Informar de las instrucciones y ramas que la ejecucion ejercito (RF-TST-021).
+        cobertura: bool,
         /// Teclas que se pulsan en el primer teclado antes de empezar, una por caracter.
         teclas: Option<String>,
         /// Texto que se entrega a la primera UART antes de empezar.
@@ -228,6 +230,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut traza_maquina = false;
     let mut pantalla = false;
     let mut vigilar = false;
+    let mut cobertura = false;
     let mut teclas = None;
     let mut serie = None;
     let mut volcados = Vec::new();
@@ -245,6 +248,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
             }
             "--pantalla" => pantalla = true,
             "--vigilar" => vigilar = true,
+            "--cobertura" => cobertura = true,
             "--guion" => {
                 i += 1;
                 let valor = resto
@@ -311,6 +315,7 @@ fn interpretar_ejecutar(resto: &[String]) -> Result<Orden, ErrorUso> {
         traza_maquina,
         pantalla,
         vigilar,
+        cobertura,
         teclas,
         serie,
         volcados,

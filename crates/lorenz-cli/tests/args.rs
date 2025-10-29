@@ -87,6 +87,7 @@ fn ejecutar_usa_valores_por_omision() {
             pantalla: false,
             traza_maquina: false,
             vigilar: false,
+            cobertura: false,
             teclas: None,
             serie: None,
             volcados: vec![],
@@ -119,6 +120,7 @@ fn ejecutar_acepta_todas_las_opciones_en_cualquier_orden() {
             pantalla: false,
             traza_maquina: false,
             vigilar: false,
+            cobertura: false,
             teclas: None,
             serie: None,
             volcados: vec![],
@@ -200,6 +202,7 @@ fn pantalla_y_teclas_son_opciones_de_ejecutar() {
             pantalla: true,
             traza_maquina: false,
             vigilar: false,
+            cobertura: false,
             teclas: Some("hola".into()),
             serie: None,
             volcados: vec![],
@@ -231,6 +234,7 @@ fn serie_es_una_opcion_de_ejecutar() {
             pantalla: false,
             traza_maquina: false,
             vigilar: false,
+            cobertura: false,
             teclas: None,
             serie: Some("hola".into()),
             volcados: vec![],
@@ -537,4 +541,19 @@ fn comparar_rechaza_opciones_y_argumentos_de_mas() {
         interpretar(&v(&["comparar", "a", "b", "p", "q"])),
         Err(ErrorUso::Sobra("q".into()))
     );
+}
+
+#[test]
+fn ejecutar_acepta_cobertura() {
+    match interpretar(&[
+        "ejecutar".into(),
+        "m.toml".into(),
+        "p.hex".into(),
+        "--cobertura".into(),
+    ])
+    .unwrap()
+    {
+        Orden::Ejecutar { cobertura, .. } => assert!(cobertura),
+        otra => panic!("{otra:?}"),
+    }
 }
