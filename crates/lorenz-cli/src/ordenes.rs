@@ -26,7 +26,7 @@ Lorenz: emulador de maquinas definidas por el usuario
 Uso:
   lorenz validar <maquina.toml>
   lorenz ejecutar <maquina.toml> <programa.hex | fuente.s> [--limite N] [--direccion A] [--traza | --traza-maquina]
-                  [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
+                  [--pantalla] [--vigilar] [--cobertura] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
@@ -233,6 +233,7 @@ pub fn ejecutar_cli_con_entrada(
             traza_maquina,
             pantalla,
             vigilar,
+            cobertura,
             teclas,
             serie,
             volcados,
@@ -246,6 +247,7 @@ pub fn ejecutar_cli_con_entrada(
                 traza_maquina,
                 pantalla,
                 vigilar,
+                cobertura,
                 teclas,
                 serie,
                 volcados,
@@ -286,6 +288,7 @@ struct Opciones {
     traza_maquina: bool,
     pantalla: bool,
     vigilar: bool,
+    cobertura: bool,
     teclas: Option<String>,
     serie: Option<String>,
     volcados: Vec<Volcado>,
@@ -408,6 +411,9 @@ fn ejecutar(
     eventos.sort_by_key(|e| e.instruccion);
     let mut siguiente_evento = 0;
     let mut ejecutadas = 0u64;
+    let mut cobertura = opciones
+        .cobertura
+        .then(|| lorenz_tst::cobertura::Cobertura::nueva(emulador.maquina()));
     let codigo = 'ejecucion: loop {
         if emulador.estado().detenida() {
             break SALIDA_OK;
@@ -429,6 +435,9 @@ fn ejecutar(
         match emulador.paso() {
             Ok(Some(p)) => {
                 ejecutadas += 1;
+                if let Some(c) = &mut cobertura {
+                    c.registrar(ruta_programa, &p);
+                }
                 if traza && opciones.traza_maquina {
                     escribir(
                         salida,
@@ -480,6 +489,9 @@ fn ejecutar(
     }
     if opciones.pantalla {
         dibujar_pantallas(&emulador, salida);
+    }
+    if let Some(c) = &cobertura {
+        escribir(salida, &format!("\n{}", c.informe().a_texto()));
     }
     codigo
 }
