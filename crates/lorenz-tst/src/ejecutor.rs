@@ -83,6 +83,12 @@ fn preparar(proyecto: &Proyecto, prueba: &Prueba, con_traza: bool) -> Result<Dep
     let m = &proyecto.maquina;
     let ruta = prueba.programa.to_string_lossy().into_owned();
     let mut emu = Emulador::nuevo(m.clone()).map_err(|e| e.to_string())?;
+    let base = proyecto.ruta_maquina.parent().map_or_else(
+        || std::path::PathBuf::from("."),
+        std::path::Path::to_path_buf,
+    );
+    lorenz_emu::programa::precargar_regiones(&mut emu, &base)
+        .map_err(|e| format!("{}: {e}", proyecto.ruta_maquina.display()))?;
     let mut objeto = None;
     if es_fuente(&prueba.programa) {
         let texto = std::fs::read_to_string(&prueba.programa)

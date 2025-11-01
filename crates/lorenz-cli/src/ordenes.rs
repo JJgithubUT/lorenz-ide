@@ -333,6 +333,12 @@ fn ejecutar(
             return SALIDA_ERROR_USO;
         }
     };
+    if let Err(e) =
+        lorenz_emu::programa::precargar_regiones(&mut emulador, &carpeta_de(ruta_maquina))
+    {
+        escribir(errores, &format!("{ruta_maquina}: {e}\n"));
+        return SALIDA_ERROR_USO;
+    }
     if opciones.vigilar {
         emulador.memoria_mut().activar_seguimiento();
     }
@@ -494,6 +500,14 @@ fn ejecutar(
         escribir(salida, &format!("\n{}", c.informe().a_texto()));
     }
     codigo
+}
+
+/// Carpeta que contiene un archivo, para resolver las rutas relativas que este declara.
+pub fn carpeta_de(ruta: &str) -> std::path::PathBuf {
+    std::path::Path::new(ruta).parent().map_or_else(
+        || std::path::PathBuf::from("."),
+        std::path::Path::to_path_buf,
+    )
 }
 
 /// Nombre del primer dispositivo de un tipo.

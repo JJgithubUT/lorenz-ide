@@ -64,6 +64,13 @@ pub fn depurar_cli(
             return SALIDA_ERROR_USO;
         }
     };
+    if let Err(e) = lorenz_emu::programa::precargar_regiones(
+        &mut emulador,
+        &crate::ordenes::carpeta_de(ruta_maquina),
+    ) {
+        escribir(errores, &format!("{ruta_maquina}: {e}\n"));
+        return SALIDA_ERROR_USO;
+    }
     for (desde, palabras) in &segmentos {
         if let Err(e) = emulador.cargar_programa(*desde, palabras) {
             escribir(errores, &format!("{ruta_programa}: {e}\n"));
