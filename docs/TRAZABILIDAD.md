@@ -90,7 +90,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-026 | Regiones de memoria con rango, nombre y permisos | Hecho | `Region` |
 | RF-ARQ-027 | Rechazar regiones solapadas | Hecho | validacion de regiones |
 | RF-ARQ-028 | Rechazar un arranque fuera de toda region | Hecho | validacion de regiones |
-| RF-ARQ-029 | Precargar una region desde un binario | Parcial | se declara `contenido`, pero nadie lo carga todavia |
+| RF-ARQ-029 | Precargar una region desde un binario | Hecho | `programa::precargar_regiones`; ruta relativa a la descripcion, mismo formato que un programa |
 | RF-ARQ-030 | Dispositivos con tipo, puertos y region mapeada | Hecho | `Dispositivo`, `Region::dispositivo` |
 | RF-ARQ-031 | Rechazar una region con dispositivo no declarado | Hecho | `dispositivos_citados` |
 | RF-ARQ-032 | Lineas de interrupcion con vector y prioridad | Hecho | `Interrupciones` |

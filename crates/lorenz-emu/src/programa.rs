@@ -73,3 +73,48 @@ pub fn escribir_palabras(palabras: &[u64], bits: u32, por_linea: usize) -> Strin
     }
     texto
 }
+
+/// Carga en cada region el archivo que declara como `contenido` (RF-ARQ-029).
+///
+/// La ruta es relativa a `base` (la carpeta de la descripcion de arquitectura) y el archivo usa la
+/// misma sintaxis que un programa. El contenido empieza en el primer extremo de la region y escribe
+/// aunque sea de solo lectura, que es justo para lo que sirve una ROM. Devuelve cuantas regiones
+/// se cargaron. Debe hacerse antes de cargar el programa del usuario, que asi puede sobrescribirlo.
+pub fn precargar_regiones(
+    emulador: &mut crate::Emulador,
+    base: &std::path::Path,
+) -> Result<usize, String> {
+    let regiones: Vec<_> = emulador
+        .maquina()
+        .regiones
+        .iter()
+        .filter_map(|r| r.contenido.clone().map(|c| (r.clone(), c)))
+        .collect();
+    let bits = emulador.maquina().bits_palabra;
+    let mut cargadas = 0;
+    for (region, ruta) in regiones {
+        let completa = base.join(&ruta);
+        let texto = std::fs::read_to_string(&completa).map_err(|e| {
+            format!(
+                "region `{}`: no se pudo leer el contenido `{}`: {e}",
+                region.nombre,
+                completa.display()
+            )
+        })?;
+        let palabras = leer_palabras(&texto, bits)
+            .map_err(|e| format!("region `{}`: `{ruta}`: {e}", region.nombre))?;
+        if palabras.len() as u64 > region.tamano() {
+            return Err(format!(
+                "region `{}`: `{ruta}` tiene {} palabras y la region solo {}",
+                region.nombre,
+                palabras.len(),
+                region.tamano()
+            ));
+        }
+        emulador
+            .cargar_programa(region.desde, &palabras)
+            .map_err(|e| format!("region `{}`: {e}", region.nombre))?;
+        cargadas += 1;
+    }
+    Ok(cargadas)
+}
