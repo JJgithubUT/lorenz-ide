@@ -22,6 +22,9 @@ pub enum ErrorDepurador {
     #[error("la maquina no tiene puntero de pila")]
     SinPila,
 
+    #[error("la maquina esta detenida: no hay ninguna instruccion que explicar")]
+    MaquinaDetenida,
+
     #[error("la traza no esta grabando; activala con `traza on`")]
     SinTraza,
 

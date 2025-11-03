@@ -41,6 +41,7 @@ Ordenes (entre parentesis, la forma corta):
   hasta UBICACION         ejecuta hasta llegar a la ubicacion
   salir                   ejecuta hasta volver de la subrutina actual
   registros (r)           muestra registros y banderas
+  explicar (x)            explica la instruccion que toca: operaciones, cambios y salto
   volcar DIR [n] (v)      muestra n celdas desde DIR
   desensamblar [DIR] [n] (d)  muestra el codigo, con la linea de fuente
   pila [n]                muestra la cima de la pila
@@ -185,6 +186,11 @@ impl Sesion {
                     &mut self.ultimo_fallo,
                     &p,
                 )))
+            }
+            "explicar" | "x" => {
+                sin_mas(&partes, 1, "explicar")?;
+                let ancho = (d.maquina().bits_direccion as usize).div_ceil(4);
+                Ok(Respuesta::texto(d.explicar()?.a_texto(ancho)))
             }
             "registros" | "r" => {
                 sin_mas(&partes, 1, "registros")?;
