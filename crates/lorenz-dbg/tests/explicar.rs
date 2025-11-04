@@ -117,8 +117,5 @@ fn explicar_la_parada_avisa_en_lugar_de_fallar_en_silencio() {
         .fijar_bandera("Z", false)
         .unwrap();
     assert_eq!(d.continuar(100), lorenz_dbg::Parada::Detenida);
-    assert_eq!(
-        d.explicar().unwrap_err().to_string().contains("detenida"),
-        true
-    );
+    assert!(d.explicar().unwrap_err().to_string().contains("detenida"));
 }
