@@ -53,6 +53,9 @@ pub struct Registro {
     pub bits: u32,
     pub rol: RolRegistro,
     pub inicial: u64,
+    /// `true` si la descripcion da un valor inicial; si no, el registro arranca en cero pero sin
+    /// haberse inicializado, y el depurador avisa de leerlo antes de escribirlo (RF-DEP-040).
+    pub inicial_declarado: bool,
 }
 
 /// Un bit con nombre dentro del registro de banderas.
