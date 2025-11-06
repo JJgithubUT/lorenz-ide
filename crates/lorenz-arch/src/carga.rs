@@ -82,7 +82,8 @@ struct RegistroCrudo {
     bits: u32,
     #[serde(default = "rol_por_defecto")]
     rol: String,
-    inicial: Option<u64>,
+    #[serde(default)]
+    inicial: u64,
 }
 
 fn rol_por_defecto() -> String {
@@ -260,8 +261,7 @@ fn convertir(
                 nombre: r.nombre,
                 bits: r.bits,
                 rol,
-                inicial: r.inicial.unwrap_or(0),
-                inicial_declarado: r.inicial.is_some(),
+                inicial: r.inicial,
             }
         })
         .collect();
