@@ -16,6 +16,17 @@ pub fn mascara_de(bits: u32) -> u64 {
     }
 }
 
+/// Cuantas lecturas de registros sin inicializar se recuerdan como maximo.
+pub const MAX_LECTURAS_DE_REGISTROS: usize = 4096;
+
+/// Una instruccion leyo un registro que nadie habia escrito (RF-DEP-040).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LecturaDeRegistro {
+    pub registro: String,
+    /// Direccion de la instruccion que lo leyo.
+    pub pc: u64,
+}
+
 /// Valores de todos los registros de una maquina.
 #[derive(Debug, Clone)]
 pub struct Estado {
@@ -35,6 +46,12 @@ pub struct Estado {
     /// Nombre y posicion de cada bandera dentro del registro de banderas.
     banderas: Vec<(String, u32)>,
     arranque: u64,
+    /// Si el registro es de un rol que la maquina ya inicializa (pc, sp, banderas...).
+    declarados: Vec<bool>,
+    /// Seguimiento de registros sin inicializar; apagado por omision.
+    seguimiento: bool,
+    inicializados: Vec<bool>,
+    sin_inicializar: Vec<LecturaDeRegistro>,
 }
 
 impl Estado {
@@ -71,7 +88,16 @@ impl Estado {
             .map(|b| (b.nombre.clone(), b.bit))
             .collect();
 
+        let declarados: Vec<bool> = maquina
+            .registros
+            .iter()
+            .map(|r| r.rol != RolRegistro::General)
+            .collect();
         let mut estado = Self {
+            declarados,
+            seguimiento: false,
+            inicializados: Vec::new(),
+            sin_inicializar: Vec::new(),
             nombres,
             roles,
             mascaras,
@@ -127,7 +153,49 @@ impl Estado {
             });
         }
         self.valores[i] = valor & self.mascaras[i];
+        if self.seguimiento {
+            self.inicializados[i] = true;
+        }
         Ok(())
+    }
+
+    /// Empieza a anotar las lecturas de registros que nadie ha escrito (RF-DEP-040). Un registro de
+    /// uso general cuenta como inicializado solo cuando el programa (o el usuario) lo escribe, aunque
+    /// la arquitectura le de un valor al arrancar; los de otro rol (contador de programa, puntero
+    /// de pila, banderas...) lo estan desde el principio.
+    pub fn activar_seguimiento(&mut self) {
+        self.seguimiento = true;
+        self.inicializados = self.declarados.clone();
+        self.sin_inicializar.clear();
+    }
+
+    pub fn seguimiento_activo(&self) -> bool {
+        self.seguimiento
+    }
+
+    /// Anota que la instruccion en `pc` leyo el registro `nombre`; no hace nada si el seguimiento
+    /// esta apagado o el registro ya esta inicializado.
+    pub fn registrar_lectura(&mut self, nombre: &str, pc: u64) {
+        if !self.seguimiento || self.sin_inicializar.len() >= MAX_LECTURAS_DE_REGISTROS {
+            return;
+        }
+        let Some(i) = self.nombres.iter().position(|n| n == nombre) else {
+            return;
+        };
+        if !self.inicializados[i] {
+            let lectura = LecturaDeRegistro {
+                registro: nombre.to_string(),
+                pc,
+            };
+            if !self.sin_inicializar.contains(&lectura) {
+                self.sin_inicializar.push(lectura);
+            }
+        }
+    }
+
+    /// Entrega y olvida las lecturas anotadas desde la ultima llamada.
+    pub fn tomar_lecturas_sin_inicializar(&mut self) -> Vec<LecturaDeRegistro> {
+        std::mem::take(&mut self.sin_inicializar)
     }
 
     /// Contador de programa.
@@ -193,6 +261,10 @@ impl Estado {
     /// (RF-EMU-014).
     pub fn reiniciar(&mut self) {
         self.valores.clone_from(&self.iniciales);
+        if self.seguimiento {
+            self.inicializados = self.declarados.clone();
+            self.sin_inicializar.clear();
+        }
         self.valores[self.indice_pc] = self.arranque & self.mascaras[self.indice_pc];
         self.instrucciones = 0;
         self.ciclos = 0;

@@ -115,15 +115,19 @@ impl Interprete {
         &self,
         nombre: &str,
         dec: &Decodificada,
-        entorno: &Entorno<'_>,
+        entorno: &mut Entorno<'_>,
     ) -> Result<i128, ErrorEjecucion> {
         if let Some(o) = dec.operandos.iter().find(|o| o.nombre == nombre) {
             return match &o.registro {
-                Some(registro) => Ok(entorno.estado.registro(registro)? as i128),
+                Some(registro) => {
+                    entorno.estado.registrar_lectura(registro, dec.direccion);
+                    Ok(entorno.estado.registro(registro)? as i128)
+                }
                 None => Ok(o.valor),
             };
         }
         if let Ok(v) = entorno.estado.registro(nombre) {
+            entorno.estado.registrar_lectura(nombre, dec.direccion);
             return Ok(v as i128);
         }
         if entorno.estado.tiene_bandera(nombre) {
