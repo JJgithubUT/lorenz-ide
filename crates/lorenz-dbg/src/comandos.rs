@@ -41,6 +41,7 @@ Ordenes (entre parentesis, la forma corta):
   hasta UBICACION         ejecuta hasta llegar a la ubicacion
   salir                   ejecuta hasta volver de la subrutina actual
   registros (r)           muestra registros y banderas
+  avisar [on|off]         avisa de desbordar la pila y de leer lo que nadie escribio
   explicar (x)            explica la instruccion que toca: operaciones, cambios y salto
   volcar DIR [n] (v)      muestra n celdas desde DIR
   desensamblar [DIR] [n] (d)  muestra el codigo, con la linea de fuente
@@ -186,6 +187,27 @@ impl Sesion {
                     &mut self.ultimo_fallo,
                     &p,
                 )))
+            }
+            "avisar" => {
+                sin_mas(&partes, 2, "avisar")?;
+                match partes.get(1).copied() {
+                    None => Ok(Respuesta::texto(if d.avisos_activos() {
+                        "avisos: activos"
+                    } else {
+                        "avisos: apagados"
+                    })),
+                    Some("on") => {
+                        d.avisar(true);
+                        Ok(Respuesta::texto(
+                            "avisos activos: pila, registros y memoria sin inicializar",
+                        ))
+                    }
+                    Some("off") => {
+                        d.avisar(false);
+                        Ok(Respuesta::texto("avisos apagados"))
+                    }
+                    Some(otro) => Err(ErrorDepurador::OrdenDesconocida(format!("avisar {otro}"))),
+                }
             }
             "explicar" | "x" => {
                 sin_mas(&partes, 1, "explicar")?;

@@ -125,7 +125,9 @@ pub struct Depurador {
     /// Instante en el que esta la maquina cuando hay traza; si es menor que la longitud de la
     /// traza, se esta mirando el pasado.
     cursor: u64,
-    avisos: Vec<String>,
+    pub(crate) avisos: Vec<String>,
+    /// Vigilancia de errores de programa, si esta activa.
+    pub(crate) vigilancia: Option<crate::avisos::Vigilancia>,
     /// Las instrucciones ejecutadas desde que se pidio recogerlas; `None` si no se recogen.
     pasos_recogidos: Option<Vec<Paso>>,
 }
@@ -188,6 +190,7 @@ impl Depurador {
             traza: None,
             cursor: 0,
             avisos: Vec::new(),
+            vigilancia: None,
             pasos_recogidos: None,
         }
     }
@@ -470,6 +473,7 @@ impl Depurador {
             if let Some(antes) = antes {
                 self.anotar_paso(&antes, &paso);
             }
+            self.revisar_avisos(&paso);
             if let Some(p) = self.observacion_activada() {
                 return p;
             }
