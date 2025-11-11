@@ -145,7 +145,7 @@ Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensa
 
 ## Requisitos del depurador (RF-DEP)
 
-Linea de comandos (001-018), traza, retroceso y reproduccion (019-031).
+Linea de comandos (001-018), traza, retroceso y reproduccion (019-031), explicacion y avisos (032, 039-041). Los requisitos de interfaz grafica quedan para la fase del IDE.
 
 | Requisito | Descripcion | Estado | Donde |
 |---|---|---|---|
@@ -180,6 +180,19 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031).
 | RF-DEP-029 | Exportar la traza | Hecho | `exportar` (CSV y JSON) |
 | RF-DEP-030 | Guardar un fallo como archivo reproducible | Hecho | `reproducir::Fallo` (`lorenz-fallo-0.1`) |
 | RF-DEP-031 | Reproducirlo identico en otra instalacion | Hecho | `Fallo::reproducir`; limite: puertos y dispositivos parten vacios |
+| RF-DEP-032 | Explicar una instruccion | Hecho | `Depurador::explicar`, orden `explicar`; la ejecuta en una copia de la maquina |
+| RF-DEP-033 | Animar el recorrido de un dato | Pendiente | fase del IDE |
+| RF-DEP-034 | Ejecucion lenta con animacion | Pendiente | fase del IDE |
+| RF-DEP-035 | Desactivar animaciones | Hecho | la linea de comandos nunca anima |
+| RF-DEP-036 | Mapa de memoria grafico | Pendiente | fase del IDE |
+| RF-DEP-037 | Editor hexadecimal en vivo | Pendiente | fase del IDE; `volcar` y `escribir` hacen lo mismo en texto |
+| RF-DEP-038 | Linea de tiempo de eventos | Pendiente | fase del IDE; `ejecutar` ya lista las interrupciones atendidas |
+| RF-DEP-039 | Avisar del desbordamiento de la pila | Hecho | `Depurador::avisar`, orden `avisar`; compara SP con la region donde empezo y con su base |
+| RF-DEP-040 | Avisar de leer un registro sin inicializar | Hecho | `Estado::activar_seguimiento`, `avisar` y `ejecutar --vigilar`; `XOR A, A` cuenta como lectura |
+| RF-DEP-041 | Avisar de leer memoria sin escribir | Hecho | `Memoria::activar_seguimiento`, `avisar` y `ejecutar --vigilar` |
+| RF-DEP-042 | Inyectar fallos | Pendiente | opcional |
+| RF-DEP-043 | Explorar ordenes de eventos | Pendiente | opcional |
+| RF-DEP-044 | Mismas operaciones en el depurador grafico | Pendiente | fase del IDE |
 
 ## Requisitos de pruebas (RF-TST)
 

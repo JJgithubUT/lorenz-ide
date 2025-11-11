@@ -341,6 +341,7 @@ fn ejecutar(
     }
     if opciones.vigilar {
         emulador.memoria_mut().activar_seguimiento();
+        emulador.estado_mut().activar_seguimiento();
     }
     for (desde, palabras) in &segmentos {
         if let Err(e) = emulador.cargar_programa(*desde, palabras) {
@@ -485,7 +486,7 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
-    lecturas_sin_inicializar(&emulador, digitos, salida);
+    lecturas_sin_inicializar(&mut emulador, digitos, salida);
     interrupciones_atendidas(&emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
     for volcado in &opciones.volcados {
@@ -584,7 +585,16 @@ fn volcar(
 }
 
 /// Avisa de las lecturas de memoria que nadie habia escrito (RF-EMU-026).
-fn lecturas_sin_inicializar(emulador: &Emulador, digitos: usize, salida: &mut dyn Write) {
+fn lecturas_sin_inicializar(emulador: &mut Emulador, digitos: usize, salida: &mut dyn Write) {
+    for l in emulador.estado_mut().tomar_lecturas_sin_inicializar() {
+        escribir(
+            salida,
+            &format!(
+                "aviso: la instruccion en {:0digitos$x} leyo el registro {}, que nadie habia escrito\n",
+                l.pc, l.registro
+            ),
+        );
+    }
     for l in emulador.memoria().lecturas_sin_inicializar() {
         escribir(
             salida,

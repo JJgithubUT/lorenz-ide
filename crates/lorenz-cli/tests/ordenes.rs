@@ -566,6 +566,29 @@ fn vigilar_avisa_de_la_lectura_de_una_celda_sin_escribir() {
 }
 
 #[test]
+fn vigilar_avisa_de_la_lectura_de_un_registro_sin_escribir() {
+    // ADD A,B ; HLT
+    let p = temporal("registro_sin_escribir.hex", "31 F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--vigilar"]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(
+        r.salida
+            .contains("aviso: la instruccion en 0000 leyo el registro A, que nadie habia escrito"),
+        "{}",
+        r.salida
+    );
+    assert!(r.salida.contains("leyo el registro B"), "{}", r.salida);
+}
+
+#[test]
+fn vigilar_no_avisa_de_un_registro_que_el_programa_escribio() {
+    // LDI A,1 ; LDI B,2 ; ADD A,B ; HLT
+    let p = temporal("registros_escritos.hex", "20 01 24 02 31 F0");
+    let r = correr(&["ejecutar", &maquina(), &p, "--vigilar"]);
+    assert!(!r.salida.contains("aviso:"), "{}", r.salida);
+}
+
+#[test]
 fn sin_vigilar_no_hay_avisos() {
     let p = temporal("sin_inicializar2.hex", "40 05 20 F0");
     let r = correr(&["ejecutar", &maquina(), &p]);
