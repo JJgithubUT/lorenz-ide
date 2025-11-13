@@ -42,8 +42,8 @@ fn con_la_opcion_se_informa_de_instrucciones_y_de_las_que_faltan() {
     assert!(s.contains("cobertura de instrucciones:"), "{s}");
     assert!(s.contains("sin ejercitar:"), "{s}");
     assert!(
-        s.contains("HLT") == false || !s.contains("sin ejercitar: HLT"),
-        "{s}"
+        !s.contains("HLT"),
+        "suma termina con HLT, asi que esta cubierta: {s}"
     );
 }
 
