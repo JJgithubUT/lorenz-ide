@@ -43,8 +43,13 @@ pub enum ErrorArquitectura {
     #[error("codificacion de instruccion invalida en '{mnemonico}': {causa}")]
     Codificacion { mnemonico: String, causa: String },
 
-    #[error("la descripcion no es valida")]
+    #[error("la descripcion no es valida:{}", listar_fallos(.0))]
     Validacion(Vec<FalloValidacion>),
+}
+
+/// Un fallo por linea, para que el mensaje del error diga que esta mal y no solo que algo lo esta.
+fn listar_fallos(fallos: &[FalloValidacion]) -> String {
+    fallos.iter().map(|f| format!("\n  {f}")).collect()
 }
 
 /// Un incumplimiento concreto de las reglas de validacion.

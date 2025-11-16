@@ -326,3 +326,15 @@ fn cada_regla_cita_su_requisito_de_la_ers() {
         );
     }
 }
+
+#[test]
+fn el_mensaje_del_error_lista_cada_fallo() {
+    let t = base().replace(
+        "bits = 16\nrol = \"pc\"",
+        "bits = 16\nrol = \"pc\"\n\n[[registro]]\nnombre = \"PC\"\nbits = 16\nrol = \"general\"",
+    );
+    let e = cargar(&t).expect_err("el nombre PC esta duplicado");
+    let m = e.to_string();
+    assert!(m.starts_with("la descripcion no es valida:"), "{m}");
+    assert!(m.contains("[E-DUPLICADO]") || m.contains("[E-ROL]"), "{m}");
+}
