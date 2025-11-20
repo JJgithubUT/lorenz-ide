@@ -1,0 +1,26 @@
+# Pruebas del RISC de 16 bits. Se ejecutan con:
+#
+#   lorenz probar ejemplos/risc-16/pruebas.toml
+
+formato = "lorenz-pruebas-0.1"
+maquina = "maquina.toml"
+semilla = 16
+
+[[prueba]]
+nombre    = "suma de 1 a 10"
+etiquetas = ["aritmetica", "bucle"]
+programa  = "programas/suma-1-a-10.s"
+limite    = 200
+[prueba.espera]
+registros = { R2 = 55, R1 = 11, R4 = 0x4000 }
+memoria   = [ { direccion = 0x4000, palabras = [55] } ]
+# 42 instrucciones: el bucle de 3 cuesta 1+1+2 diez veces menos un salto no tomado.
+ciclos    = { valor = 52, tolerancia = 0 }
+
+[[prueba]]
+nombre    = "comparacion con signo"
+etiquetas = ["aritmetica", "rapida"]
+programa  = "programas/comparar.s"
+limite    = 20
+[prueba.espera]
+registros = { R1 = 3, R2 = 9, R3 = 1 }
