@@ -1,0 +1,166 @@
+# Maquina de pila de 8 bits: los operandos viven en una pila de la RAM que crece hacia abajo y las
+# operaciones sacan sus argumentos de ella. El registro T es un auxiliar interno de las
+# instrucciones; un programa no lo necesita.
+
+[maquina]
+nombre         = "pila-8"
+formato        = "0.1"
+bits_palabra   = 8
+bits_direccion = 16
+endianness     = "little"
+arranque       = 0x0000
+pila           = "descendente"
+
+[[registro]]
+nombre = "T"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "SP"
+bits = 16
+rol = "sp"
+inicial = 0xFFFF
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+# --- instrucciones ---
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 0000"
+semantica = ""
+ciclos    = 1
+descripcion = "No hace nada."
+
+[[instruccion]]
+mnemonico = "PUSH"
+sintaxis  = "PUSH {imm}"
+codigo    = "0000 0001 | imm:8"
+semantica = "sp = sp - 1; mem[sp] = imm"
+ciclos    = 3
+descripcion = "Apila una constante."
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+[[instruccion]]
+mnemonico = "DROP"
+sintaxis  = "DROP"
+codigo    = "0000 0010"
+semantica = "sp = sp + 1"
+ciclos    = 1
+descripcion = "Descarta la cima de la pila."
+
+[[instruccion]]
+mnemonico = "DUP"
+sintaxis  = "DUP"
+codigo    = "0000 0011"
+semantica = "sp = sp - 1; mem[sp] = mem[sp + 1]"
+ciclos    = 3
+descripcion = "Duplica la cima de la pila."
+
+[[instruccion]]
+mnemonico = "SWAP"
+sintaxis  = "SWAP"
+codigo    = "0000 0100"
+semantica = "T = mem[sp]; mem[sp] = mem[sp + 1]; mem[sp + 1] = T"
+ciclos    = 5
+descripcion = "Intercambia los dos elementos de la cima."
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD"
+codigo    = "0000 0101"
+semantica = "T = mem[sp]; sp = sp + 1; mem[sp] = mem[sp] + T"
+ciclos    = 4
+descripcion = "Saca dos valores y apila su suma."
+
+[[instruccion]]
+mnemonico = "SUB"
+sintaxis  = "SUB"
+codigo    = "0000 0110"
+semantica = "T = mem[sp]; sp = sp + 1; mem[sp] = mem[sp] - T"
+ciclos    = 4
+descripcion = "Saca b y a, y apila a - b."
+
+[[instruccion]]
+mnemonico = "AND"
+sintaxis  = "AND"
+codigo    = "0000 0111"
+semantica = "T = mem[sp]; sp = sp + 1; mem[sp] = mem[sp] & T"
+ciclos    = 4
+descripcion = "Saca dos valores y apila su Y bit a bit."
+
+[[instruccion]]
+mnemonico = "LOAD"
+sintaxis  = "LOAD {dir}"
+codigo    = "0000 1000 | dir:8 | dir:8"
+semantica = "sp = sp - 1; mem[sp] = mem[dir]"
+ciclos    = 5
+descripcion = "Apila el contenido de una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "STORE"
+sintaxis  = "STORE {dir}"
+codigo    = "0000 1001 | dir:8 | dir:8"
+semantica = "mem[dir] = mem[sp]; sp = sp + 1"
+ciclos    = 5
+descripcion = "Saca la cima y la guarda en una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "JMP"
+sintaxis  = "JMP {dir}"
+codigo    = "0000 1010 | dir:8 | dir:8"
+semantica = "pc = dir"
+ciclos    = 3
+descripcion = "Salta a una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "JZ"
+sintaxis  = "JZ {dir}"
+codigo    = "0000 1011 | dir:8 | dir:8"
+semantica = "T = mem[sp]; sp = sp + 1; si T == 0: pc = dir"
+ciclos    = { tomado = 5, no_tomado = 4 }
+descripcion = "Saca la cima y salta si es cero."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 1111"
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+
+# --- memoria ---
+
+[[region]]
+nombre = "rom"
+desde  = 0x0000
+hasta  = 0x3FFF
+acceso = "r"
+
+[[region]]
+nombre = "ram"
+desde  = 0x4000
+hasta  = 0xFFFF
+acceso = "rw"
