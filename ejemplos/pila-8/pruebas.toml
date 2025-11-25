@@ -1,0 +1,35 @@
+# Pruebas de la maquina de pila. Se ejecutan con:
+#
+#   lorenz probar ejemplos/pila-8/pruebas.toml
+
+formato = "lorenz-pruebas-0.1"
+maquina = "maquina.toml"
+semilla = 88
+
+[[prueba]]
+nombre    = "operaciones con la pila"
+etiquetas = ["aritmetica", "rapida"]
+programa  = "programas/suma.s"
+limite    = 50
+[prueba.espera]
+registros = { SP = 0xFFFF }
+memoria   = [ { direccion = 0x4000, palabras = [9] } ]
+ciclos    = { valor = 23, tolerancia = 0 }
+
+[[prueba]]
+nombre    = "bucle con salto condicional"
+etiquetas = ["bucle"]
+programa  = "programas/cuenta.s"
+limite    = 500
+[prueba.espera]
+registros = { SP = 0xFFFF, T = 0 }
+memoria   = [ { direccion = 0x4000, palabras = [0, 15] } ]
+
+[[prueba]]
+nombre    = "intercambio de la cima"
+etiquetas = ["pila"]
+programa  = "programas/intercambio.s"
+limite    = 50
+[prueba.espera]
+memoria   = [ { direccion = 0x4000, palabras = [9, 5] } ]
+ciclos    = { valor = 22, tolerancia = 0 }
