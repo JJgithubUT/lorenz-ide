@@ -103,7 +103,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-039 | Editor visual: texto a diagrama | Pendiente | fase del IDE |
 | RF-ARQ-040 | Editor visual: diagrama a texto | Pendiente | fase del IDE |
 | RF-ARQ-041 | Editor visual: errores de validacion en el diagrama | Pendiente | fase del IDE |
-| RF-ARQ-042 | Al menos cuatro arquitecturas de ejemplo | Parcial | hay una de 8 bits (y su variante con UART); faltan 16 bits, RISC y de pila |
+| RF-ARQ-042 | Al menos cuatro arquitecturas de ejemplo | Hecho | `ejemplos/`: `ejemplo-8`, `ejemplo-8-serie`, `risc-16` y `pila-8`, cada uno con programas y pruebas |
 
 ## Requisitos del ensamblador (RF-ENS)
 
