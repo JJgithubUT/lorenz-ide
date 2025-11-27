@@ -184,6 +184,7 @@ pub fn cargar(texto: &str) -> Result<Maquina, ErrorArquitectura> {
     let maquina = convertir(crudo, &mut fallos)?;
 
     fallos.extend(validacion::validar(&maquina));
+    crate::localizar::situar(texto, &mut fallos);
 
     if fallos.is_empty() {
         Ok(maquina)
