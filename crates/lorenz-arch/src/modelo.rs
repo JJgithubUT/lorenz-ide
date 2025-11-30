@@ -55,6 +55,17 @@ pub struct Registro {
     pub inicial: u64,
 }
 
+/// Dos registros que se usan juntos como uno solo mas ancho (RF-ARQ-010).
+///
+/// El nombre del par vale donde vale un registro: en los operandos y en la semantica. Leerlo junta
+/// el registro alto y el bajo; escribirlo los reparte.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParRegistros {
+    pub nombre: String,
+    pub alto: String,
+    pub bajo: String,
+}
+
 /// Un bit con nombre dentro del registro de banderas.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bandera {
@@ -231,6 +242,7 @@ pub struct Maquina {
     pub arranque: u64,
     pub pila: SentidoPila,
     pub registros: Vec<Registro>,
+    pub pares: Vec<ParRegistros>,
     pub banderas: Vec<Bandera>,
     pub instrucciones: Vec<Instruccion>,
     pub regiones: Vec<Region>,
@@ -253,6 +265,15 @@ impl Maquina {
 
     pub fn registro(&self, nombre: &str) -> Option<&Registro> {
         self.registros.iter().find(|r| r.nombre == nombre)
+    }
+
+    pub fn par(&self, nombre: &str) -> Option<&ParRegistros> {
+        self.pares.iter().find(|p| p.nombre == nombre)
+    }
+
+    /// Si el nombre es el de un registro o el de un par de registros.
+    pub fn es_registro_o_par(&self, nombre: &str) -> bool {
+        self.registro(nombre).is_some() || self.par(nombre).is_some()
     }
 
     pub fn bandera(&self, nombre: &str) -> Option<&Bandera> {
