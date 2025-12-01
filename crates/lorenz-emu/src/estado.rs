@@ -52,6 +52,16 @@ pub struct Estado {
     seguimiento: bool,
     inicializados: Vec<bool>,
     sin_inicializar: Vec<LecturaDeRegistro>,
+    /// Pares de registros usados como uno ancho (RF-ARQ-010).
+    pares: Vec<ParIndexado>,
+}
+
+/// Un par de registros resuelto a posiciones.
+#[derive(Debug, Clone)]
+struct ParIndexado {
+    nombre: String,
+    alto: usize,
+    bajo: usize,
 }
 
 impl Estado {
@@ -93,7 +103,20 @@ impl Estado {
             .iter()
             .map(|r| r.rol != RolRegistro::General)
             .collect();
+        let pares: Vec<ParIndexado> = maquina
+            .pares
+            .iter()
+            .filter_map(|p| {
+                let pos = |n: &str| maquina.registros.iter().position(|r| r.nombre == n);
+                Some(ParIndexado {
+                    nombre: p.nombre.clone(),
+                    alto: pos(&p.alto)?,
+                    bajo: pos(&p.bajo)?,
+                })
+            })
+            .collect();
         let mut estado = Self {
+            pares,
             declarados,
             seguimiento: false,
             inicializados: Vec::new(),
@@ -139,13 +162,32 @@ impl Estado {
 
     /// Valor de un registro por su nombre.
     pub fn registro(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        if let Some(p) = self.par(nombre) {
+            return Ok((self.valores[p.alto] << self.bits_de(p.bajo)) | self.valores[p.bajo]);
+        }
         Ok(self.valores[self.indice(nombre)?])
+    }
+
+    fn par(&self, nombre: &str) -> Option<&ParIndexado> {
+        self.pares.iter().find(|p| p.nombre == nombre)
+    }
+
+    /// Ancho en bits de un registro, a partir de su mascara.
+    fn bits_de(&self, i: usize) -> u32 {
+        self.mascaras[i].count_ones()
     }
 
     /// Asigna un registro por su nombre, truncando el valor a su ancho.
     ///
     /// Un registro de rol `fijo` no se puede modificar (RF-ARQ-008).
     pub fn fijar_registro(&mut self, nombre: &str, valor: u64) -> Result<(), ErrorEjecucion> {
+        if let Some(p) = self.par(nombre).cloned() {
+            let bajo = self.bits_de(p.bajo);
+            let (alto_n, bajo_n) = (self.nombres[p.alto].clone(), self.nombres[p.bajo].clone());
+            self.fijar_registro(&bajo_n, valor)?;
+            let alto = if bajo >= 64 { 0 } else { valor >> bajo };
+            return self.fijar_registro(&alto_n, alto);
+        }
         let i = self.indice(nombre)?;
         if self.roles[i] == RolRegistro::Fijo {
             return Err(ErrorEjecucion::RegistroDeSoloLectura {
@@ -177,6 +219,12 @@ impl Estado {
     /// esta apagado o el registro ya esta inicializado.
     pub fn registrar_lectura(&mut self, nombre: &str, pc: u64) {
         if !self.seguimiento || self.sin_inicializar.len() >= MAX_LECTURAS_DE_REGISTROS {
+            return;
+        }
+        if let Some(p) = self.par(nombre).cloned() {
+            let (alto, bajo) = (self.nombres[p.alto].clone(), self.nombres[p.bajo].clone());
+            self.registrar_lectura(&alto, pc);
+            self.registrar_lectura(&bajo, pc);
             return;
         }
         let Some(i) = self.nombres.iter().position(|n| n == nombre) else {
@@ -307,6 +355,10 @@ impl Estado {
 
     /// Mascara con un 1 en cada bit del registro (su ancho), por nombre.
     pub fn mascara_de_registro(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        if let Some(p) = self.par(nombre) {
+            let bits = self.bits_de(p.alto) + self.bits_de(p.bajo);
+            return Ok(mascara_de(bits));
+        }
         Ok(self.mascaras[self.indice(nombre)?])
     }
 
