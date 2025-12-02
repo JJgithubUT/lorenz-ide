@@ -338,3 +338,55 @@ fn el_mensaje_del_error_lista_cada_fallo() {
     assert!(m.starts_with("la descripcion no es valida:"), "{m}");
     assert!(m.contains("[E-DUPLICADO]") || m.contains("[E-ROL]"), "{m}");
 }
+
+// --- pares de registros (RF-ARQ-010) ---
+
+fn con_registro_b(par: &str) -> String {
+    base().replace(
+        "[[registro]]\nnombre = \"PC\"",
+        &format!("[[registro]]\nnombre = \"B\"\nbits = 8\nrol = \"general\"\n\n{par}\n[[registro]]\nnombre = \"PC\""),
+    )
+}
+
+#[test]
+fn acepta_un_par_de_dos_registros_generales() {
+    let m = cargar(&con_registro_b(
+        "[[par]]\nnombre = \"AB\"\nalto = \"A\"\nbajo = \"B\"\n",
+    ))
+    .unwrap();
+    assert_eq!(m.par("AB").unwrap().alto, "A");
+    assert!(m.es_registro_o_par("AB"));
+}
+
+#[test]
+fn rechaza_un_par_con_un_registro_inexistente() {
+    let t = con_registro_b("[[par]]\nnombre = \"AX\"\nalto = \"A\"\nbajo = \"X\"\n");
+    assert!(codigos(&t).contains(&Regla::ParInvalido.codigo()));
+}
+
+#[test]
+fn rechaza_un_par_que_repite_un_registro() {
+    let t = con_registro_b("[[par]]\nnombre = \"AA\"\nalto = \"A\"\nbajo = \"A\"\n");
+    assert!(codigos(&t).contains(&Regla::ParInvalido.codigo()));
+}
+
+#[test]
+fn rechaza_un_par_con_el_contador_de_programa() {
+    let t = con_registro_b("[[par]]\nnombre = \"AP\"\nalto = \"A\"\nbajo = \"PC\"\n");
+    assert!(codigos(&t).contains(&Regla::ParInvalido.codigo()));
+}
+
+#[test]
+fn rechaza_un_par_cuyo_nombre_ya_es_un_registro() {
+    let t = con_registro_b("[[par]]\nnombre = \"A\"\nalto = \"A\"\nbajo = \"B\"\n");
+    assert!(codigos(&t).contains(&Regla::NombreDuplicado.codigo()));
+}
+
+#[test]
+fn rechaza_un_par_de_mas_de_64_bits() {
+    let t = con_registro_b("[[par]]\nnombre = \"AB\"\nalto = \"A\"\nbajo = \"B\"\n").replace(
+        "bits = 8\nrol = \"general\"\n\n[[par]]",
+        "bits = 64\nrol = \"general\"\n\n[[par]]",
+    );
+    assert!(codigos(&t).contains(&Regla::ParInvalido.codigo()));
+}
