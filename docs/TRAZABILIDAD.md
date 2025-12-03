@@ -71,7 +71,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-007 | Registros con nombre, ancho y valor inicial | Hecho | `Registro` |
 | RF-ARQ-008 | Roles de registro | Hecho | `RolRegistro` (pc, sp, banderas, general, indirecto, fijo) |
 | RF-ARQ-009 | Exactamente un contador de programa | Hecho | validacion de roles unicos |
-| RF-ARQ-010 | Pares de registros como un registro ancho | Pendiente |  |
+| RF-ARQ-010 | Pares de registros como un registro ancho | Hecho | `[[par]]`, `ParRegistros`, regla `E-PAR`, `Estado::registro` |
 | RF-ARQ-011 | Banderas con nombre, posicion y descripcion | Hecho | seccion `[flags]` |
 | RF-ARQ-012 | Bancos de registros conmutables | Pendiente | fase 5 de la ERS |
 | RF-ARQ-013 | Instrucciones con mnemonico, sintaxis, codificacion, semantica y ciclos | Hecho | `Instruccion`; la sintaxis se valida (`E-SINTAXIS`) |
