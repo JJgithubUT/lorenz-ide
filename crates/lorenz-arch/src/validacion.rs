@@ -19,6 +19,7 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     campos_y_operandos(m, &mut fallos);
     sintaxis_de_instrucciones(m, &mut fallos);
     roles_de_registro(m, &mut fallos);
+    pares_de_registros(m, &mut fallos);
     nombres_duplicados(m, &mut fallos);
     regiones(m, &mut fallos);
     arranque(m, &mut fallos);
@@ -166,7 +167,7 @@ fn campos_y_operandos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         for operando in &ins.operandos {
             if let TipoOperando::Registro { permitidos } = &operando.tipo {
                 for nombre in permitidos {
-                    if m.registro(nombre).is_none() {
+                    if !m.es_registro_o_par(nombre) {
                         fallos.push(fallo(
                             Regla::CampoSinOperando,
                             format!(
@@ -256,8 +257,12 @@ fn nombres_duplicados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     };
 
     revisar(
-        "registros",
-        m.registros.iter().map(|r| r.nombre.as_str()).collect(),
+        "registros o pares de registros",
+        m.registros
+            .iter()
+            .map(|r| r.nombre.as_str())
+            .chain(m.pares.iter().map(|p| p.nombre.as_str()))
+            .collect(),
     );
     revisar(
         "regiones",
@@ -274,6 +279,51 @@ fn nombres_duplicados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
             .map(|i| i.mnemonico.as_str())
             .collect(),
     );
+}
+
+/// RF-ARQ-010: un par junta dos registros generales distintos y declarados, y su ancho cabe en 64
+/// bits.
+fn pares_de_registros(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    for par in &m.pares {
+        let mut bits = 0;
+        for (parte, nombre) in [("alto", &par.alto), ("bajo", &par.bajo)] {
+            match m.registro(nombre) {
+                None => fallos.push(fallo(
+                    Regla::ParInvalido,
+                    format!(
+                        "el registro {parte} '{nombre}' del par '{}' no esta declarado",
+                        par.nombre
+                    ),
+                )),
+                Some(r) if r.rol != RolRegistro::General => fallos.push(fallo(
+                    Regla::ParInvalido,
+                    format!(
+                        "el registro {parte} '{nombre}' del par '{}' no es de uso general",
+                        par.nombre
+                    ),
+                )),
+                Some(r) => bits += r.bits,
+            }
+        }
+        if par.alto == par.bajo {
+            fallos.push(fallo(
+                Regla::ParInvalido,
+                format!(
+                    "el par '{}' usa dos veces el registro '{}'",
+                    par.nombre, par.alto
+                ),
+            ));
+        }
+        if bits > 64 {
+            fallos.push(fallo(
+                Regla::ParInvalido,
+                format!(
+                    "el par '{}' suma {bits} bits y el maximo admitido es 64",
+                    par.nombre
+                ),
+            ));
+        }
+    }
 }
 
 /// RF-ARQ-027: las regiones de memoria no se solapan.
@@ -558,7 +608,7 @@ fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
             _ => false,
         };
         let existe = |n: &str| {
-            es_operando(n) || m.registro(n).is_some() || m.bandera(n).is_some() || es_alias(n)
+            es_operando(n) || m.es_registro_o_par(n) || m.bandera(n).is_some() || es_alias(n)
         };
 
         for nombre in ins.programa.nombres_leidos() {

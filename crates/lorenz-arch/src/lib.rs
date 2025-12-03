@@ -17,7 +17,8 @@ pub use carga::{cargar, cargar_archivo};
 pub use error::{ErrorArquitectura, FalloValidacion, Posicion, Regla};
 pub use modelo::{
     Acceso, Bandera, Ciclos, Dispositivo, Endianness, Instruccion, Interrupciones, Maquina,
-    Operando, Region, Registro, RolRegistro, SentidoPila, TipoDispositivo, TipoOperando,
+    Operando, ParRegistros, Region, Registro, RolRegistro, SentidoPila, TipoDispositivo,
+    TipoOperando,
 };
 
 /// Version del formato de descripcion que esta biblioteca entiende.

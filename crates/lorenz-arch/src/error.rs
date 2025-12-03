@@ -102,6 +102,8 @@ pub enum Regla {
     SemanticaInvalida,
     /// La sintaxis de una instruccion esta mal formada o no cuadra con sus operandos.
     SintaxisInvalida,
+    /// Un par de registros nombra registros que no existen, repite uno o no cabe en 64 bits.
+    ParInvalido,
 }
 
 impl Regla {
@@ -120,6 +122,7 @@ impl Regla {
             Regla::ValorFueraDeRango => "E-RANGO",
             Regla::SemanticaInvalida => "E-SEMANT",
             Regla::SintaxisInvalida => "E-SINTAXIS",
+            Regla::ParInvalido => "E-PAR",
         }
     }
 
@@ -138,6 +141,7 @@ impl Regla {
             Regla::ValorFueraDeRango => "RF-ARQ-003",
             Regla::SemanticaInvalida => "RF-ARQ-022",
             Regla::SintaxisInvalida => "RF-ARQ-013",
+            Regla::ParInvalido => "RF-ARQ-010",
         }
     }
 }

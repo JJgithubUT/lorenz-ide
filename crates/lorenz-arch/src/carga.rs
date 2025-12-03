@@ -27,6 +27,8 @@ struct ArchivoCrudo {
     flags: BTreeMap<String, BanderaCruda>,
     #[serde(default, rename = "registro")]
     registros: Vec<RegistroCrudo>,
+    #[serde(default, rename = "par")]
+    pares: Vec<ParCrudo>,
     #[serde(default, rename = "instruccion")]
     instrucciones: Vec<InstruccionCruda>,
     #[serde(default, rename = "region")]
@@ -84,6 +86,13 @@ struct RegistroCrudo {
     rol: String,
     #[serde(default)]
     inicial: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct ParCrudo {
+    nombre: String,
+    alto: String,
+    bajo: String,
 }
 
 fn rol_por_defecto() -> String {
@@ -469,6 +478,16 @@ fn convertir(
         habilitadas_al_arrancar: i.habilitadas_al_arrancar,
     });
 
+    let pares = crudo
+        .pares
+        .into_iter()
+        .map(|p| ParRegistros {
+            nombre: p.nombre,
+            alto: p.alto,
+            bajo: p.bajo,
+        })
+        .collect();
+
     Ok(Maquina {
         nombre: m.nombre,
         formato: m.formato,
@@ -478,6 +497,7 @@ fn convertir(
         arranque: m.arranque,
         pila,
         registros,
+        pares,
         banderas,
         instrucciones,
         regiones,
