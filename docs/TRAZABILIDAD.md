@@ -237,6 +237,16 @@ Pruebas declarativas (001-015), conformidad y cobertura (016-023), generacion al
 | RF-TST-035 | Semilla fijable | Hecho | `semilla` del proyecto, `--semilla` |
 | RF-TST-036 | Conservar la ultima ejecucion | Hecho | `.lorenz/ultimo.json`, `--historial` |
 
+## Requisitos del ecosistema (RF-ECO)
+
+Solo se listan los de las fases ya trabajadas. El resto del ecosistema (paquetes, comunidad,
+extensiones) llega con su fase.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
+| RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,
