@@ -16,4 +16,5 @@ pub mod enlazador;
 pub mod ensamblador;
 pub mod objeto;
 pub mod preprocesar;
+pub mod recarga;
 pub mod salidas;

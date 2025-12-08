@@ -141,7 +141,7 @@ Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensa
 | RF-ENS-027 | Palabras binarias literales | Hecho | `.db` |
 | RF-ENS-028 | Aviso de banderas indeterminadas antes de un salto | Pendiente | |
 | RF-ENS-029 | Exportar la tabla de simbolos | Hecho | `salidas::tabla_de_simbolos` (TOML) |
-| RF-ENS-030 | Recargar sin reiniciar al cambiar la arquitectura | Pendiente | hace falta el IDE o un modo vigilante |
+| RF-ENS-030 | Recargar sin reiniciar al cambiar la arquitectura | Hecho | `recarga::Recargable`; la consume el IDE o un modo vigilante, ya probada sin ellos |
 
 ## Requisitos del depurador (RF-DEP)
 
