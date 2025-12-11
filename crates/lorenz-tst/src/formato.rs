@@ -79,6 +79,26 @@ pub struct InterrupcionDef {
     pub en_ciclo: Option<u64>,
 }
 
+/// Un pulso de reloj: una linea de interrupcion que se levanta cada `periodo` ciclos, `veces`
+/// veces, empezando en el ciclo `desde_ciclo` (RF-TST-008).
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PulsoDef {
+    pub linea: u32,
+    #[serde(default)]
+    pub desde_ciclo: u64,
+    pub periodo: u64,
+    #[serde(default = "una_vez")]
+    pub veces: u64,
+}
+
+fn una_vez() -> u64 {
+    1
+}
+
+/// Tope de pulsos por declaracion, para que una errata no produzca millones de eventos.
+pub const MAX_PULSOS: u64 = 100_000;
+
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct SalidaDef {
@@ -135,6 +155,8 @@ pub struct PruebaDef {
     pub entrada: Vec<EntradaDef>,
     #[serde(default)]
     pub interrupcion: Vec<InterrupcionDef>,
+    #[serde(default)]
+    pub pulso: Vec<PulsoDef>,
     #[serde(default)]
     pub espera: EsperaDef,
 }
@@ -462,6 +484,32 @@ fn validar(m: &Maquina, def: &PruebaDef) -> Result<Vec<(Momento, Evento)>, Error
             ));
         }
         eventos.push((momento, Evento::Interrupcion { linea: i.linea }));
+    }
+    for p in &def.pulso {
+        if p.periodo == 0 || p.veces == 0 || p.veces > MAX_PULSOS {
+            return Err(error_prueba(
+                n,
+                format!(
+                    "pulso: `periodo` debe ser mayor que cero y `veces` estar entre 1 y {MAX_PULSOS}"
+                ),
+            ));
+        }
+        if !m
+            .interrupciones
+            .as_ref()
+            .is_some_and(|c| c.vectores.contains_key(&p.linea))
+        {
+            return Err(error_prueba(
+                n,
+                format!("pulso: la linea {} no tiene vector declarado", p.linea),
+            ));
+        }
+        for k in 0..p.veces {
+            eventos.push((
+                Momento::Ciclo(p.desde_ciclo + k * p.periodo),
+                Evento::Interrupcion { linea: p.linea },
+            ));
+        }
     }
     // Estable: a igual momento se conserva el orden en que se escribieron.
     eventos.sort_by_key(|(m, _)| *m);

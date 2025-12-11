@@ -410,3 +410,82 @@ fn la_ejecucion_es_repetible() {
     assert_eq!(a.fallos, b.fallos);
     assert_eq!(a.instrucciones, b.instrucciones);
 }
+
+// --- pulsos de reloj (RF-TST-008) ---
+
+fn programa_con_manejador() -> String {
+    let nops = "        NOP\n".repeat(80);
+    format!(
+        "        .org 0x0000\n        EI\n{nops}        HLT\n        .org 0xEFF2\n        .dw 0x0100\n        .org 0x0100\n        LDI D, 1\n        ADD C, D\n        RETI\n"
+    )
+}
+
+#[test]
+fn un_pulso_de_reloj_levanta_la_linea_en_cada_periodo() {
+    let programa = programa_con_manejador();
+    let p = proyecto_en(
+        "ejemplos/ejemplo-8-serie",
+        "pulsos",
+        &[("p.s", programa.as_str())],
+        r#"
+[[prueba]]
+nombre = "tres pulsos"
+programa = "p.s"
+limite = 500
+[[prueba.pulso]]
+linea = 1
+desde_ciclo = 5
+periodo = 10
+veces = 3
+[prueba.espera]
+registros = { C = 3 }
+"#,
+    );
+    let r = una(&p);
+    assert!(r.paso(), "{:?} {:?}", r.fallos, r.motivo);
+}
+
+#[test]
+fn sin_pulsos_el_manejador_no_corre() {
+    let programa = programa_con_manejador();
+    let p = proyecto_en(
+        "ejemplos/ejemplo-8-serie",
+        "sinpulsos",
+        &[("p.s", programa.as_str())],
+        "[[prueba]]\nnombre = \"nada\"\nprograma = \"p.s\"\nlimite = 500\n[prueba.espera]\nregistros = { C = 0 }\n",
+    );
+    assert!(una(&p).paso());
+}
+
+/// Carga un proyecto cuyo texto de pruebas es `pruebas` y devuelve el mensaje de error.
+fn error_de_carga(pruebas: &str) -> String {
+    let dir = carpeta("pulso-error");
+    std::fs::write(dir.join("p.s"), "HLT\n").unwrap();
+    let m = raiz().join("ejemplos/ejemplo-8-serie/maquina.toml");
+    let texto = format!(
+        "formato = \"lorenz-pruebas-0.1\"\nmaquina = {:?}\n{pruebas}",
+        m.to_string_lossy()
+    );
+    match Proyecto::desde_texto(&texto, "p.toml", &dir) {
+        Err(e) => e.to_string(),
+        Ok(_) => panic!("se esperaba un error de carga"),
+    }
+}
+
+#[test]
+fn un_pulso_sin_periodo_valido_se_rechaza() {
+    for malo in ["periodo = 0", "periodo = 5\nveces = 0"] {
+        let e = error_de_carga(&format!(
+            "[[prueba]]\nnombre = \"x\"\nprograma = \"p.s\"\n[[prueba.pulso]]\nlinea = 1\n{malo}\n"
+        ));
+        assert!(e.contains("pulso"), "{malo}: {e}");
+    }
+}
+
+#[test]
+fn un_pulso_en_una_linea_sin_vector_se_rechaza() {
+    let e = error_de_carga(
+        "[[prueba]]\nnombre = \"x\"\nprograma = \"p.s\"\n[[prueba.pulso]]\nlinea = 7\nperiodo = 5\n",
+    );
+    assert!(e.contains("no tiene vector"), "{e}");
+}

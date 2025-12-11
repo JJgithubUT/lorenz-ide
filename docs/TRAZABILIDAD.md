@@ -207,7 +207,7 @@ Pruebas declarativas (001-015), conformidad y cobertura (016-023), generacion al
 | RF-TST-005 | Afirmar la salida de un dispositivo | Hecho | `EsperaDef.salida` |
 | RF-TST-006 | Afirmar ciclos con tolerancia | Hecho | `CiclosDef` |
 | RF-TST-007 | Entradas simuladas como pulsaciones | Hecho | `EntradaDef` |
-| RF-TST-008 | Interrupciones en instantes dados | Hecho con limitaciones | `InterrupcionDef`; sin pulso de reloj como tal |
+| RF-TST-008 | Interrupciones en instantes dados | Hecho | `InterrupcionDef` (un instante) y `PulsoDef` (`[[prueba.pulso]]`: linea, `desde_ciclo`, `periodo`, `veces`) |
 | RF-TST-009 | Estado inicial de registros y memoria | Hecho | `InicialDef` |
 | RF-TST-010 | Limite de instrucciones | Hecho | `Prueba::limite` |
 | RF-TST-011 | Ejecutar todas las pruebas | Hecho | `suite::ejecutar_suite`, `lorenz probar` |
