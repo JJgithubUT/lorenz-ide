@@ -45,6 +45,12 @@ pub enum Orden {
         fuente: String,
         opciones: crate::ensamblar::OpcionesEnsamblar,
     },
+    /// Generar la documentacion de una arquitectura.
+    Documentar {
+        maquina: String,
+        salida: Option<String>,
+        vigilar: bool,
+    },
     /// Enlazar varios objetos (o fuentes) en un programa.
     Enlazar {
         maquina: String,
@@ -213,6 +219,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "comparar" => interpretar_comparar(resto),
         "ensamblar" => interpretar_ensamblar(resto),
         "enlazar" => interpretar_enlazar(resto),
+        "documentar" => interpretar_documentar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
@@ -401,6 +408,31 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
         maquina,
         fuente,
         opciones,
+    })
+}
+
+fn interpretar_documentar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut salida, mut vigilar) = (Vec::new(), None, false);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "-o" | "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--vigilar" => vigilar = true,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Documentar {
+        maquina,
+        salida,
+        vigilar,
     })
 }
 

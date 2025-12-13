@@ -33,6 +33,7 @@ Uso:
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz documentar <maquina.toml> [-o DOCUMENTACION.md] [--vigilar]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
   lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
@@ -193,6 +194,17 @@ pub fn ejecutar_cli_con_entrada(
             fuente,
             opciones,
         } => crate::ensamblar::ensamblar_cli(&maquina, &fuente, &opciones, salida, errores),
+        Orden::Documentar {
+            maquina,
+            salida: archivo,
+            vigilar,
+        } => crate::documentar::documentar_cli(
+            &maquina,
+            archivo.as_deref(),
+            vigilar,
+            salida,
+            errores,
+        ),
         Orden::Enlazar {
             maquina,
             entradas,

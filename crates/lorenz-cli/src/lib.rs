@@ -31,3 +31,6 @@ pub mod conformidad;
 pub mod aleatorio;
 
 pub mod compatibilidad;
+
+/// Documentacion generada de la arquitectura.
+pub mod documentar;
