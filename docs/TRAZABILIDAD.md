@@ -97,7 +97,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-033 | Bancos de memoria conmutables por puerto | Pendiente | fase 5 de la ERS |
 | RF-ARQ-034 | Errores con linea y explicacion en terminos de la maquina | Hecho | `localizar::situar`; todo fallo lleva linea y columna |
 | RF-ARQ-035 | Herencia entre descripciones | Pendiente |  |
-| RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Pendiente | hay `descripcion`, falta el generador de documentacion |
+| RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Hecho | los comentarios que preceden a una tabla pasan a `Comentarios`; llegan a la documentacion |
 | RF-ARQ-037 | Descripcion cargada como estructura consultable | Hecho | `Maquina` |
 | RF-ARQ-038 | Editor visual de arquitectura | Pendiente | fase del IDE |
 | RF-ARQ-039 | Editor visual: texto a diagrama | Pendiente | fase del IDE |
@@ -244,6 +244,14 @@ extensiones) llega con su fase.
 
 | Requisito | Resumen | Estado | Donde |
 | --- | --- | --- | --- |
+| RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
+| RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |
+| RF-ECO-019 | Diagrama de codificacion por instruccion | Hecho | `diagrama`: una caja por palabra, con numeracion de bits |
+| RF-ECO-020 | Mapa de memoria con rangos y permisos | Hecho | seccion "Mapa de memoria" |
+| RF-ECO-021 | Tabla de registros y banderas | Hecho | seccion "Registros y banderas", con pares |
+| RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
+| RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
+| RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
 | RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
 | RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
 
