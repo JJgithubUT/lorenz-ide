@@ -168,6 +168,21 @@ Claves propias de cada tipo:
 
 Una región que nombra un dispositivo exige que esté declarado (`E-DISPOSITIVO`).
 
+## Comentarios y documentación
+
+`lorenz documentar maquina.toml -o isa.md` genera la documentación de la arquitectura: resumen,
+registros, pares y banderas, mapa de memoria, dispositivos, interrupciones, la tabla de códigos de
+operación ordenada, y por cada instrucción su codificación dibujada, sus operandos y su coste.
+Con `--vigilar` la vuelve a escribir sola cada vez que el archivo cambia.
+
+Los comentarios del TOML llegan al documento (RF-ARQ-036):
+
+- El bloque de comentarios que abre el archivo describe la máquina entera.
+- Un bloque pegado a la cabecera de una tabla (`[[registro]]`, `[[instruccion]]`, `[[par]]`,
+  `[[region]]`, `[[dispositivo]]`) describe ese elemento. Una línea en blanco entre el bloque y la
+  cabecera lo desconecta.
+- En `[flags]`, el comentario de la línea anterior describe la bandera.
+
 ## Errores de validación
 
 El cargador acumula todos los fallos antes de rechazar la descripción y a cada uno le da su código,
