@@ -175,9 +175,14 @@ struct DispositivoCrudo {
 // ---------------------------------------------------------------------------
 
 /// Lee y valida una descripcion de arquitectura desde un archivo.
+///
+/// Si la descripcion hereda de otra (`hereda` en `[maquina]`), el padre se busca junto a ella
+/// (RF-ARQ-035).
 pub fn cargar_archivo(ruta: impl AsRef<Path>) -> Result<Maquina, ErrorArquitectura> {
+    let ruta = ruta.as_ref();
     let texto = std::fs::read_to_string(ruta)?;
-    cargar(&texto)
+    let canonica = ruta.canonicalize().unwrap_or_else(|_| ruta.to_path_buf());
+    construir(&texto, ruta.parent(), &mut vec![canonica])
 }
 
 /// Lee y valida una descripcion de arquitectura desde su texto TOML.
@@ -185,7 +190,16 @@ pub fn cargar_archivo(ruta: impl AsRef<Path>) -> Result<Maquina, ErrorArquitectu
 /// Devuelve la maquina solo si pasa todas las reglas de validacion; en caso contrario devuelve la
 /// lista completa de fallos, no solo el primero.
 pub fn cargar(texto: &str) -> Result<Maquina, ErrorArquitectura> {
-    let crudo: ArchivoCrudo = toml::from_str(texto)?;
+    construir(texto, None, &mut Vec::new())
+}
+
+fn construir(
+    texto: &str,
+    carpeta: Option<&Path>,
+    visitados: &mut Vec<std::path::PathBuf>,
+) -> Result<Maquina, ErrorArquitectura> {
+    let mezclado = crate::herencia::resolver(texto, carpeta, visitados)?;
+    let crudo: ArchivoCrudo = toml::Value::Table(mezclado).try_into()?;
 
     comprobar_version(&crudo.maquina.formato)?;
 

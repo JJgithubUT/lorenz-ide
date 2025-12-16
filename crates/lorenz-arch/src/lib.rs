@@ -7,6 +7,7 @@ pub mod bits;
 pub mod carga;
 pub mod documentar;
 pub mod error;
+mod herencia;
 mod localizar;
 pub mod modelo;
 pub mod plantilla;
@@ -16,6 +17,7 @@ pub mod validacion;
 pub use bits::{Codificacion, ErrorBits, Pieza};
 pub use carga::{cargar, cargar_archivo};
 pub use error::{ErrorArquitectura, FalloValidacion, Posicion, Regla};
+pub use herencia::cadena as cadena_de_herencia;
 pub use modelo::{
     Acceso, Bandera, Ciclos, Dispositivo, Endianness, Instruccion, Interrupciones, Maquina,
     Operando, ParRegistros, Region, Registro, RolRegistro, SentidoPila, TipoDispositivo,
