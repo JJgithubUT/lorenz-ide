@@ -35,22 +35,25 @@ pub enum Recarga {
     Rechazada(ErrorArquitectura),
 }
 
-fn huella_de(texto: &str) -> u64 {
+/// Huella del texto de la descripcion y de todas las que hereda: si cambia una, cambia la huella.
+fn huella_de(ruta: &Path) -> Result<u64, std::io::Error> {
     let mut h = DefaultHasher::new();
-    texto.hash(&mut h);
-    h.finish()
+    for archivo in lorenz_arch::cadena_de_herencia(ruta) {
+        std::fs::read_to_string(&archivo)?.hash(&mut h);
+    }
+    Ok(h.finish())
 }
 
 impl Recargable {
     /// Carga la descripcion por primera vez; aqui un error si es definitivo.
     pub fn abrir(ruta: impl AsRef<Path>) -> Result<Self, ErrorArquitectura> {
         let ruta = ruta.as_ref().to_path_buf();
-        let texto = std::fs::read_to_string(&ruta)?;
-        let maquina = lorenz_arch::cargar(&texto)?;
+        let huella = huella_de(&ruta)?;
+        let maquina = lorenz_arch::cargar_archivo(&ruta)?;
         Ok(Self {
             ruta,
             maquina,
-            huella: huella_de(&texto),
+            huella,
             version: 1,
         })
     }
@@ -72,16 +75,15 @@ impl Recargable {
 
     /// Vuelve a leer el archivo y, si cambio y es valido, cambia de maquina.
     pub fn recargar(&mut self) -> Recarga {
-        let texto = match std::fs::read_to_string(&self.ruta) {
-            Ok(t) => t,
+        let huella = match huella_de(&self.ruta) {
+            Ok(h) => h,
             Err(e) => return Recarga::Rechazada(e.into()),
         };
-        let huella = huella_de(&texto);
         if huella == self.huella {
             return Recarga::SinCambios;
         }
         self.huella = huella;
-        match lorenz_arch::cargar(&texto) {
+        match lorenz_arch::cargar_archivo(&self.ruta) {
             Ok(m) if Ensamblador::nuevo(&m).is_ok() => {
                 self.maquina = m;
                 self.version += 1;
