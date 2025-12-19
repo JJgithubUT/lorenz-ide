@@ -96,7 +96,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-032 | Lineas de interrupcion con vector y prioridad | Hecho | `Interrupciones` |
 | RF-ARQ-033 | Bancos de memoria conmutables por puerto | Pendiente | fase 5 de la ERS |
 | RF-ARQ-034 | Errores con linea y explicacion en terminos de la maquina | Hecho | `localizar::situar`; todo fallo lleva linea y columna |
-| RF-ARQ-035 | Herencia entre descripciones | Pendiente |  |
+| RF-ARQ-035 | Herencia entre descripciones | Hecho | `herencia::resolver`, clave `hereda`, `eliminar = true`; la ven `Recargable` y `documentar --vigilar` |
 | RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Hecho | los comentarios que preceden a una tabla pasan a `Comentarios`; llegan a la documentacion |
 | RF-ARQ-037 | Descripcion cargada como estructura consultable | Hecho | `Maquina` |
 | RF-ARQ-038 | Editor visual de arquitectura | Pendiente | fase del IDE |
