@@ -17,15 +17,20 @@ fn escribir(salida: &mut dyn Write, texto: &str) {
 const PERIODO_DE_VIGILANCIA: Duration = Duration::from_millis(500);
 
 /// Genera la documentacion de una descripcion a partir de su texto.
+///
+/// Si la descripcion hereda de otras, los comentarios que se incorporan son los de su propio archivo.
 pub fn generar(ruta: &str, texto: &str) -> Result<String, String> {
-    let maquina = lorenz_arch::cargar(texto).map_err(|e| format!("{ruta}: {e}"))?;
+    let maquina = lorenz_arch::cargar_archivo(ruta).map_err(|e| format!("{ruta}: {e}"))?;
     Ok(documentar(&maquina, &Comentarios::leer(texto)))
 }
 
-fn huella(texto: &str) -> u64 {
+/// Huella de la descripcion y de todas las que hereda.
+fn huella(ruta: &str) -> Option<u64> {
     let mut h = DefaultHasher::new();
-    texto.hash(&mut h);
-    h.finish()
+    for archivo in lorenz_arch::cadena_de_herencia(std::path::Path::new(ruta)) {
+        std::fs::read_to_string(archivo).ok()?.hash(&mut h);
+    }
+    Some(h.finish())
 }
 
 /// Regenera la documentacion cuando la descripcion cambia (RF-ECO-026).
@@ -61,11 +66,11 @@ impl Vigilante {
             Ok(t) => t,
             Err(e) => return Pasada::Fallo(format!("{}: no se pudo leer: {e}", self.maquina)),
         };
-        let h = huella(&texto);
-        if self.ultima == Some(h) {
+        let h = huella(&self.maquina);
+        if h.is_some() && self.ultima == h {
             return Pasada::SinCambios;
         }
-        self.ultima = Some(h);
+        self.ultima = h;
         match generar(&self.maquina, &texto) {
             Ok(doc) => match std::fs::write(&self.salida, doc) {
                 Ok(()) => Pasada::Regenerada,

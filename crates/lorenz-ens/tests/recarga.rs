@@ -113,3 +113,16 @@ fn un_archivo_borrado_se_rechaza() {
 fn abrir_un_archivo_invalido_es_un_error() {
     assert!(Recargable::abrir(archivo("nada")).is_err());
 }
+
+#[test]
+fn un_cambio_en_la_descripcion_base_tambien_recarga() {
+    let dir = archivo(BASE).parent().unwrap().to_path_buf();
+    let hijo = dir.join("hijo.toml");
+    std::fs::write(&hijo, "[maquina]\nhereda = \"maquina.toml\"\n").unwrap();
+    let mut r = Recargable::abrir(&hijo).unwrap();
+    assert!(!ensambla(&r, "INC"));
+    // Se edita el padre, no el hijo.
+    std::fs::write(dir.join("maquina.toml"), format!("{BASE}{CON_INC}")).unwrap();
+    assert!(matches!(r.recargar(), Recarga::Recargada));
+    assert!(ensambla(&r, "INC"));
+}

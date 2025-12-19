@@ -43,6 +43,9 @@ pub enum ErrorArquitectura {
     #[error("codificacion de instruccion invalida en '{mnemonico}': {causa}")]
     Codificacion { mnemonico: String, causa: String },
 
+    #[error("herencia entre descripciones: {0}")]
+    Herencia(String),
+
     #[error("la descripcion no es valida:{}", listar_fallos(.0))]
     Validacion(Vec<FalloValidacion>),
 }

@@ -38,6 +38,7 @@ Los números se escriben en decimal, `0x` hexadecimal o `0b` binario. Los textos
 | `endianness` | `"little"` o `"big"` | `"little"` | Orden de los fragmentos de un campo repartido en varias palabras |
 | `arranque` | entero | `0` | Dirección donde empieza el contador de programa |
 | `pila` | `"ascendente"` o `"descendente"` | `"descendente"` | Sentido en que crece la pila |
+| `hereda` | texto | ninguna | Archivo de otra descripción de la que se parte; ver [Herencia](#herencia) |
 
 ### `[maquina.interrupciones]`
 
@@ -46,6 +47,38 @@ Los números se escriben en decimal, `0x` hexadecimal o `0b` binario. Los textos
 | `vectores` | tabla `línea = dirección` | vacía | Dirección a la que salta cada línea |
 | `prioridades` | tabla `línea = entero` | la propia línea | Prioridad de cada línea; menor es más urgente |
 | `habilitadas_al_arrancar` | booleano | `false` | Si las interrupciones están permitidas al empezar |
+
+## Herencia
+
+Una descripción parte de otra con `hereda` en `[maquina]` y declara solo lo que cambia
+(RF-ARQ-035). La ruta es relativa a la carpeta del archivo que hereda y la cadena admite hasta 8
+niveles; un ciclo es un error.
+
+```toml
+[maquina]
+hereda = "ejemplo-8/maquina.toml"
+nombre = "ejemplo-8-turbo"
+
+[[instruccion]]            # sustituye a la ADD del padre
+mnemonico = "ADD"
+# ...
+
+[[instruccion]]            # quita MOV
+mnemonico = "MOV"
+eliminar = true
+```
+
+La mezcla se hace antes de validar, así que el resultado pasa por las mismas reglas que cualquier
+descripción:
+
+- Las claves de `[maquina]` del hijo sustituyen a las del padre.
+- `[flags]` se mezcla por nombre de bandera.
+- `[[registro]]`, `[[par]]`, `[[instruccion]]` (por `mnemonico`), `[[region]]` y `[[dispositivo]]` se
+  mezclan por `nombre`. Un elemento del hijo con el mismo nombre sustituye al del padre en su sitio
+  y entero, no clave a clave; uno nuevo se añade al final; con `eliminar = true` se quita el del
+  padre.
+- Solo se pueden cargar descripciones heredadas desde archivo, no desde texto suelto.
+- Una recarga ve también los cambios hechos en los archivos base.
 
 ## `[flags]`
 
