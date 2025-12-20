@@ -17,6 +17,44 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Fase 2: cierre de pendientes y ejemplos de arquitectura
+
+**Hecho:**
+- Precarga de regiones (`contenido`), `explicar` y `avisar` en el depurador, con aviso de pila,
+  registros sin escribir y celdas sin escribir.
+- Cuatro arquitecturas de ejemplo con programas y pruebas: `ejemplo-8`, `ejemplo-8-serie`,
+  `risc-16` y `pila-8`.
+- Pares de registros (`[[par]]`), herencia entre descripciones (`hereda`), fallos de validacion con
+  linea y columna, recarga del ensamblador (`Recargable`), pulsos de reloj en las pruebas.
+- Documentacion generada: `lorenz documentar` (con `--vigilar`), `docs/FORMATO.md` con la gramatica
+  completa y una prueba que vigila que no entren dependencias de red ni de IA.
+- Informe de avance en tabla por requisito, con estados en verde, amarillo, rojo y gris.
+
+**Decidido:**
+- **D-051** — Los fallos de validacion se sitúan buscando en el texto la declaracion del nombre que
+  citan (la segunda declaracion si el nombre esta repetido); asi no hubo que cambiar las 40 reglas.
+- **D-052** — Un par de registros se resuelve en `Estado`, no en el interprete: leer junta, escribir
+  reparte, y todo lo que ya usaba nombres de registro lo admite sin cambios.
+- **D-053** — La herencia mezcla el TOML antes de construir la maquina, por nombre de elemento; un
+  elemento se sustituye entero y `eliminar = true` lo quita. Solo se hereda desde archivo.
+- **D-054** — La recarga y el vigilante comparan una huella de todo el arbol de herencia, no solo
+  del archivo principal, y un error no se repite mientras el texto no cambie.
+- **D-055** — Un pulso de reloj en una prueba es una interrupcion periodica expandida a eventos en
+  ciclos concretos, con tope de 100000.
+- **D-056** — La documentacion es Markdown determinista, sin fechas, para que se pueda versionar.
+  Los comentarios del TOML pegados a una tabla se incorporan; una linea en blanco los desconecta.
+
+**Pendiente:**
+- RF-ENS-028 (aviso de banderas indeterminadas) y los requisitos de interfaz grafica (fase del IDE).
+- Externos en datos y `.dir`; listado del programa enlazado; guardar puertos y dispositivos en el
+  archivo de fallo; que `validar` compruebe que existen los archivos de `contenido`.
+- Lenguaje SGT (fase 4).
+
+**Requisitos:** RF-ARQ-010, 034, 035, 036, 042; RF-ENS-030; RF-TST-008; RF-ECO-017 a 023, 026, 028
+y 043; RF-DEP-040 a 042.
+
+**Commits:** ramas `feat/*` y `docs/*` fusionadas a `develop`; 382 commits al cierre de este bloque.
+
 ## 2026-10-16 — Fase 2: enlazador
 
 **Hecho:** `.externo`, reubicaciones en el objeto, `enlazador::enlazar` y la orden `lorenz enlazar`
