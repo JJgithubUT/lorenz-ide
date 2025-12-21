@@ -31,17 +31,17 @@ Formato de una entrada:
 - Informe de avance en tabla por requisito, con estados en verde, amarillo, rojo y gris.
 
 **Decidido:**
-- **D-051** — Los fallos de validacion se sitúan buscando en el texto la declaracion del nombre que
+- **D-053** — Los fallos de validacion se sitúan buscando en el texto la declaracion del nombre que
   citan (la segunda declaracion si el nombre esta repetido); asi no hubo que cambiar las 40 reglas.
-- **D-052** — Un par de registros se resuelve en `Estado`, no en el interprete: leer junta, escribir
+- **D-054** — Un par de registros se resuelve en `Estado`, no en el interprete: leer junta, escribir
   reparte, y todo lo que ya usaba nombres de registro lo admite sin cambios.
-- **D-053** — La herencia mezcla el TOML antes de construir la maquina, por nombre de elemento; un
+- **D-055** — La herencia mezcla el TOML antes de construir la maquina, por nombre de elemento; un
   elemento se sustituye entero y `eliminar = true` lo quita. Solo se hereda desde archivo.
-- **D-054** — La recarga y el vigilante comparan una huella de todo el arbol de herencia, no solo
+- **D-056** — La recarga y el vigilante comparan una huella de todo el arbol de herencia, no solo
   del archivo principal, y un error no se repite mientras el texto no cambie.
-- **D-055** — Un pulso de reloj en una prueba es una interrupcion periodica expandida a eventos en
+- **D-057** — Un pulso de reloj en una prueba es una interrupcion periodica expandida a eventos en
   ciclos concretos, con tope de 100000.
-- **D-056** — La documentacion es Markdown determinista, sin fechas, para que se pueda versionar.
+- **D-058** — La documentacion es Markdown determinista, sin fechas, para que se pueda versionar.
   Los comentarios del TOML pegados a una tabla se incorporan; una linea en blanco los desconecta.
 
 **Pendiente:**
