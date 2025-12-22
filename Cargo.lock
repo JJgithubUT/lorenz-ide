@@ -84,6 +84,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-sgt"
+version = "0.1.0"
+dependencies = [
+ "lorenz-arch",
+ "lorenz-emu",
+ "lorenz-ens",
+ "thiserror",
+]
+
+[[package]]
 name = "lorenz-tst"
 version = "0.1.0"
 dependencies = [
