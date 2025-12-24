@@ -1,0 +1,15 @@
+[package]
+name = "lorenz-sgt"
+description = "Compilador del lenguaje SGT (Saggitarius) para arquitecturas descritas con lorenz-arch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-ens = { path = "../lorenz-ens" }
+thiserror.workspace = true
+
+[dev-dependencies]
+lorenz-emu = { path = "../lorenz-emu" }
