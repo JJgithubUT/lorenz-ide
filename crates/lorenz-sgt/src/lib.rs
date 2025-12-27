@@ -5,6 +5,10 @@
 //! intermedia independiente de la arquitectura, y de ahi a ensamblador de la maquina activa.
 
 pub mod ast;
+pub mod destino;
 pub mod diagnostico;
+pub mod hir;
 pub mod lexico;
 pub mod sintaxis;
+pub mod tipos;
+pub mod valores;
