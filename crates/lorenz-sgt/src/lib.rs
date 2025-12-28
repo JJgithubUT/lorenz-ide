@@ -4,6 +4,7 @@
 //! su descripcion (RF-SGT-024). El recorrido es fuente, arbol sintactico, representacion
 //! intermedia independiente de la arquitectura, y de ahi a ensamblador de la maquina activa.
 
+pub mod analisis;
 pub mod ast;
 pub mod destino;
 pub mod diagnostico;
