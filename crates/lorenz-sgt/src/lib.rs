@@ -9,6 +9,7 @@ pub mod ast;
 pub mod destino;
 pub mod diagnostico;
 pub mod hir;
+pub mod interprete;
 pub mod layout;
 pub mod lexico;
 pub mod sintaxis;
