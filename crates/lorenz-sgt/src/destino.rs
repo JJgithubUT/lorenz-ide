@@ -24,6 +24,8 @@ pub struct Destino {
     /// Ancho de direccion en bits.
     pub direccion: u32,
     pub arranque: u64,
+    /// Si la palabra menos significativa de un valor multipalabra va primero.
+    pub little: bool,
     pub regiones: Vec<RegionDestino>,
     /// Numeros de puerto que algun dispositivo declara.
     pub puertos: BTreeSet<u64>,
@@ -57,6 +59,7 @@ impl Destino {
             palabra: m.bits_palabra,
             direccion: m.bits_direccion,
             arranque: m.arranque,
+            little: matches!(m.endianness, lorenz_arch::modelo::Endianness::Little),
             regiones,
             puertos,
             registros: m
