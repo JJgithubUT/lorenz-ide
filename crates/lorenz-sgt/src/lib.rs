@@ -12,6 +12,7 @@ pub mod hir;
 pub mod interprete;
 pub mod layout;
 pub mod lexico;
+pub mod seleccion;
 pub mod sintaxis;
 pub mod tipos;
 pub mod valores;
