@@ -6,9 +6,11 @@
 
 pub mod analisis;
 pub mod ast;
+pub mod compilar;
 pub mod destino;
 pub mod diagnostico;
 pub mod emisor;
+pub mod generador;
 pub mod hir;
 pub mod interprete;
 pub mod layout;
