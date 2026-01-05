@@ -130,3 +130,94 @@ pub enum ClaseExpr {
     Entrada(Box<Expr>),
     Bandera(String),
 }
+
+// ----------------------------------------------------------------------
+// Recorridos
+// ----------------------------------------------------------------------
+
+/// Recorre en profundidad todas las expresiones y referencias a variables de una sentencia.
+pub fn recorrer_sent_mut(s: &mut Sent, e: &mut dyn FnMut(&mut Expr), r: &mut dyn FnMut(&mut Ref)) {
+    match &mut s.clase {
+        ClaseSent::Asignar(sitio, v) => {
+            recorrer_sitio_mut(sitio, e, r);
+            recorrer_expr_mut(v, e, r);
+        }
+        ClaseSent::Si(c, a, b) => {
+            recorrer_expr_mut(c, e, r);
+            a.iter_mut()
+                .chain(b.iter_mut())
+                .for_each(|s| recorrer_sent_mut(s, e, r));
+        }
+        ClaseSent::Mientras(c, b) => {
+            recorrer_expr_mut(c, e, r);
+            b.iter_mut().for_each(|s| recorrer_sent_mut(s, e, r));
+        }
+        ClaseSent::Bucle(b) => b.iter_mut().for_each(|s| recorrer_sent_mut(s, e, r)),
+        ClaseSent::Devolver(Some(v)) | ClaseSent::Expr(v) => recorrer_expr_mut(v, e, r),
+        ClaseSent::Segun {
+            valor,
+            brazos,
+            otro,
+        } => {
+            recorrer_expr_mut(valor, e, r);
+            for (_, b) in brazos {
+                b.iter_mut().for_each(|s| recorrer_sent_mut(s, e, r));
+            }
+            otro.iter_mut().for_each(|s| recorrer_sent_mut(s, e, r));
+        }
+        ClaseSent::Salida(a, b) => {
+            recorrer_expr_mut(a, e, r);
+            recorrer_expr_mut(b, e, r);
+        }
+        ClaseSent::Asm(_, refs) => refs.iter_mut().for_each(|(_, x)| r(x)),
+        ClaseSent::Romper | ClaseSent::Continuar | ClaseSent::Devolver(None) => {}
+    }
+}
+
+pub fn recorrer_sitio_mut(
+    s: &mut Sitio,
+    e: &mut dyn FnMut(&mut Expr),
+    r: &mut dyn FnMut(&mut Ref),
+) {
+    match &mut s.clase {
+        ClaseSitio::Variable(x) => r(x),
+        ClaseSitio::Indice(b, i, _) => {
+            recorrer_sitio_mut(b, e, r);
+            recorrer_expr_mut(i, e, r);
+        }
+        ClaseSitio::Campo(b, _) => recorrer_sitio_mut(b, e, r),
+        ClaseSitio::Deref(p) => recorrer_expr_mut(p, e, r),
+        ClaseSitio::Registro(_) => {}
+    }
+}
+
+pub fn recorrer_expr_mut(x: &mut Expr, e: &mut dyn FnMut(&mut Expr), r: &mut dyn FnMut(&mut Ref)) {
+    e(x);
+    match &mut x.clase {
+        ClaseExpr::Leer(s) | ClaseExpr::Direccion(s) => recorrer_sitio_mut(s, e, r),
+        ClaseExpr::Binario(_, a, b) => {
+            recorrer_expr_mut(a, e, r);
+            recorrer_expr_mut(b, e, r);
+        }
+        ClaseExpr::Unario(_, a) | ClaseExpr::Cast(a) | ClaseExpr::Entrada(a) => {
+            recorrer_expr_mut(a, e, r)
+        }
+        ClaseExpr::Llamada(_, args) => args.iter_mut().for_each(|a| recorrer_expr_mut(a, e, r)),
+        ClaseExpr::Const(_) | ClaseExpr::Bandera(_) => {}
+    }
+}
+
+impl Funcion {
+    /// Recorre todo el cuerpo de la funcion.
+    pub fn recorrer_mut(&mut self, e: &mut dyn FnMut(&mut Expr), r: &mut dyn FnMut(&mut Ref)) {
+        self.cuerpo
+            .iter_mut()
+            .for_each(|s| recorrer_sent_mut(s, e, r));
+    }
+}
+
+impl Modulo {
+    pub fn funcion_por_nombre(&self, nombre: &str) -> Option<IdFuncion> {
+        self.funciones.iter().position(|f| f.nombre == nombre)
+    }
+}
