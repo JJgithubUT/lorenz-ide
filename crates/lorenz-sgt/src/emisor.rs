@@ -1058,6 +1058,13 @@ impl<'a> Emisor<'a> {
     }
 }
 
+/// Si el perfil tiene alguna instruccion `rd = rs op rt` entre registros.
+pub fn perfil_tiene_alu_rr(p: &Perfil, op: OpBinario) -> bool {
+    p.con_forma(|f| matches!(f, Forma::Alu { op: o, b: Fuente::Reg(_), .. } if *o == op))
+        .next()
+        .is_some()
+}
+
 pub fn negar(op: OpBinario) -> OpBinario {
     match op {
         OpBinario::Igual => OpBinario::Distinto,

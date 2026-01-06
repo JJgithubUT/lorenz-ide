@@ -24,6 +24,8 @@ use crate::hir::*;
 use crate::layout::{disponer, palabras, Disposicion};
 use crate::tipos::Tipo;
 
+type Sustituye = Box<dyn Fn(OpBinario, &Tipo) -> Option<&'static str>>;
+
 pub struct Generado {
     pub lineas: Vec<Linea>,
     pub disposicion: Disposicion,
@@ -45,6 +47,7 @@ struct Gen<'a> {
     ra: Vec<u64>,
     derrames: HashMap<(usize, String), u64>,
     fin_funcion: String,
+    sustituye: Sustituye,
 }
 
 type G<T> = Result<T, ()>;
@@ -82,6 +85,54 @@ fn es_orden(op: OpBinario) -> bool {
 
 fn es_comparacion(op: OpBinario) -> bool {
     op.es_comparacion()
+}
+
+/// Funcion de la biblioteca que sustituye a un operador que la maquina no tiene (RF-SGT-024).
+///
+/// Devuelve `None` cuando el operador se hace con una instruccion. Solo se contemplan enteros del
+/// ancho de palabra.
+pub fn sustitucion_para(maq: &Maquina) -> impl Fn(OpBinario, &Tipo) -> Option<&'static str> {
+    let perfil = crate::seleccion::Perfil::de(maq);
+    let palabra = maq.bits_palabra;
+    move |op, t| {
+        let Tipo::Entero { bits, signo } = t else {
+            return None;
+        };
+        if *bits != palabra {
+            return None;
+        }
+        let nativa = |o: OpM| crate::emisor::perfil_tiene_alu_rr(&perfil, o);
+        Some(match (op, signo) {
+            (OpBinario::Mul, _) => {
+                if nativa(OpM::Producto) {
+                    return None;
+                }
+                "__mul"
+            }
+            (OpBinario::Div, false) => {
+                if nativa(OpM::Division) {
+                    return None;
+                }
+                "__divu"
+            }
+            (OpBinario::Mod, false) => {
+                if nativa(OpM::Modulo) {
+                    return None;
+                }
+                "__modu"
+            }
+            (OpBinario::Div, true) => "__divs",
+            (OpBinario::Mod, true) => "__mods",
+            (OpBinario::DespIzq, _) => "__shl",
+            (OpBinario::DespDer, false) => "__shr",
+            (OpBinario::DespDer, true) => "__sar",
+            (OpBinario::SumaSat, false) => "__sumasat_u",
+            (OpBinario::RestaSat, false) => "__restasat_u",
+            (OpBinario::SumaSat, true) => "__sumasat_s",
+            (OpBinario::RestaSat, true) => "__restasat_s",
+            _ => return None,
+        })
+    }
 }
 
 pub fn generar(
@@ -133,6 +184,7 @@ pub fn generar(
         ra: Vec::new(),
         derrames: HashMap::new(),
         fin_funcion: String::new(),
+        sustituye: Box::new(sustitucion_para(maq)),
     };
     g.programa();
     if g.diag.is_empty() {
@@ -718,6 +770,15 @@ impl<'a> Gen<'a> {
             }
         }
         let tb = self.expr(b)?.ok_or(())?;
+        if let Some(nombre) = (self.sustituye)(op, &a.tipo) {
+            let id = self
+                .m
+                .funciones
+                .iter()
+                .position(|f| f.nombre == nombre)
+                .expect("falta la biblioteca de apoyo");
+            return self.llamar_con(id, &[ta, tb]);
+        }
         let Some(opm) = op_maquina(op) else {
             self.error(format!(
                 "el operador `{}` todavia no se compila",
@@ -828,23 +889,34 @@ impl<'a> Gen<'a> {
     }
 
     fn llamada(&mut self, id: usize, args: &[Expr]) -> G<Option<String>> {
-        let fun = &self.m.funciones[id];
-        // 1. Todos los argumentos, antes de tocar las posiciones de los parametros: un argumento
-        //    puede ser otra llamada a la misma funcion.
+        // Todos los argumentos antes de tocar las posiciones de los parametros: un argumento puede
+        // ser otra llamada a la misma funcion.
         let mut valores = Vec::new();
         for a in args {
             valores.push(self.expr(a)?.ok_or(())?);
         }
-        for ((p, v), a) in fun.parametros.iter().zip(&valores).zip(args) {
-            let _ = a;
+        self.llamar_con(id, &valores)
+    }
+
+    /// Llama a la funcion `id` con los argumentos ya calculados en registros. Los registros de
+    /// los argumentos se liberan aqui.
+    fn llamar_con(&mut self, id: usize, valores: &[String]) -> G<Option<String>> {
+        let fun = &self.m.funciones[id];
+        if fun.nombre == "__detener" {
+            let r = self.em.detener();
+            self.r(r)?;
+            return Ok(None);
+        }
+        for (p, v) in fun.parametros.iter().zip(valores) {
             let dir = self.disp.locales[id][*p];
             let r = self.em.escribir(&Sitio::Fija(dir), v);
             self.r(r)?;
         }
-        for v in &valores {
+        // Los argumentos ya estan guardados: sus registros se pueden reusar.
+        let propios: Vec<String> = valores.to_vec();
+        for v in &propios {
             self.liberar(v);
         }
-        // 2. El registro del resultado y los vivos.
         let devuelve = fun.retorno != Tipo::Vacio;
         let destino = if devuelve { Some(self.tmp()?) } else { None };
         let vivos: Vec<String> = self
@@ -857,7 +929,6 @@ impl<'a> Gen<'a> {
             let r = self.em.escribir(&Sitio::Fija(a), v);
             self.r(r)?;
         }
-        // 3. Direccion de retorno y salto.
         let ret = self.em.etiqueta_nueva("r");
         let s0 = self.em.s0();
         let r = self.em.cargar(&s0, &Valor::Sim(ret.clone()));
@@ -869,7 +940,6 @@ impl<'a> Gen<'a> {
         let r = self.em.saltar(&nombre);
         self.r(r)?;
         self.em.poner_etiqueta(&ret);
-        // 4. Resultado y reposicion.
         if let Some(d) = &destino {
             let r = self.em.mover(d, &s0);
             self.r(r)?;

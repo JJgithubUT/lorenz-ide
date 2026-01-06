@@ -7,7 +7,7 @@ use crate::analisis::{analizar, Opciones};
 use crate::destino::Destino;
 use crate::diagnostico::{Diagnostico, Lugar};
 use crate::emisor::Linea;
-use crate::generador::generar;
+use crate::generador::{generar, sustitucion_para};
 use crate::hir::Modulo;
 use crate::layout::Disposicion;
 use crate::sintaxis::analizar_programa;
@@ -68,7 +68,14 @@ pub fn compilar(
 ) -> Result<Compilado, Vec<Diagnostico>> {
     let programa = analizar_programa(archivo, texto).map_err(|d| vec![d])?;
     let destino = Destino::de(maquina);
-    let modulo = analizar(archivo, &programa, &destino, opciones)?;
+    reservados(archivo, &programa)?;
+    // La biblioteca de apoyo va primero; lo que no se use se poda despues.
+    let mut completo = crate::biblioteca::programa(maquina.bits_palabra).map_err(|d| vec![d])?;
+    completo
+        .elementos
+        .extend(programa.elementos.iter().cloned());
+    let modulo = analizar(archivo, &completo, &destino, opciones)?;
+    let modulo = crate::podar::podar(modulo, &sustitucion_para(maquina));
     // Primero con saltos cortos; si algun salto no alcanza, todo con saltos largos.
     let mut ultimo = None;
     for largos in [false, true] {
@@ -125,4 +132,30 @@ fn interno(archivo: &str, msg: &str) -> Diagnostico {
         Lugar::nuevo(1, 1),
         format!("error interno del compilador: {msg}"),
     )
+}
+
+/// Los nombres que empiezan por `__` son del compilador.
+fn reservados(archivo: &str, p: &crate::ast::Programa) -> Result<(), Vec<Diagnostico>> {
+    use crate::ast::Elemento;
+    let mut errores = Vec::new();
+    for e in &p.elementos {
+        let (nombre, lugar) = match e {
+            Elemento::Funcion(f) => (&f.nombre, f.lugar),
+            Elemento::Global(g) => (&g.nombre, g.lugar),
+            Elemento::Const(c) => (&c.nombre, c.lugar),
+            Elemento::Estructura(s) => (&s.nombre, s.lugar),
+            Elemento::Importar(_) => continue,
+        };
+        if crate::biblioteca::es_reservado(nombre) {
+            errores.push(
+                Diagnostico::nuevo(archivo, lugar, format!("el nombre `{nombre}` esta reservado: los nombres que empiezan por `__` son del compilador"))
+                    .con_sugerencia("elige otro nombre"),
+            );
+        }
+    }
+    if errores.is_empty() {
+        Ok(())
+    } else {
+        Err(errores)
+    }
 }

@@ -6,6 +6,7 @@
 
 pub mod analisis;
 pub mod ast;
+pub mod biblioteca;
 pub mod compilar;
 pub mod destino;
 pub mod diagnostico;
@@ -15,6 +16,7 @@ pub mod hir;
 pub mod interprete;
 pub mod layout;
 pub mod lexico;
+pub mod podar;
 pub mod seleccion;
 pub mod sintaxis;
 pub mod tipos;
