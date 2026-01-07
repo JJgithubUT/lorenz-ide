@@ -29,6 +29,7 @@ Uso:
                   [--pantalla] [--vigilar] [--cobertura] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
+  lorenz compilar <maquina.toml> <fuente.sgt> [-o PROGRAMA.hex] [--asm ARCHIVO] [--lineas ARCHIVO]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
@@ -189,6 +190,11 @@ pub fn ejecutar_cli_con_entrada(
             salida,
             errores,
         ),
+        Orden::Compilar {
+            maquina,
+            fuente,
+            opciones,
+        } => crate::compilar::compilar_cli(&maquina, &fuente, &opciones, salida, errores),
         Orden::Ensamblar {
             maquina,
             fuente,
