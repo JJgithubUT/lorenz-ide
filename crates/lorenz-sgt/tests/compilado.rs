@@ -143,3 +143,63 @@ fn valores_concretos_esperados() {
     assert_eq!(g["s"], 0xFFF9);
     assert_eq!(g["t"], 0xABCD);
 }
+
+#[test]
+fn multiplicar_dividir_y_modulo() {
+    dif(
+        "var a: u16; var b: u16; var c: u16; var d: u16; var e: u16; var f: u16;
+         funcion principal() { var x: u16 = 1234; var y: u16 = 57;
+           a = x * y; b = x / y; c = x % y; d = 60000 / x; e = x * 0; f = 7 / 8; }",
+    );
+}
+
+#[test]
+fn mul_div_con_signo() {
+    dif(
+        "var a: i16; var b: i16; var c: i16; var d: i16; var e: i16; var f: i16;
+         funcion principal() { var x: i16 = -1234; var y: i16 = 57;
+           a = x * y; b = x / y; c = x % y; d = x / -7; e = (0 - x) % -10; f = -32768 / -1; }",
+    );
+}
+
+#[test]
+fn desplazamientos() {
+    dif("var a: u16; var b: u16; var c: u16; var d: i16; var e: i16; var f: u16; var g: u16;
+         funcion principal() { var x: u16 = 0xA5C3; var k: u16 = 5; var n: i16 = -1234;
+           a = x << k; b = x >> k; c = x >> 16; d = n >> 3; e = n >> 20; f = 1 << 15; g = x << 16; }");
+}
+
+#[test]
+fn saturacion_compilada() {
+    dif("var a: u16; var b: u16; var c: i16; var d: i16; var e: i16; var f: i16;
+         funcion principal() { var x: u16 = 65000; var y: u16 = 1000; var p: i16 = 32000; var q: i16 = -32000;
+           a = x +| y; b = y -| x; c = p +| 1000; d = q -| 1000; e = p -| q; f = q +| q; }");
+}
+
+#[test]
+fn division_entre_cero_detiene() {
+    let (g, _) = ejecutado(
+        "risc-16",
+        "var a: u16 = 1; funcion principal() { var z: u16 = 0; a = 5 / z; a = 9; }",
+    );
+    assert_eq!(g["a"], 1, "la maquina debia detenerse antes de asignar");
+}
+
+#[test]
+fn nombres_reservados() {
+    let e = compilar_en("risc-16", "funcion __mul() { } funcion principal() { }").unwrap_err();
+    assert!(e.contains("reservado"), "{e}");
+}
+
+#[test]
+fn la_biblioteca_solo_entra_si_se_usa() {
+    let sin = compilar_en("risc-16", "var a: u16; funcion principal() { a = 1 + 2; }").unwrap();
+    assert!(!sin.ensamblador().contains("f___"), "{}", sin.ensamblador());
+    let con = compilar_en(
+        "risc-16",
+        "var a: u16; funcion principal() { var x: u16 = 3; a = x * x; }",
+    )
+    .unwrap();
+    assert!(con.ensamblador().contains("f___mul:"));
+    assert!(!con.ensamblador().contains("f___divmod:"));
+}
