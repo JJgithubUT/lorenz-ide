@@ -39,6 +39,12 @@ pub enum Orden {
         limite: u64,
         direccion: Option<u64>,
     },
+    /// Compilar un fuente de SGT y escribir el programa en hexadecimal.
+    Compilar {
+        maquina: String,
+        fuente: String,
+        opciones: crate::compilar::OpcionesCompilar,
+    },
     /// Ensamblar un fuente y escribir el programa en hexadecimal.
     Ensamblar {
         maquina: String,
@@ -220,6 +226,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ensamblar" => interpretar_ensamblar(resto),
         "enlazar" => interpretar_enlazar(resto),
         "documentar" => interpretar_documentar(resto),
+        "compilar" => interpretar_compilar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
@@ -405,6 +412,34 @@ fn interpretar_ensamblar(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::Sobra(extra));
     }
     Ok(Orden::Ensamblar {
+        maquina,
+        fuente,
+        opciones,
+    })
+}
+
+fn interpretar_compilar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut opciones = crate::compilar::OpcionesCompilar::default();
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "-o" | "--salida" => opciones.salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--asm" => opciones.ensamblador = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--lineas" => opciones.lineas = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let fuente = it.next().ok_or(ErrorUso::Falta("fuente"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Compilar {
         maquina,
         fuente,
         opciones,

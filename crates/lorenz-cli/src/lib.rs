@@ -34,3 +34,6 @@ pub mod compatibilidad;
 
 /// Documentacion generada de la arquitectura.
 pub mod documentar;
+
+/// Compilacion de SGT.
+pub mod compilar;
