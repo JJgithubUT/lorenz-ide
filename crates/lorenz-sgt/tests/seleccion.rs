@@ -137,8 +137,10 @@ fn ejemplo_8_dos_direcciones_y_bandera() {
             salto: Salto::Absoluto("dir".into())
         }
     );
-    // RETI toca la pila y las interrupciones: el compilador no la usa como instruccion corriente.
-    assert_eq!(forma(&p, "RETI"), &Forma::Otra);
+    // RETI asigna el contador de programa y habilita las interrupciones.
+    assert_eq!(forma(&p, "RETI"), &Forma::RetornoInterrupcion);
+    assert_eq!(forma(&p, "EI"), &Forma::Interrupciones(true));
+    assert_eq!(forma(&p, "DI"), &Forma::Interrupciones(false));
 }
 
 #[test]

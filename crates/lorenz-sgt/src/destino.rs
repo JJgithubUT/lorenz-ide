@@ -1,6 +1,6 @@
 //! Lo que el compilador sabe de la maquina destino, sacado de su descripcion (RF-SGT-002, 024).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use lorenz_arch::modelo::Maquina;
 
@@ -34,6 +34,10 @@ pub struct Destino {
     pub banderas: Vec<String>,
     /// Lineas de interrupcion con vector declarado.
     pub lineas: BTreeSet<u32>,
+    /// Direccion del vector de cada linea de interrupcion.
+    pub vectores: BTreeMap<u32, u64>,
+    /// Si las interrupciones estan habilitadas al arrancar.
+    pub interrupciones_al_arrancar: bool,
 }
 
 impl Destino {
@@ -73,6 +77,15 @@ impl Destino {
                 .as_ref()
                 .map(|i| i.vectores.keys().copied().collect())
                 .unwrap_or_default(),
+            vectores: m
+                .interrupciones
+                .as_ref()
+                .map(|i| i.vectores.iter().map(|(l, d)| (*l, *d)).collect())
+                .unwrap_or_default(),
+            interrupciones_al_arrancar: m
+                .interrupciones
+                .as_ref()
+                .is_some_and(|i| i.habilitadas_al_arrancar),
         }
     }
 
