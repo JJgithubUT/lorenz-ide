@@ -617,6 +617,8 @@ impl<'a> Analizador<'a> {
         });
         self.modulo.funciones.push(hir::Funcion {
             nombre: f.nombre.clone(),
+            base: f.nombre.clone(),
+            raiz: 0,
             lugar: f.lugar,
             parametros: Vec::new(),
             locales: Vec::new(),

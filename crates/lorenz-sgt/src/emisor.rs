@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 use lorenz_arch::modelo::{Instruccion, Maquina, RolRegistro, TipoOperando};
 use lorenz_arch::semantica::ast::{OpBinario, OpUnario};
 
-use crate::seleccion::{Cond, Dir, Forma, Fuente, Instr, Perfil, Reg, Salto};
+use crate::seleccion::{Cond, Dir, Forma, Fuente, Instr, Perfil, Puerto, Reg, Salto};
 
 /// Algo que la maquina no sabe hacer.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,9 +157,9 @@ impl<'a> Emisor<'a> {
     }
 
     fn acepta(&self, i: &Instr, r: &Reg, valor: &str) -> bool {
-        match nombre_op(r) {
-            Some(op) => self.registros_permitidos(i, op).iter().any(|p| p == valor),
-            None => false,
+        match r {
+            Reg::Operando(op) => self.registros_permitidos(i, op).iter().any(|p| p == valor),
+            Reg::Fijo(f) => f == valor,
         }
     }
 
@@ -259,11 +259,14 @@ impl<'a> Emisor<'a> {
         for i in &candidatas {
             if let Forma::Mover { d: rd, s: rs } = &i.forma {
                 if self.acepta(i, rd, d) && self.acepta(i, rs, s) {
-                    let (od, os) = (
-                        nombre_op(rd).unwrap().to_string(),
-                        nombre_op(rs).unwrap().to_string(),
-                    );
-                    self.emitir(i, &[(&od, d.to_string()), (&os, s.to_string())]);
+                    let mut v: Vec<(&str, String)> = Vec::new();
+                    if let Some(od) = nombre_op(rd) {
+                        v.push((od, d.to_string()));
+                    }
+                    if let Some(os) = nombre_op(rs) {
+                        v.push((os, s.to_string()));
+                    }
+                    self.emitir(i, &v);
                     return Ok(());
                 }
             }
@@ -275,9 +278,9 @@ impl<'a> Emisor<'a> {
         if self.alu_rr(OpBinario::O, d, s, s).is_ok() {
             return Ok(());
         }
-        Err(Falta::nueva(
-            "copiar un registro en otro (`rd = rs`, o `rd = rs + 0`)",
-        ))
+        Err(Falta::nueva(format!(
+            "copiar `{s}` en `{d}` (una instruccion `rd = rs`, o `rd = rs + 0`)"
+        )))
     }
 
     fn cargar_chico(&mut self, d: &str, v: i128) -> bool {
@@ -831,6 +834,105 @@ impl<'a> Emisor<'a> {
             }
         }
         Err(Falta::nueva("saltar a la direccion que hay en un registro (`pc = rs`), necesario para volver de una funcion"))
+    }
+
+    /// `d = in[puerto]`.
+    pub fn entrada(&mut self, d: &str, puerto: u64) -> R<()> {
+        for i in self.perfil.instrucciones.clone() {
+            let Forma::Entrada { d: rd, puerto: p } = &i.forma else {
+                continue;
+            };
+            if !self.acepta(&i, rd, d) {
+                continue;
+            }
+            let od = nombre_op(rd).unwrap().to_string();
+            match p {
+                Puerto::Fijo(n) if *n == puerto => {
+                    self.emitir(&i, &[(&od, d.to_string())]);
+                    return Ok(());
+                }
+                Puerto::Operando(o) => {
+                    self.emitir(&i, &[(&od, d.to_string()), (o, puerto.to_string())]);
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+        Err(Falta::nueva(format!(
+            "leer el puerto {puerto:#X} (una instruccion `rd = in[...]`)"
+        )))
+    }
+
+    /// `out[puerto] = s`.
+    pub fn salida(&mut self, puerto: u64, s: &str) -> R<()> {
+        for i in self.perfil.instrucciones.clone() {
+            let Forma::Salida { s: rs, puerto: p } = &i.forma else {
+                continue;
+            };
+            if !self.acepta(&i, rs, s) {
+                continue;
+            }
+            let os = nombre_op(rs).unwrap().to_string();
+            match p {
+                Puerto::Fijo(n) if *n == puerto => {
+                    self.emitir(&i, &[(&os, s.to_string())]);
+                    return Ok(());
+                }
+                Puerto::Operando(o) => {
+                    self.emitir(&i, &[(&os, s.to_string()), (o, puerto.to_string())]);
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+        Err(Falta::nueva(format!(
+            "escribir en el puerto {puerto:#X} (una instruccion `out[...] = rs`)"
+        )))
+    }
+
+    /// Habilita o inhabilita las interrupciones.
+    pub fn interrupciones(&mut self, habilitar: bool) -> R<()> {
+        let buscada = self
+            .perfil
+            .con_forma(|f| matches!(f, Forma::Interrupciones(h) if *h == habilitar))
+            .next()
+            .cloned();
+        match buscada {
+            Some(i) => {
+                self.emitir(&i, &[]);
+                Ok(())
+            }
+            None => Err(Falta::nueva(if habilitar {
+                "habilitar las interrupciones (una instruccion `ie = 1`)"
+            } else {
+                "inhabilitar las interrupciones (una instruccion `ie = 0`)"
+            })),
+        }
+    }
+
+    pub fn retorno_de_interrupcion(&mut self) -> R<()> {
+        let buscada = self
+            .perfil
+            .con_forma(|f| matches!(f, Forma::RetornoInterrupcion))
+            .next()
+            .cloned();
+        match buscada {
+            Some(i) => {
+                self.emitir(&i, &[]);
+                Ok(())
+            }
+            None => Err(Falta::nueva(
+                "volver de una interrupcion (una instruccion que asigne `pc` y `ie = 1`)",
+            )),
+        }
+    }
+
+    /// Una linea de ensamblador tal cual.
+    pub fn linea_literal(&mut self, t: &str) {
+        self.lineas.push(Linea {
+            texto: format!("    {}", t.trim()),
+            fuente: self.linea_fuente,
+        });
     }
 
     pub fn detener(&mut self) -> R<()> {
