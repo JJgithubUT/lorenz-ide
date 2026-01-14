@@ -23,8 +23,13 @@ fn suma_de_1_a_10() {
     assert_eq!(g["s"], 55);
 }
 
+/// Maquinas de 16 bits en las que se prueban los programas de este archivo.
+const MAQUINAS: [&str; 2] = ["risc-16", "sgt-16"];
+
 fn dif(fuente: &str) {
-    igual_al_oraculo("risc-16", fuente);
+    for m in MAQUINAS {
+        igual_al_oraculo(m, fuente);
+    }
 }
 
 #[test]
@@ -202,4 +207,24 @@ fn la_biblioteca_solo_entra_si_se_usa() {
     .unwrap();
     assert!(con.ensamblador().contains("f___mul:"));
     assert!(!con.ensamblador().contains("f___divmod:"));
+}
+
+#[test]
+fn saltos_que_no_alcanzan_se_hacen_largos() {
+    // El cuerpo del bucle pasa de las 32 palabras que alcanza un salto relativo de risc-16.
+    let mut cuerpo = String::new();
+    for k in 0..40 {
+        cuerpo.push_str(&format!("a = a + {};\n", k + 1));
+    }
+    let f = format!(
+        "var a: u16; var n: u16;
+         funcion principal() {{ var i: u16 = 0; mientras i < 3 {{ {cuerpo} i += 1; n += 1; si i == 5 {{ romper; }} }} }}"
+    );
+    dif(&f);
+    let c = compilar_en("risc-16", &f).unwrap();
+    assert!(
+        c.ensamblador().contains("_p"),
+        "debia usar saltos largos:\n{}",
+        c.ensamblador()
+    );
 }

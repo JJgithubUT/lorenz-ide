@@ -47,6 +47,7 @@ dependencies = [
  "lorenz-dbg",
  "lorenz-emu",
  "lorenz-ens",
+ "lorenz-sgt",
  "lorenz-tst",
  "serde_json",
  "thiserror",

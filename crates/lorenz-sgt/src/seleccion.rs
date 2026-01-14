@@ -110,6 +110,10 @@ pub enum Forma {
         puerto: Puerto,
     },
     Detener,
+    /// `ie = 1` (habilitar) o `ie = 0` (inhabilitar) las interrupciones.
+    Interrupciones(bool),
+    /// Vuelve de una interrupcion: asigna el contador de programa y habilita las interrupciones.
+    RetornoInterrupcion,
     Nada,
     /// Cualquier otra cosa: el compilador no la usa.
     Otra,
@@ -173,6 +177,22 @@ impl Ctx<'_> {
             Nombre::Operando(TipoOperando::Registro { .. }) => Some(Reg::Operando(n.clone())),
             Nombre::Registro(r, RolRegistro::General | RolRegistro::Indirecto) => {
                 Some(Reg::Fijo(r))
+            }
+            _ => None,
+        }
+    }
+
+    /// Un registro especial (puntero de pila, banderas...) por nombre o alias.
+    fn especial(&self, n: &str) -> Option<String> {
+        match self.clase(n) {
+            Nombre::Sp => self
+                .m
+                .registro_con_rol(RolRegistro::PunteroPila)
+                .map(|r| r.nombre.clone()),
+            Nombre::Registro(r, rol)
+                if !matches!(rol, RolRegistro::General | RolRegistro::Indirecto) =>
+            {
+                Some(r)
             }
             _ => None,
         }
@@ -296,8 +316,25 @@ impl Ctx<'_> {
         }
     }
 
+    fn asigna(&self, s: &[Sentencia], nombre: &str) -> bool {
+        s.iter().any(|x| match x {
+            Sentencia::Asignar(Destino::Nombre(n), _) => {
+                n == nombre || (nombre == "pc" && matches!(self.clase(n), Nombre::Pc))
+            }
+            Sentencia::Si(_, c) => self.asigna(c, nombre),
+            _ => false,
+        })
+    }
+
     fn forma(&self) -> Forma {
         let s = &self.i.programa.sentencias;
+        if self.asigna(s, "ie") {
+            return match s.as_slice() {
+                [Sentencia::Asignar(_, Expr::Literal(v))] => Forma::Interrupciones(*v != 0),
+                _ if self.asigna(s, "pc") => Forma::RetornoInterrupcion,
+                _ => Forma::Otra,
+            };
+        }
         match s.as_slice() {
             [] => Forma::Nada,
             [Sentencia::Detener] => Forma::Detener,
@@ -334,6 +371,10 @@ impl Ctx<'_> {
                     let dst = self.reg(&Expr::Nombre(n.clone())).unwrap();
                     self.valor(dst, e)
                 }
+                Nombre::Sp | Nombre::Registro(..) => match (self.especial(n), self.reg(e)) {
+                    (Some(d), Some(s)) => Forma::Mover { d: Reg::Fijo(d), s },
+                    _ => Forma::Otra,
+                },
                 _ => Forma::Otra,
             },
             Destino::Mem(a) => match (self.dir(a), self.reg(e)) {
@@ -350,9 +391,11 @@ impl Ctx<'_> {
     fn valor(&self, d: Reg, e: &Expr) -> Forma {
         match e {
             Expr::Literal(n) => Forma::CargarLiteral { d, n: *n },
-            Expr::Nombre(_) => {
+            Expr::Nombre(n) => {
                 if let Some(s) = self.reg(e) {
                     Forma::Mover { d, s }
+                } else if let Some(s) = self.especial(n) {
+                    Forma::Mover { d, s: Reg::Fijo(s) }
                 } else if let Some(v) = self.operando_inmediato(e) {
                     Forma::CargarImm { d, v }
                 } else {

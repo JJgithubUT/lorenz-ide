@@ -229,6 +229,20 @@ impl<'a> Gen<'a> {
     // Registros temporales
     // ------------------------------------------------------------------
 
+    /// Un registro que el compilador usa para sus propios valores no se puede tocar a mano.
+    fn registro_libre(&mut self, r: &str) -> G<()> {
+        let propio =
+            self.em.pool.iter().any(|p| p == r) || self.em.gp.as_ref().is_some_and(|(g, _)| g == r);
+        if propio {
+            self.error(format!(
+                "el registro `{r}` lo usa el compilador para guardar valores temporales; en `{}` puedes usar los registros que no son de uso general o escribir ensamblador en linea",
+                self.d.nombre
+            ));
+            return Err(());
+        }
+        Ok(())
+    }
+
     fn tmp(&mut self) -> G<String> {
         if self.libres.is_empty() {
             let n = self.temporales.len();
@@ -280,9 +294,37 @@ impl<'a> Gen<'a> {
             self.ra.push(a);
         }
         let arranque = self.d.arranque;
+        let manejadores: Vec<(u32, usize)> = self
+            .m
+            .funciones
+            .iter()
+            .enumerate()
+            .filter_map(|(i, f)| f.interrupcion.map(|l| (l, i)))
+            .collect();
         self.em.directiva(format!("    .org {arranque:#x}"));
         self.em.poner_etiqueta("_inicio");
+        if !manejadores.is_empty() {
+            // El codigo corriente va despues de la tabla de vectores. Cada vector guarda la
+            // direccion del manejador, que es lo que lee la maquina al interrumpir.
+            let r = self.em.saltar("_arranque");
+            let _ = self.r(r);
+            let mut fin = arranque;
+            for (linea, id) in &manejadores {
+                if let Some(v) = self.d.vectores.get(linea) {
+                    self.em.directiva(format!("    .org {v:#x}"));
+                    let nombre = self.nombre_funcion(*id);
+                    self.em.directiva(format!("    .dw {nombre}"));
+                    fin = fin.max(*v);
+                }
+            }
+            self.em.directiva(format!("    .org {:#x}", fin + 4));
+            self.em.poner_etiqueta("_arranque");
+        }
         self.inicio();
+        if !manejadores.is_empty() && !self.d.interrupciones_al_arrancar {
+            let r = self.em.interrupciones(true);
+            let _ = self.r(r);
+        }
         let Some(principal) = self.m.funciones.iter().position(|f| f.nombre == PRINCIPAL) else {
             return;
         };
@@ -385,19 +427,25 @@ impl<'a> Gen<'a> {
         self.em.linea_fuente = Some(fun.lugar.linea);
         self.libres = self.temporales.clone();
         self.bucles.clear();
-        if fun.interrupcion.is_some() {
-            self.error("los manejadores de interrupcion todavia no se compilan");
-            return;
-        }
         let nombre = self.nombre_funcion(f);
         self.fin_funcion = format!("{nombre}__fin");
         self.em.poner_etiqueta(&nombre);
+        let manejador = fun.interrupcion.is_some();
+        if manejador {
+            let r = self.guardar_registros(true);
+            let _ = self.r(r);
+        }
         let cuerpo = &fun.cuerpo;
         self.bloque(cuerpo);
         self.em.linea_fuente = Some(fun.lugar.linea);
         let fin = self.fin_funcion.clone();
         self.em.poner_etiqueta(&fin);
-        if fun.nombre == PRINCIPAL {
+        if manejador {
+            let r = self.guardar_registros(false);
+            let _ = self.r(r);
+            let r = self.em.retorno_de_interrupcion();
+            let _ = self.r(r);
+        } else if fun.nombre == PRINCIPAL {
             let r = self.em.detener();
             let _ = self.r(r);
         } else {
@@ -408,6 +456,28 @@ impl<'a> Gen<'a> {
             let r = self.em.saltar_reg(&s1);
             let _ = self.r(r);
         }
+    }
+
+    /// Guarda (o repone) todos los registros del compilador: un manejador puede interrumpir al
+    /// programa en cualquier punto.
+    fn guardar_registros(&mut self, guardar: bool) -> Result<(), Falta> {
+        let base = self
+            .disp
+            .salvaguarda
+            .expect("hay manejadores y falta el area de registros");
+        let mut regs = self.em.pool.clone();
+        if let Some((gp, _)) = &self.em.gp {
+            regs.push(gp.clone());
+        }
+        for (k, r) in regs.iter().enumerate() {
+            let sitio = Sitio::Fija(base + k as u64);
+            if guardar {
+                self.em.escribir(&sitio, r)?;
+            } else {
+                self.em.leer(r, &sitio)?;
+            }
+        }
+        Ok(())
     }
 
     // ------------------------------------------------------------------
@@ -428,6 +498,7 @@ impl<'a> Gen<'a> {
             ClaseSent::Asignar(sitio, e) => {
                 self.una_palabra(&sitio.tipo)?;
                 if let ClaseSitio::Registro(r) = &sitio.clase {
+                    self.registro_libre(r)?;
                     let v = self.expr(e)?.ok_or(())?;
                     let r2 = self.em.mover(r, &v);
                     return self.r(r2);
@@ -534,10 +605,7 @@ impl<'a> Gen<'a> {
                 self.em.poner_etiqueta(&fin);
                 Ok(())
             }
-            ClaseSent::Asm(..) => {
-                self.error("el ensamblador en linea todavia no se compila");
-                Err(())
-            }
+            ClaseSent::Asm(texto, refs) => self.asm(texto, refs),
             ClaseSent::Salida(p, v) => self.salida(p, v),
             ClaseSent::Expr(e) => {
                 if let Some(t) = self.expr(e)? {
@@ -548,9 +616,37 @@ impl<'a> Gen<'a> {
         }
     }
 
-    fn salida(&mut self, _p: &Expr, _v: &Expr) -> G<()> {
-        self.error("las instrucciones de salida por puerto todavia no se compilan");
-        Err(())
+    /// Ensamblador en linea: cada `{nombre}` se sustituye por la direccion de esa variable. El
+    /// texto puede usar cualquier registro de la maquina salvo el contador de programa y el
+    /// puntero de pila; el compilador repone su registro base de datos al terminar.
+    fn asm(&mut self, texto: &str, refs: &[(String, Ref)]) -> G<()> {
+        let mut t = texto.to_string();
+        for (n, r) in refs {
+            let dir = match r {
+                Ref::Global(g) => self.disp.globales[*g],
+                Ref::Local(l) => self.disp.locales[self.funcion][*l],
+            };
+            t = t.replacen(&format!("{{{n}}}"), &format!("{dir:#x}"), 1);
+        }
+        for l in t.lines().filter(|l| !l.trim().is_empty()) {
+            self.em.linea_literal(l);
+        }
+        let gp = self.em.gp.clone();
+        if let Some((gp, origen)) = gp {
+            let r = self.em.cargar(&gp, &Valor::Num(i128::from(origen)));
+            self.r(r)?;
+        }
+        Ok(())
+    }
+
+    fn salida(&mut self, p: &Expr, v: &Expr) -> G<()> {
+        let ClaseExpr::Const(puerto) = p.clase else {
+            self.error("el puerto debe ser una constante");
+            return Err(());
+        };
+        let t = self.expr(v)?.ok_or(())?;
+        let r = self.em.salida(puerto as u64, &t);
+        self.r(r)
     }
 
     // ------------------------------------------------------------------
@@ -667,6 +763,7 @@ impl<'a> Gen<'a> {
             }
             ClaseExpr::Leer(s) => {
                 if let ClaseSitio::Registro(nombre) = &s.clase {
+                    self.registro_libre(nombre)?;
                     let t = self.tmp()?;
                     let r = self.em.mover(&t, nombre);
                     self.r(r)?;
@@ -697,9 +794,15 @@ impl<'a> Gen<'a> {
                 Ok(Some(a))
             }
             ClaseExpr::Llamada(id, args) => self.llamada(*id, args),
-            ClaseExpr::Entrada(_) => {
-                self.error("las instrucciones de entrada por puerto todavia no se compilan");
-                Err(())
+            ClaseExpr::Entrada(p) => {
+                let ClaseExpr::Const(puerto) = p.clase else {
+                    self.error("el puerto debe ser una constante");
+                    return Err(());
+                };
+                let t = self.tmp()?;
+                let r = self.em.entrada(&t, puerto as u64);
+                self.r(r)?;
+                Ok(Some(t))
             }
             ClaseExpr::Bandera(n) => {
                 self.error(format!("leer la bandera `{n}` todavia no se compila"));
@@ -771,11 +874,12 @@ impl<'a> Gen<'a> {
         }
         let tb = self.expr(b)?.ok_or(())?;
         if let Some(nombre) = (self.sustituye)(op, &a.tipo) {
+            let raiz = self.m.funciones[self.funcion].raiz;
             let id = self
                 .m
                 .funciones
                 .iter()
-                .position(|f| f.nombre == nombre)
+                .position(|f| f.base == nombre && f.raiz == raiz)
                 .expect("falta la biblioteca de apoyo");
             return self.llamar_con(id, &[ta, tb]);
         }

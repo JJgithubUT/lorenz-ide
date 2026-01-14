@@ -28,6 +28,9 @@ pub struct Disposicion {
     pub globales: Vec<u64>,
     /// Por funcion, la direccion de cada local.
     pub locales: Vec<Vec<u64>>,
+    /// Inicio del area donde un manejador de interrupcion guarda los registros; ocupa una palabra
+    /// por registro de la maquina y solo existe si hay manejadores.
+    pub salvaguarda: Option<u64>,
     /// Primera direccion libre tras el ultimo dato repartido.
     pub libre: u64,
     /// Ultima direccion usable de la region.
@@ -60,6 +63,11 @@ pub fn disponer(m: &Modulo, d: &Destino) -> Result<Disposicion, Diagnostico> {
         .collect();
     ocupados.sort();
     let mut cursor = region.desde;
+    let mut salvaguarda = None;
+    if m.funciones.iter().any(|f| f.interrupcion.is_some()) {
+        salvaguarda = Some(cursor);
+        cursor += d.registros.len() as u64;
+    }
     let mut sitio = |tam: u64, lugar: Lugar, nombre: &str| -> Result<u64, Diagnostico> {
         let tam = tam.max(1);
         loop {
@@ -110,6 +118,7 @@ pub fn disponer(m: &Modulo, d: &Destino) -> Result<Disposicion, Diagnostico> {
         region: region.nombre.clone(),
         globales,
         locales,
+        salvaguarda,
         libre: cursor,
         limite: region.hasta,
     })

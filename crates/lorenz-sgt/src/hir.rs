@@ -46,7 +46,13 @@ pub struct Variable {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Funcion {
+    /// Nombre unico en el modulo; una copia para otra raiz lleva un sufijo.
     pub nombre: String,
+    /// Nombre escrito en el fuente.
+    pub base: String,
+    /// Raiz de ejecucion a la que pertenece esta copia: 0 es el programa principal y las demas
+    /// son manejadores de interrupcion (decision D-063).
+    pub raiz: usize,
     pub lugar: Lugar,
     /// Ids de las variables locales que son parametros, en orden.
     pub parametros: Vec<IdLocal>,

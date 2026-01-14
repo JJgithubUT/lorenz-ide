@@ -73,3 +73,39 @@ pub fn igual_al_oraculo(nombre: &str, fuente: &str) {
         );
     }
 }
+
+/// Resultado de ejecutar un programa compilado con la UART `serie` conectada.
+pub struct Corrida {
+    pub globales: HashMap<String, i128>,
+    pub texto: String,
+    pub instrucciones: u64,
+}
+
+pub fn correr(nombre: &str, fuente: &str, recibido: &[u8]) -> Corrida {
+    let c = compilar_en(nombre, fuente).unwrap_or_else(|e| panic!("{e}"));
+    let mut emu = Emulador::nuevo(maquina(nombre)).unwrap();
+    for (dir, w) in c.palabras() {
+        emu.cargar_programa(dir, &[w]).unwrap();
+    }
+    if !recibido.is_empty() {
+        emu.recibir_en_uart("serie", recibido).unwrap();
+    }
+    let r = emu
+        .ejecutar(5_000_000)
+        .unwrap_or_else(|e| panic!("{e}\n{}", c.ensamblador()));
+    let mut globales = HashMap::new();
+    for (i, g) in c.modulo.globales.iter().enumerate() {
+        if g.tipo.es_escalar() {
+            let a = c.disposicion.globales[i];
+            globales.insert(
+                g.nombre.clone(),
+                i128::from(emu.memoria().leer_privilegiado(a).unwrap()),
+            );
+        }
+    }
+    Corrida {
+        globales,
+        texto: emu.texto_de_uart("serie").unwrap(),
+        instrucciones: r.instrucciones,
+    }
+}
