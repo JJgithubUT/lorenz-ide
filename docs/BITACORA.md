@@ -17,6 +17,32 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Compilador SGT: dispositivos, interrupciones y registros
+
+**Hecho:**
+- Backend de `lorenz-sgt` sobre `lorenz-ens`: puertos, `@interrupcion`, ensamblador en linea, registros
+  accesibles y vectores de interrupcion; maquina de prueba `ejemplos/sgt-16`.
+- Pruebas diferenciales: cada programa se compila, se ejecuta en el emulador y se compara con el
+  interprete de la HIR.
+
+**Decidido:**
+- **D-059** — Sin recursion; las locales se reservan en memoria estatica, sin marcos de pila.
+- **D-060** — Una local sin valor inicial vale 0.
+- **D-061** — `p + n` avanza `n` palabras crudas.
+- **D-062** — Dividir entre cero detiene la maquina (`HLT`) y el interprete lo reporta igual.
+- **D-063** — Cada raiz de ejecucion (principal y cada manejador) recibe su propia copia de las
+  funciones y globales de biblioteca que alcanza, para que un manejador no pise el estado de otro.
+
+**Pendiente:** enteros de varias palabras, saltos por banderas y ALU de dos direcciones (necesita un
+ejemplo de 8 bits), modulos, optimizacion, biblioteca de memoria y cadenas, documentacion de la
+convencion de llamada por arquitectura.
+
+**Requisitos:** RF-SGT-012, 013, 014, 016, 025, 026, 028, 029.
+
+**Commits:** 413 a 417 (`feat/sgt-dispositivos`).
+
+---
+
 ## 2026-10-16 — Fase 2: cierre de pendientes y ejemplos de arquitectura
 
 **Hecho:**

@@ -255,6 +255,30 @@ extensiones) llega con su fase.
 | RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
 | RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
 
+## Requisitos del lenguaje SGT (RF-SGT)
+
+Estado del compilador `lorenz-sgt` (fase 4). "Parcial" indica que existe pero con una limitacion
+conocida, escrita en la columna de evidencia.
+
+| Requisito | Descripcion | Estado | Evidencia |
+| --- | --- | --- | --- |
+| RF-SGT-001, 002 | Enteros con y sin signo derivados de la palabra | Parcial | `tipos`; el generador solo opera con una palabra, mas ancho es error en terminos de la maquina |
+| RF-SGT-003 a 006 | Booleano, punteros, arreglos, estructuras | Hecho | `analisis`, `interprete`, `tests/compilado.rs` |
+| RF-SGT-007 | Disposicion fijada de una estructura | Parcial | campo `@ n` en la sintaxis; sin pruebas de generacion propias |
+| RF-SGT-008 a 010 | Constantes, funciones, control de flujo | Hecho | `tests/analisis.rs`, `tests/compilado.rs` |
+| RF-SGT-011 | Seleccion multiple (`segun`) | Hecho | `tests/compilado.rs` |
+| RF-SGT-012 | Ensamblador en linea | Hecho | `generador`, `tests/dispositivos.rs` |
+| RF-SGT-013, 014 | Registros y puertos como entidades | Hecho | `tests/dispositivos.rs` en `sgt-16` |
+| RF-SGT-016 | Manejador de interrupcion | Hecho | `@interrupcion(n)`, `tests/dispositivos.rs` |
+| RF-SGT-017 | Variable en direccion concreta | Hecho | `layout::disponer` |
+| RF-SGT-019, 020 | Bits y desbordamiento explicito | Hecho | `valores`, oraculo diferencial |
+| RF-SGT-022 a 026 | HIR, generacion, seleccion, registros, pila | Hecho | `hir`, `seleccion`, `emisor`, `generador` |
+| RF-SGT-028, 029 | Rechazo de ROM y de puertos no declarados | Hecho | `tests/analisis.rs`, `tests/dispositivos.rs` |
+| RF-SGT-032, 038 | Ensamblador por linea y depuracion | Hecho | `Compilado::lineas`, `lorenz compilar --lineas` |
+| RF-SGT-035, 036 | Errores en terminos de la maquina, con posicion | Hecho | `Falta`, `diagnostico` |
+| RF-SGT-042 | Compilar desde la linea de comandos | Hecho | `lorenz compilar`, `crates/lorenz-cli/tests/compilar.rs` |
+| RF-SGT-015, 018, 021, 027, 030, 031, 033, 037, 039, 040, 041 | Banderas, modulos, genericos, convencion documentada, coste, optimizacion, sugerencias, multi-arquitectura, biblioteca | Pendiente | ver bitacora |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,
