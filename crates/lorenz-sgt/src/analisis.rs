@@ -19,12 +19,15 @@ use crate::valores;
 pub struct Opciones {
     /// Si falta `principal` es un error; las bibliotecas lo desactivan.
     pub exige_principal: bool,
+    /// Nivel de optimizacion, de 0 a 3 (RF-SGT-033).
+    pub nivel: u8,
 }
 
 impl Default for Opciones {
     fn default() -> Self {
         Self {
             exige_principal: true,
+            nivel: 1,
         }
     }
 }

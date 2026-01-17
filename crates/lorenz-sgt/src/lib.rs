@@ -16,6 +16,7 @@ pub mod hir;
 pub mod interprete;
 pub mod layout;
 pub mod lexico;
+pub mod optimizar;
 pub mod podar;
 pub mod seleccion;
 pub mod sintaxis;
