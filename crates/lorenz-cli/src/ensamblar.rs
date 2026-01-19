@@ -259,7 +259,7 @@ pub fn cargar_segmentos(
     inicio: u64,
 ) -> Result<Vec<(u64, Vec<u64>)>, String> {
     if crate::compilar::es_sgt(ruta) {
-        let (c, _) = crate::compilar::compilar_archivo(maquina, ruta)?;
+        let (c, _) = crate::compilar::compilar_archivo(maquina, ruta, None)?;
         return Ok(c
             .objeto
             .segmentos
