@@ -121,3 +121,29 @@ fn falta_el_fuente() {
     assert_eq!(c, 2);
     assert!(e.contains("fuente"), "{e}");
 }
+
+#[test]
+fn los_niveles_de_optimizacion_cambian_el_tamano_no_el_resultado() {
+    let d = carpeta();
+    let fuente = d.join("opt.sgt");
+    std::fs::write(
+        &fuente,
+        "var a: u16;\nfuncion principal() {\n    var x: u16 = 7;\n    a = x * 8 + x / 4;\n}\n",
+    )
+    .unwrap();
+    let maquina = ejemplo("risc-16");
+    let mut tamanos = Vec::new();
+    for nivel in ["-O0", "-O3"] {
+        let (c, salida, e) = correr(&["compilar", &maquina, fuente.to_str().unwrap(), nivel]);
+        assert_eq!(c, 0, "{e}");
+        tamanos.push(salida.lines().count());
+    }
+    assert!(tamanos[1] < tamanos[0], "{tamanos:?}");
+}
+
+#[test]
+fn un_nivel_de_optimizacion_inexistente_se_rechaza() {
+    let (c, _, e) = correr(&["compilar", &ejemplo("risc-16"), "x.sgt", "-O9"]);
+    assert_ne!(c, 0);
+    assert!(e.contains("-O9"), "{e}");
+}

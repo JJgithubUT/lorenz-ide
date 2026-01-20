@@ -27,6 +27,8 @@ pub struct OpcionesCompilar {
     pub ensamblador: Option<String>,
     /// Direccion de cada tramo de codigo y la linea de SGT que lo origino.
     pub lineas: Option<String>,
+    /// Nivel de optimizacion, de 0 a 3; sin indicarlo se usa el del compilador.
+    pub nivel: Option<u8>,
 }
 
 fn escribir(w: &mut dyn Write, t: &str) {
@@ -34,10 +36,18 @@ fn escribir(w: &mut dyn Write, t: &str) {
 }
 
 /// Compila un archivo. Los errores salen formateados, uno por diagnostico.
-pub fn compilar_archivo(maquina: &Maquina, ruta: &str) -> Result<(Compilado, String), String> {
+pub fn compilar_archivo(
+    maquina: &Maquina,
+    ruta: &str,
+    nivel: Option<u8>,
+) -> Result<(Compilado, String), String> {
     let texto =
         std::fs::read_to_string(ruta).map_err(|e| format!("{ruta}: no se pudo leer: {e}"))?;
-    match compilar(ruta, &texto, maquina, Opciones::default()) {
+    let mut opciones = Opciones::default();
+    if let Some(n) = nivel {
+        opciones.nivel = n;
+    }
+    match compilar(ruta, &texto, maquina, opciones) {
         Ok(c) => Ok((c, texto)),
         Err(e) => Err(e
             .iter()
@@ -71,7 +81,7 @@ pub fn compilar_cli(
             return SALIDA_ERROR_USO;
         }
     };
-    let (c, texto) = match compilar_archivo(&maquina, ruta_fuente) {
+    let (c, texto) = match compilar_archivo(&maquina, ruta_fuente, opciones.nivel) {
         Ok(r) => r,
         Err(e) => {
             escribir(errores, &format!("{e}\n"));

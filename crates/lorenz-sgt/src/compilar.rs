@@ -74,7 +74,9 @@ pub fn compilar(
     completo
         .elementos
         .extend(programa.elementos.iter().cloned());
-    let modulo = analizar(archivo, &completo, &destino, opciones)?;
+    let nivel = opciones.nivel.min(crate::optimizar::NIVEL_MAXIMO);
+    let mut modulo = analizar(archivo, &completo, &destino, opciones)?;
+    crate::optimizar::optimizar(&mut modulo, &destino, nivel);
     let modulo = crate::podar::podar(modulo, &sustitucion_para(maquina));
     // Primero con saltos cortos; si algun salto no alcanza, todo con saltos largos.
     let mut ultimo = None;

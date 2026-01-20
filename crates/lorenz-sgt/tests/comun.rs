@@ -21,7 +21,15 @@ pub fn maquina(nombre: &str) -> Maquina {
 }
 
 pub fn compilar_en(nombre: &str, fuente: &str) -> Result<Compilado, String> {
-    compilar("t.sgt", fuente, &maquina(nombre), Opciones::default()).map_err(|e| {
+    compilar_nivel(nombre, fuente, Opciones::default().nivel)
+}
+
+pub fn compilar_nivel(nombre: &str, fuente: &str, nivel: u8) -> Result<Compilado, String> {
+    let opciones = Opciones {
+        nivel,
+        ..Opciones::default()
+    };
+    compilar("t.sgt", fuente, &maquina(nombre), opciones).map_err(|e| {
         e.iter()
             .map(|d| d.to_string())
             .collect::<Vec<_>>()
@@ -39,7 +47,16 @@ pub fn oraculo(nombre: &str, fuente: &str) -> Resultado {
 
 /// Compila, ejecuta en el emulador y devuelve el valor final de cada global escalar.
 pub fn ejecutado(nombre: &str, fuente: &str) -> (HashMap<String, i128>, u64) {
-    let c = compilar_en(nombre, fuente).unwrap_or_else(|e| panic!("{e}"));
+    ejecutado_nivel(nombre, fuente, Opciones::default().nivel).0
+}
+
+/// Como `ejecutado`, con un nivel de optimizacion; devuelve tambien el programa compilado.
+pub fn ejecutado_nivel(
+    nombre: &str,
+    fuente: &str,
+    nivel: u8,
+) -> ((HashMap<String, i128>, u64), Compilado) {
+    let c = compilar_nivel(nombre, fuente, nivel).unwrap_or_else(|e| panic!("{e}"));
     let mut emu = Emulador::nuevo(maquina(nombre)).unwrap();
     for (dir, w) in c.palabras() {
         emu.cargar_programa(dir, &[w]).unwrap();
@@ -57,7 +74,7 @@ pub fn ejecutado(nombre: &str, fuente: &str) -> (HashMap<String, i128>, u64) {
             );
         }
     }
-    (out, r.instrucciones)
+    ((out, r.instrucciones), c)
 }
 
 /// Compara las globales escalares del compilado con las del oraculo.
