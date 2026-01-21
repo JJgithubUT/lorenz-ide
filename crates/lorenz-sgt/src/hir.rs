@@ -61,6 +61,8 @@ pub struct Funcion {
     pub cuerpo: Vec<Sent>,
     /// Linea de interrupcion que atiende, si es un manejador.
     pub interrupcion: Option<u32>,
+    /// Ciclos maximos que puede costar, fijados con `@presupuesto(n)`.
+    pub presupuesto: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
