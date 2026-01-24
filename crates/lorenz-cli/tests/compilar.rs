@@ -147,3 +147,33 @@ fn un_nivel_de_optimizacion_inexistente_se_rechaza() {
     assert_ne!(c, 0);
     assert!(e.contains("-O9"), "{e}");
 }
+
+#[test]
+fn la_tabla_de_costes_lista_las_funciones() {
+    let d = carpeta();
+    let fuente = d.join("c.sgt");
+    std::fs::write(
+        &fuente,
+        "var a: u16;\n@presupuesto(5000)\nfuncion g(x: u16) -> u16 { devolver x + 1; }\nfuncion principal() { a = g(2); }\n",
+    )
+    .unwrap();
+    let costes = d.join("costes.txt");
+    let (c, _, e) = correr(&[
+        "compilar",
+        &ejemplo("risc-16"),
+        fuente.to_str().unwrap(),
+        "--costes",
+        costes.to_str().unwrap(),
+        "-o",
+        d.join("p.hex").to_str().unwrap(),
+    ]);
+    assert_eq!(c, 0, "{e}");
+    let t = std::fs::read_to_string(costes).unwrap();
+    assert!(
+        t.contains("f_g") || t.lines().any(|l| l.starts_with("g ")),
+        "{t}"
+    );
+    assert!(t.lines().any(|l| l.starts_with("principal ")), "{t}");
+    assert!(t.contains("5000"), "{t}");
+    assert!(!t.contains("__"), "{t}");
+}
