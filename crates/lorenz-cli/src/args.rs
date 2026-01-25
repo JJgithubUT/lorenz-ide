@@ -428,6 +428,7 @@ fn interpretar_compilar(resto: &[String]) -> Result<Orden, ErrorUso> {
             "-o" | "--salida" => opciones.salida = Some(valor_de(resto, &mut i, a)?.clone()),
             "--asm" => opciones.ensamblador = Some(valor_de(resto, &mut i, a)?.clone()),
             "--lineas" => opciones.lineas = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--costes" => opciones.costes = Some(valor_de(resto, &mut i, a)?.clone()),
             "-O0" | "-O1" | "-O2" | "-O3" => opciones.nivel = Some(a.as_bytes()[2] - b'0'),
             _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
             _ => posicionales.push(a.clone()),

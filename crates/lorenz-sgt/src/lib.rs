@@ -8,6 +8,7 @@ pub mod analisis;
 pub mod ast;
 pub mod biblioteca;
 pub mod compilar;
+pub mod costes;
 pub mod destino;
 pub mod diagnostico;
 pub mod emisor;

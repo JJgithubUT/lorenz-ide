@@ -4,6 +4,7 @@ use lorenz_arch::modelo::Maquina;
 use lorenz_ens::ensamblador::{Ensamblador, Fuente, Objeto};
 
 use crate::analisis::{analizar, Opciones};
+use crate::costes::{comprobar_presupuestos, estimar, Coste};
 use crate::destino::Destino;
 use crate::diagnostico::{Diagnostico, Lugar};
 use crate::emisor::Linea;
@@ -23,6 +24,8 @@ pub struct Compilado {
     pub objeto: Objeto,
     /// Para cada tramo de codigo, la linea del fuente SGT que lo origino (RF-SGT-038).
     pub lineas_fuente: Vec<(u64, u32)>,
+    /// Coste en ciclos de cada funcion (RF-SGT-030).
+    pub costes: Vec<Coste>,
 }
 
 impl Compilado {
@@ -100,7 +103,14 @@ pub fn compilar(
                         }
                     }
                 }
+                let costes = estimar(&modulo, maquina, &g.lineas, &sustitucion_para(maquina));
+                let mut excedidos = comprobar_presupuestos(&modulo, &costes);
+                excedidos.dedup();
+                if !excedidos.is_empty() {
+                    return Err(excedidos);
+                }
                 return Ok(Compilado {
+                    costes,
                     modulo,
                     disposicion: g.disposicion,
                     lineas: g.lineas,

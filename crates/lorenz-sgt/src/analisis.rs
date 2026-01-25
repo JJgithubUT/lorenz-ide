@@ -543,12 +543,29 @@ impl<'a> Analizador<'a> {
             return None;
         }
         let mut manejador = None;
+        let mut presupuesto = None;
         for a in &f.atributos {
+            if a.nombre == "presupuesto" {
+                if a.argumentos.len() != 1 {
+                    self.error(
+                        a.lugar,
+                        "`@presupuesto` lleva un solo argumento: los ciclos",
+                    );
+                } else if let Some(n) = self.constante_entera(&a.argumentos[0], "el presupuesto") {
+                    if n <= 0 {
+                        self.error(a.lugar, "el presupuesto debe ser de al menos un ciclo");
+                    } else {
+                        presupuesto = Some(n as u64);
+                    }
+                }
+                continue;
+            }
             if a.nombre != "interrupcion" {
                 self.error_con(
                     a.lugar,
                     format!("el atributo `@{}` no existe", a.nombre),
-                    "el unico atributo de funcion es `@interrupcion(linea)`".to_string(),
+                    "los atributos de funcion son `@interrupcion(linea)` y `@presupuesto(ciclos)`"
+                        .to_string(),
                 );
                 continue;
             }
@@ -628,6 +645,7 @@ impl<'a> Analizador<'a> {
             retorno,
             cuerpo: Vec::new(),
             interrupcion: manejador,
+            presupuesto,
         });
         Some(id)
     }

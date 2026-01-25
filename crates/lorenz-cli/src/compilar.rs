@@ -29,6 +29,8 @@ pub struct OpcionesCompilar {
     pub lineas: Option<String>,
     /// Nivel de optimizacion, de 0 a 3; sin indicarlo se usa el del compilador.
     pub nivel: Option<u8>,
+    /// Tabla de coste en ciclos de cada funcion (RF-SGT-030).
+    pub costes: Option<String>,
 }
 
 fn escribir(w: &mut dyn Write, t: &str) {
@@ -63,6 +65,23 @@ pub fn tabla_de_lineas(c: &Compilado, ancho_direccion: u32) -> String {
     let mut s = String::from("# direccion linea-sgt\n");
     for (d, l) in &c.lineas_fuente {
         s.push_str(&format!("{d:#0ancho$x} {l}\n", ancho = digitos + 2));
+    }
+    s
+}
+
+/// Tabla de costes de las funciones del usuario.
+pub fn tabla_de_costes(c: &Compilado) -> String {
+    let mut s = String::from("# funcion ciclos propios instrucciones bucles presupuesto\n");
+    for k in c.costes.iter().filter(|k| !k.base.starts_with("__")) {
+        s.push_str(&format!(
+            "{} {} {} {} {} {}\n",
+            k.nombre,
+            k.total,
+            k.propios,
+            k.instrucciones,
+            if k.bucles { "si" } else { "no" },
+            k.presupuesto.map_or("-".to_string(), |p| p.to_string()),
+        ));
     }
     s
 }
@@ -108,6 +127,11 @@ pub fn compilar_cli(
     }
     if let Some(ruta) = &opciones.ensamblador {
         if !escribir_en(ruta, &c.ensamblador_comentado(&texto)) {
+            return SALIDA_ERROR_USO;
+        }
+    }
+    if let Some(ruta) = &opciones.costes {
+        if !escribir_en(ruta, &tabla_de_costes(&c)) {
             return SALIDA_ERROR_USO;
         }
     }
