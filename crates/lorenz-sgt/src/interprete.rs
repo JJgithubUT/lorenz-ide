@@ -90,6 +90,13 @@ pub fn ejecutar(
     };
     // Valores iniciales de las globales, como hace el codigo de arranque.
     for (i, g) in m.globales.iter().enumerate() {
+        if let Tipo::Arreglo(elemento, _) = &g.tipo {
+            let paso = palabras(m, d, elemento);
+            for (k, v) in g.datos.iter().enumerate() {
+                let dir = x.disp.globales[i] + k as u64 * paso;
+                x.escribir(dir, elemento, *v);
+            }
+        }
         if let Some(Expr {
             clase: ClaseExpr::Const(v),
             ..

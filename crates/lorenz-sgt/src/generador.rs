@@ -370,6 +370,7 @@ impl<'a> Gen<'a> {
             let _ = self.r(r);
         }
         for (i, g) in self.m.globales.iter().enumerate() {
+            self.datos_iniciales(i, g);
             if let Some(Expr {
                 clase: ClaseExpr::Const(v),
                 ..
@@ -390,6 +391,28 @@ impl<'a> Gen<'a> {
                 self.liberar(&t);
             }
         }
+    }
+
+    /// Escribe el texto con que empieza un arreglo, un elemento por palabra.
+    fn datos_iniciales(&mut self, global: usize, g: &crate::hir::Variable) {
+        if g.datos.is_empty() {
+            return;
+        }
+        let Tipo::Arreglo(elemento, _) = &g.tipo else {
+            return;
+        };
+        if self.una_palabra(elemento).is_err() {
+            return;
+        }
+        let base = self.disp.globales[global];
+        let Ok(t) = self.tmp() else { return };
+        for (k, v) in g.datos.iter().enumerate() {
+            let r = self.em.cargar(&t, &Valor::Num(*v));
+            let _ = self.r(r);
+            let r = self.em.escribir(&Sitio::Fija(base + k as u64), &t);
+            let _ = self.r(r);
+        }
+        self.liberar(&t);
     }
 
     fn limpiar(&mut self, desde: u64, hasta: u64) -> Result<(), Falta> {

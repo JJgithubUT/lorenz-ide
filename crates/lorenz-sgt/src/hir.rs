@@ -42,6 +42,9 @@ pub struct Variable {
     pub direccion: Option<u64>,
     /// Valor inicial de un escalar.
     pub inicial: Option<Expr>,
+    /// Contenido inicial de un arreglo de enteros escrito como texto: un valor por elemento, desde
+    /// el primero; el resto empieza en cero.
+    pub datos: Vec<i128>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
