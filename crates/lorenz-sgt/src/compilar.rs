@@ -160,7 +160,11 @@ fn reservados(archivo: &str, p: &crate::ast::Programa) -> Result<(), Vec<Diagnos
         };
         if crate::biblioteca::es_reservado(nombre) {
             errores.push(
-                Diagnostico::nuevo(archivo, lugar, format!("el nombre `{nombre}` esta reservado: los nombres que empiezan por `__` son del compilador"))
+                Diagnostico::nuevo(archivo, lugar, if nombre.starts_with("__") {
+                    format!("el nombre `{nombre}` esta reservado: los nombres que empiezan por `__` son del compilador")
+                } else {
+                    format!("el nombre `{nombre}` es de la biblioteca de SGT y no se puede redefinir")
+                })
                     .con_sugerencia("elige otro nombre"),
             );
         }
