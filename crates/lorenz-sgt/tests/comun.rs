@@ -40,7 +40,10 @@ pub fn compilar_nivel(nombre: &str, fuente: &str, nivel: u8) -> Result<Compilado
 pub fn oraculo(nombre: &str, fuente: &str) -> Resultado {
     let m = maquina(nombre);
     let d = Destino::de(&m);
-    let p = analizar_programa("t.sgt", fuente).unwrap();
+    let usuario = analizar_programa("t.sgt", fuente).unwrap();
+    // El oraculo tambien ve la biblioteca publica (`mem_*`, `cad_*`).
+    let mut p = lorenz_sgt::biblioteca::programa(m.bits_palabra).unwrap();
+    p.elementos.extend(usuario.elementos);
     let h = analizar("t.sgt", &p, &d, Opciones::default()).unwrap();
     ejecutar(&h, &d, HashMap::<u64, VecDeque<u64>>::new(), 10_000_000).unwrap()
 }
@@ -82,6 +85,10 @@ pub fn igual_al_oraculo(nombre: &str, fuente: &str) {
     let esperado = oraculo(nombre, fuente);
     let (obtenido, _) = ejecutado(nombre, fuente);
     for (k, v) in &esperado.globales {
+        // Las globales de apoyo del compilador no son del programa: el oraculo no las toca.
+        if k.starts_with("__") {
+            continue;
+        }
         let w = (*v) & 0xFFFF;
         assert_eq!(
             obtenido[k], w,
