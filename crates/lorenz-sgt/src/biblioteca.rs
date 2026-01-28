@@ -7,6 +7,10 @@
 //!
 //! Sus nombres empiezan por `__`, reservado para el compilador. Dividir entre cero detiene la
 //! maquina (decision D-062).
+//!
+//! Ademas hay una biblioteca minima de memoria y de textos (`mem_*` y `cad_*`) que el programa
+//! puede llamar; tambien se poda si no se usa. Un texto es un arreglo de enteros terminado en cero,
+//! con un caracter por elemento.
 
 use crate::ast::Programa;
 use crate::diagnostico::Diagnostico;
@@ -156,6 +160,58 @@ funcion __restasat_s(a: i{W}, b: i{W}) -> i{W} {
     }
     devolver r;
 }
+
+funcion mem_llenar(destino: *u{W}, valor: u{W}, n: u{W}) {
+    var i: u{W} = 0;
+    mientras i < n {
+        destino[i] = valor;
+        i += 1;
+    }
+}
+
+funcion mem_copiar(destino: *u{W}, origen: *u{W}, n: u{W}) {
+    var i: u{W} = 0;
+    mientras i < n {
+        destino[i] = origen[i];
+        i += 1;
+    }
+}
+
+funcion mem_comparar(a: *u{W}, b: *u{W}, n: u{W}) -> i{W} {
+    var i: u{W} = 0;
+    mientras i < n {
+        si a[i] != b[i] {
+            si a[i] < b[i] { devolver -1; }
+            devolver 1;
+        }
+        i += 1;
+    }
+    devolver 0;
+}
+
+funcion cad_longitud(t: *u{W}) -> u{W} {
+    var n: u{W} = 0;
+    mientras t[n] != 0 { n += 1; }
+    devolver n;
+}
+
+funcion cad_copiar(destino: *u{W}, origen: *u{W}) -> u{W} {
+    var i: u{W} = 0;
+    mientras origen[i] != 0 {
+        destino[i] = origen[i];
+        i += 1;
+    }
+    destino[i] = 0;
+    devolver i;
+}
+
+funcion cad_comparar(a: *u{W}, b: *u{W}) -> i{W} {
+    var i: u{W} = 0;
+    mientras a[i] != 0 && a[i] == b[i] { i += 1; }
+    si a[i] == b[i] { devolver 0; }
+    si a[i] < b[i] { devolver -1; }
+    devolver 1;
+}
 "#;
 
 /// Texto de la biblioteca para palabras de `w` bits.
@@ -172,7 +228,17 @@ pub fn programa(w: u32) -> Result<Programa, Diagnostico> {
     analizar_programa(ARCHIVO, &fuente(w))
 }
 
-/// Si el nombre es de la biblioteca.
+/// Funciones de la biblioteca que el programa puede llamar por su nombre.
+pub const PUBLICAS: [&str; 6] = [
+    "mem_llenar",
+    "mem_copiar",
+    "mem_comparar",
+    "cad_longitud",
+    "cad_copiar",
+    "cad_comparar",
+];
+
+/// Si el nombre es de la biblioteca de apoyo o de la biblioteca publica.
 pub fn es_reservado(nombre: &str) -> bool {
-    nombre.starts_with("__")
+    nombre.starts_with("__") || PUBLICAS.contains(&nombre)
 }

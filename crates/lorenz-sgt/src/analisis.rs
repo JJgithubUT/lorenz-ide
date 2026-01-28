@@ -454,37 +454,55 @@ impl<'a> Analizador<'a> {
         if let Some(d) = direccion {
             self.comprobar_ubicacion(&g.nombre, d, tam, g.lugar, g.inicial.is_some());
         }
-        let inicial = g.inicial.as_ref().and_then(|e| {
-            if !tipo.es_escalar() {
-                self.error(
-                    e.lugar,
-                    "solo una variable escalar puede tener valor inicial",
-                );
-                return None;
-            }
-            let v = self.expr(e, Some(&tipo));
-            if v.tipo.es_error() {
-                return None;
-            }
-            if v.tipo != tipo {
-                self.error(
-                    e.lugar,
-                    format!(
-                        "`{}` es {} pero el valor inicial es {}",
-                        g.nombre, tipo, v.tipo
-                    ),
-                );
-                return None;
-            }
-            if !matches!(v.clase, CE::Const(_)) {
-                self.error(
-                    e.lugar,
-                    "el valor inicial de una variable global debe ser constante",
-                );
-                return None;
-            }
-            Some(v)
-        });
+        let mut datos = Vec::new();
+        let texto = match (&g.inicial, &tipo) {
+            (
+                Some(Expr {
+                    clase: ClaseExpr::Cadena(t),
+                    lugar,
+                }),
+                Tipo::Arreglo(..),
+            ) => Some((t, *lugar)),
+            _ => None,
+        };
+        if let Some((t, lugar)) = texto {
+            datos = self.texto_inicial(&g.nombre, &tipo, t, lugar);
+        }
+        let inicial = g
+            .inicial
+            .as_ref()
+            .filter(|_| texto.is_none())
+            .and_then(|e| {
+                if !tipo.es_escalar() {
+                    self.error(
+                        e.lugar,
+                        "solo una variable escalar puede tener valor inicial",
+                    );
+                    return None;
+                }
+                let v = self.expr(e, Some(&tipo));
+                if v.tipo.es_error() {
+                    return None;
+                }
+                if v.tipo != tipo {
+                    self.error(
+                        e.lugar,
+                        format!(
+                            "`{}` es {} pero el valor inicial es {}",
+                            g.nombre, tipo, v.tipo
+                        ),
+                    );
+                    return None;
+                }
+                if !matches!(v.clase, CE::Const(_)) {
+                    self.error(
+                        e.lugar,
+                        "el valor inicial de una variable global debe ser constante",
+                    );
+                    return None;
+                }
+                Some(v)
+            });
         let id = self.modulo.globales.len();
         self.globales.insert(g.nombre.clone(), id);
         self.modulo.globales.push(hir::Variable {
@@ -493,7 +511,46 @@ impl<'a> Analizador<'a> {
             lugar: g.lugar,
             direccion,
             inicial,
+            datos,
         });
+    }
+
+    /// El texto con que se inicia un arreglo de enteros: un caracter por elemento y, tras el
+    /// ultimo, un cero que lo termina (RF-SGT-041).
+    fn texto_inicial(&mut self, nombre: &str, tipo: &Tipo, texto: &str, lugar: Lugar) -> Vec<i128> {
+        let Tipo::Arreglo(elemento, n) = tipo else {
+            return Vec::new();
+        };
+        let Tipo::Entero { bits, signo } = **elemento else {
+            self.error(
+                lugar,
+                format!(
+                    "un texto solo puede iniciar un arreglo de enteros, y `{nombre}` es {tipo}"
+                ),
+            );
+            return Vec::new();
+        };
+        let codigos: Vec<i128> = texto.chars().map(|c| i128::from(u32::from(c))).collect();
+        if codigos.len() as u64 + 1 > *n {
+            self.error_con(
+                lugar,
+                format!(
+                    "el texto tiene {} caracteres y `{nombre}` solo tiene {n} elementos",
+                    codigos.len()
+                ),
+                "deja un elemento mas para el cero final".to_string(),
+            );
+            return Vec::new();
+        }
+        let (min, max) = crate::tipos::rango(bits, signo);
+        if let Some(c) = codigos.iter().find(|c| **c < min || **c > max) {
+            self.error(
+                lugar,
+                format!("el caracter con codigo {c} no cabe en {elemento}, el tipo de los elementos de `{nombre}`"),
+            );
+            return Vec::new();
+        }
+        codigos
     }
 
     /// RF-SGT-017 y RF-SGT-028: una variable ubicada cae dentro de una region y no en una de solo
@@ -695,6 +752,7 @@ impl<'a> Analizador<'a> {
             lugar,
             direccion: None,
             inicial: None,
+            datos: Vec::new(),
         });
         if let Some(a) = self.ambitos.last_mut() {
             a.insert(nombre.to_string(), id);

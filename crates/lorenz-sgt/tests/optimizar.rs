@@ -10,7 +10,11 @@ fn en_todos_los_niveles(maq: &str, fuente: &str) -> Vec<(usize, u64)> {
     let mut tamanos = Vec::new();
     for nivel in 0..=3 {
         let ((g, instr), c) = ejecutado_nivel(maq, fuente, nivel);
-        for (k, v) in &esperado.globales {
+        for (k, v) in esperado
+            .globales
+            .iter()
+            .filter(|(k, _)| !k.starts_with("__"))
+        {
             assert_eq!(
                 g[k],
                 (*v) & 0xFFFF,

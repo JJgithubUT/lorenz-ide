@@ -19,7 +19,7 @@ use crate::tipos::Tipo;
 pub type Sustitucion<'a> = &'a dyn Fn(OpBinario, &Tipo) -> Option<&'static str>;
 
 fn es_biblioteca(n: &str) -> bool {
-    n.starts_with("__")
+    crate::biblioteca::es_reservado(n)
 }
 
 /// Funciones y variables que alcanza una funcion directamente.
