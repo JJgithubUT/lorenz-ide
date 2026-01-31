@@ -152,3 +152,39 @@ pub fn compilar_cli(
     }
     SALIDA_OK
 }
+
+/// Escribe la convencion de llamada de SGT en una maquina (RF-SGT-027).
+pub fn convencion_cli(
+    ruta_maquina: &str,
+    ruta_salida: Option<&str>,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> i32 {
+    let maquina = match lorenz_arch::cargar_archivo(ruta_maquina) {
+        Ok(m) => m,
+        Err(e) => {
+            escribir(errores, &format!("{ruta_maquina}: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
+    };
+    let texto = match lorenz_sgt::convencion::describir(&maquina) {
+        Ok(t) => t,
+        Err(e) => {
+            escribir(
+                errores,
+                &format!("{ruta_maquina}: SGT no puede usar esta maquina: {e}\n"),
+            );
+            return SALIDA_ERROR_EJECUCION;
+        }
+    };
+    match ruta_salida {
+        Some(ruta) => {
+            if let Err(e) = std::fs::write(ruta, &texto) {
+                escribir(errores, &format!("{ruta}: no se pudo escribir: {e}\n"));
+                return SALIDA_ERROR_USO;
+            }
+        }
+        None => escribir(salida, &texto),
+    }
+    0
+}

@@ -30,6 +30,7 @@ Uso:
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
   lorenz compilar <maquina.toml> <fuente.sgt> [-O0|-O1|-O2|-O3] [-o PROGRAMA.hex] [--asm ARCHIVO] [--lineas ARCHIVO] [--costes ARCHIVO]
+  lorenz convencion <maquina.toml> [-o CONVENCION.md]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
@@ -200,6 +201,10 @@ pub fn ejecutar_cli_con_entrada(
             fuente,
             opciones,
         } => crate::ensamblar::ensamblar_cli(&maquina, &fuente, &opciones, salida, errores),
+        Orden::Convencion {
+            maquina,
+            salida: archivo,
+        } => crate::compilar::convencion_cli(&maquina, archivo.as_deref(), salida, errores),
         Orden::Documentar {
             maquina,
             salida: archivo,

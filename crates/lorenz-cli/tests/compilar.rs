@@ -177,3 +177,31 @@ fn la_tabla_de_costes_lista_las_funciones() {
     assert!(t.contains("5000"), "{t}");
     assert!(!t.contains("__"), "{t}");
 }
+
+#[test]
+fn la_convencion_de_llamada_nombra_los_registros_de_la_maquina() {
+    for (maq, reg) in [("risc-16", "R2"), ("sgt-16", "R2")] {
+        let (c, salida, e) = correr(&["convencion", &ejemplo(maq)]);
+        assert_eq!(c, 0, "{e}");
+        assert!(
+            salida.contains("## Registros") && salida.contains("## Llamada"),
+            "{salida}"
+        );
+        assert!(salida.contains(reg), "{maq}: {salida}");
+    }
+}
+
+#[test]
+fn la_convencion_dice_que_operadores_usan_rutinas() {
+    let (_, riscv, _) = correr(&["convencion", &ejemplo("risc-16")]);
+    assert!(riscv.contains("__mul"), "{riscv}");
+    let (_, sgt, _) = correr(&["convencion", &ejemplo("sgt-16")]);
+    assert!(!sgt.contains("__mul"), "{sgt}");
+}
+
+#[test]
+fn la_convencion_de_una_maquina_inservible_falla_con_un_mensaje() {
+    let (c, _, e) = correr(&["convencion", &ejemplo("pila-8")]);
+    assert_ne!(c, 0);
+    assert!(e.contains("pila-8") || e.contains("SGT"), "{e}");
+}
