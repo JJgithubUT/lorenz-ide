@@ -135,26 +135,11 @@ pub fn sustitucion_para(maq: &Maquina) -> impl Fn(OpBinario, &Tipo) -> Option<&'
     }
 }
 
-pub fn generar(
-    m: &Modulo,
-    d: &Destino,
-    maq: &Maquina,
-    saltos_largos: bool,
-) -> Result<Generado, Vec<Diagnostico>> {
-    let disp = disponer(m, d).map_err(|e| vec![e])?;
-    let mut em = Emisor::nuevo(maq);
-    em.saltos_largos = saltos_largos;
-    let lugar0 = Lugar::nuevo(1, 1);
-    if let Err(f) = em.preparar_registros() {
-        return Err(vec![falta_a_diag(m, d, lugar0, &f)]);
-    }
+/// Reparte los registros del compilador: el de retorno, el auxiliar, los temporales y, si la
+/// maquina direcciona con registro mas desplazamiento, el que apunta a los datos. Devuelve los
+/// temporales.
+pub fn repartir_registros(em: &mut Emisor, region: u64) -> Vec<String> {
     // Registro base de los datos: solo si hay acceso con registro mas desplazamiento.
-    let region = d
-        .regiones
-        .iter()
-        .find(|r| r.nombre == disp.region)
-        .map(|r| r.desde)
-        .unwrap_or(0);
     let hay_base_mas_desp = em.perfil.instrucciones.iter().any(|i| {
         matches!(
             &i.forma,
@@ -169,7 +154,29 @@ pub fn generar(
         let gp = pool.pop().unwrap();
         em.gp = Some((gp, region));
     }
-    let temporales: Vec<String> = pool[2..].to_vec();
+    pool[2..].to_vec()
+}
+
+pub fn generar(
+    m: &Modulo,
+    d: &Destino,
+    maq: &Maquina,
+    saltos_largos: bool,
+) -> Result<Generado, Vec<Diagnostico>> {
+    let disp = disponer(m, d).map_err(|e| vec![e])?;
+    let mut em = Emisor::nuevo(maq);
+    em.saltos_largos = saltos_largos;
+    let lugar0 = Lugar::nuevo(1, 1);
+    if let Err(f) = em.preparar_registros() {
+        return Err(vec![falta_a_diag(m, d, lugar0, &f)]);
+    }
+    let region = d
+        .regiones
+        .iter()
+        .find(|r| r.nombre == disp.region)
+        .map(|r| r.desde)
+        .unwrap_or(0);
+    let temporales = repartir_registros(&mut em, region);
     let mut g = Gen {
         m,
         d,
