@@ -76,6 +76,21 @@ struct Analizador<'a> {
     llamadas: Vec<(hir::IdFuncion, Lugar)>,
 }
 
+/// La conversion que arregla un error de tipos, si existe y es segura de proponer.
+fn conversion_sugerida(origen: &Tipo, destino: &Tipo) -> Option<String> {
+    match (origen, destino) {
+        (Tipo::Entero { .. }, Tipo::Entero { .. })
+        | (Tipo::Bool, Tipo::Entero { .. })
+        | (Tipo::Puntero(_), Tipo::Puntero(_)) => {
+            Some(format!("convierte el valor con `como {destino}`"))
+        }
+        (Tipo::Entero { .. }, Tipo::Bool) => {
+            Some("compara con `!= 0` para obtener un booleano".to_string())
+        }
+        _ => None,
+    }
+}
+
 fn distancia(a: &str, b: &str) -> usize {
     let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
     let mut fila: Vec<usize> = (0..=b.len()).collect();
@@ -124,6 +139,14 @@ impl<'a> Analizador<'a> {
     fn error_con(&mut self, lugar: Lugar, mensaje: impl Into<String>, sugerencia: String) {
         self.diag
             .push(Diagnostico::nuevo(self.archivo, lugar, mensaje).con_sugerencia(sugerencia));
+    }
+
+    /// Un error de tipos: si hay una conversion que lo arregla, la sugiere (RF-SGT-037).
+    fn error_tipos(&mut self, lugar: Lugar, mensaje: String, origen: &Tipo, destino: &Tipo) {
+        match conversion_sugerida(origen, destino) {
+            Some(s) => self.error_con(lugar, mensaje, s),
+            None => self.error(lugar, mensaje),
+        }
     }
 
     // ------------------------------------------------------------------
@@ -175,7 +198,26 @@ impl<'a> Analizador<'a> {
                     self.destino.palabra,
                     self.lista_de_enteros()
                 );
-                self.diag.push(Diagnostico::nuevo(self.archivo, lugar, m));
+                let d = Diagnostico::nuevo(self.archivo, lugar, m);
+                // Una cifra casi igual a un ancho que existe (u61 por u16).
+                let cercano = self
+                    .destino
+                    .anchos_de_entero()
+                    .into_iter()
+                    .map(|b| (b, format!("{}{b}", &nombre[..1])))
+                    .filter(|(_, c)| distancia(c, nombre) <= 2)
+                    .min_by_key(|(_, c)| {
+                        // Las cifras cambiadas de orden (u61) van antes que las demas.
+                        let (mut a, mut b): (Vec<char>, Vec<char>) =
+                            (c.chars().collect(), nombre.chars().collect());
+                        a.sort_unstable();
+                        b.sort_unstable();
+                        (a != b, distancia(c, nombre))
+                    });
+                self.diag.push(match cercano {
+                    Some((_, c)) => d.con_sugerencia(format!("quiza querias decir `{c}`")),
+                    None => d,
+                });
                 return Tipo::Error;
             }
         }
@@ -415,12 +457,14 @@ impl<'a> Analizador<'a> {
             return;
         }
         if v.tipo != tipo {
-            self.error(
+            self.error_tipos(
                 c.valor.lugar,
                 format!(
                     "la constante `{}` es {} pero el valor es {}",
                     c.nombre, tipo, v.tipo
                 ),
+                &v.tipo,
+                &tipo,
             );
             return;
         }
@@ -485,12 +529,14 @@ impl<'a> Analizador<'a> {
                     return None;
                 }
                 if v.tipo != tipo {
-                    self.error(
+                    self.error_tipos(
                         e.lugar,
                         format!(
                             "`{}` es {} pero el valor inicial es {}",
                             g.nombre, tipo, v.tipo
                         ),
+                        &v.tipo,
+                        &tipo,
                     );
                     return None;
                 }
@@ -878,9 +924,11 @@ impl<'a> Analizador<'a> {
                 };
                 if let Some(v) = &valor {
                     if !v.tipo.es_error() && !tipo_final.es_error() && v.tipo != tipo_final {
-                        self.error(
+                        self.error_tipos(
                             inicial.as_ref().unwrap().lugar,
                             format!("`{nombre}` es {tipo_final} pero el valor es {}", v.tipo),
+                            &v.tipo,
+                            &tipo_final,
                         );
                     }
                 }
@@ -940,12 +988,14 @@ impl<'a> Analizador<'a> {
                     }
                 };
                 if !nuevo.tipo.es_error() && nuevo.tipo != sitio.tipo {
-                    self.error(
+                    self.error_tipos(
                         valor.lugar,
                         format!(
                             "se asigna un valor de tipo {} a algo de tipo {}",
                             nuevo.tipo, sitio.tipo
                         ),
+                        &nuevo.tipo,
+                        &sitio.tipo,
                     );
                     return None;
                 }
@@ -979,14 +1029,22 @@ impl<'a> Analizador<'a> {
             }
             ClaseSentencia::Romper => {
                 if self.bucles == 0 {
-                    self.error(lugar, "`romper` solo vale dentro de un bucle");
+                    self.error_con(
+                        lugar,
+                        "`romper` solo vale dentro de un bucle",
+                        "ponlo dentro de un `mientras` o un `bucle`".to_string(),
+                    );
                     return None;
                 }
                 ClaseSent::Romper
             }
             ClaseSentencia::Continuar => {
                 if self.bucles == 0 {
-                    self.error(lugar, "`continuar` solo vale dentro de un bucle");
+                    self.error_con(
+                        lugar,
+                        "`continuar` solo vale dentro de un bucle",
+                        "ponlo dentro de un `mientras` o un `bucle`".to_string(),
+                    );
                     return None;
                 }
                 ClaseSent::Continuar
@@ -996,19 +1054,29 @@ impl<'a> Analizador<'a> {
                 match (valor, &esperado) {
                     (None, Tipo::Vacio) => ClaseSent::Devolver(None),
                     (None, t) if !t.es_error() => {
-                        self.error(lugar, format!("la funcion devuelve {t} y falta el valor"));
+                        self.error_con(
+                            lugar,
+                            format!("la funcion devuelve {t} y falta el valor"),
+                            "escribe `devolver valor;`".to_string(),
+                        );
                         return None;
                     }
                     (Some(e), Tipo::Vacio) => {
-                        self.error(e.lugar, "esta funcion no devuelve ningun valor");
+                        self.error_con(
+                            e.lugar,
+                            "esta funcion no devuelve ningun valor",
+                            "quita el valor o declara el tipo de retorno con `-> tipo`".to_string(),
+                        );
                         return None;
                     }
                     (Some(e), t) => {
                         let v = self.expr(e, Some(t));
                         if !v.tipo.es_error() && !t.es_error() && &v.tipo != t {
-                            self.error(
+                            self.error_tipos(
                                 e.lugar,
                                 format!("la funcion devuelve {t} pero el valor es {}", v.tipo),
+                                &v.tipo,
+                                t,
                             );
                             return None;
                         }
@@ -1250,10 +1318,9 @@ impl<'a> Analizador<'a> {
                     return None;
                 }
                 if !idx.tipo.es_entero() {
-                    self.error(
-                        i.lugar,
-                        format!("el indice debe ser un entero y esto es {}", idx.tipo),
-                    );
+                    let m = format!("el indice debe ser un entero y esto es {}", idx.tipo);
+                    let t = Tipo::u(self.destino.palabra);
+                    self.error_tipos(i.lugar, m, &idx.tipo, &t);
                     return None;
                 }
                 match b {
@@ -1842,14 +1909,22 @@ impl<'a> Analizador<'a> {
             return match valores::binario(op, *x, *y, bits, signo) {
                 Ok(v) => self.constante(lugar, resultado, v),
                 Err(_) => {
-                    self.error(lugar, "division entre cero");
+                    self.error_con(
+                        lugar,
+                        "division entre cero",
+                        "cambia el divisor o comprueba antes que no es cero".to_string(),
+                    );
                     self.error_expr(lugar)
                 }
             };
         }
         if matches!(op, OpBinario::Div | OpBinario::Mod) {
             if let CE::Const(0) = b.clase {
-                self.error(lugar, "division entre cero");
+                self.error_con(
+                    lugar,
+                    "division entre cero",
+                    "cambia el divisor o comprueba antes que no es cero".to_string(),
+                );
                 return self.error_expr(lugar);
             }
         }
@@ -1899,13 +1974,15 @@ impl<'a> Analizador<'a> {
             return self.error_expr(lugar);
         }
         if args.len() != firma.parametros.len() {
-            self.error(
+            let tipos: Vec<String> = firma.parametros.iter().map(|t| t.to_string()).collect();
+            self.error_con(
                 lugar,
                 format!(
                     "`{nombre}` recibe {} argumentos y se le pasan {}",
                     firma.parametros.len(),
                     args.len()
                 ),
+                format!("la firma es `{nombre}({})`", tipos.join(", ")),
             );
             for a in args {
                 self.expr(a, None);
@@ -1919,9 +1996,11 @@ impl<'a> Analizador<'a> {
             if h.tipo.es_error() || t.es_error() {
                 ok = false;
             } else if &h.tipo != t {
-                self.error(
+                self.error_tipos(
                     a.lugar,
                     format!("`{nombre}` espera {t} y se le pasa {}", h.tipo),
+                    &h.tipo,
+                    t,
                 );
                 ok = false;
             }
