@@ -37,3 +37,6 @@ pub mod documentar;
 
 /// Compilacion de SGT.
 pub mod compilar;
+
+/// El mismo programa SGT en varias maquinas.
+pub mod cotejar;
