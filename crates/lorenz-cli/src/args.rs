@@ -51,6 +51,12 @@ pub enum Orden {
         fuente: String,
         opciones: crate::ensamblar::OpcionesEnsamblar,
     },
+    /// Compilar y ejecutar el mismo programa SGT en varias maquinas y compararlas.
+    Cotejar {
+        fuente: String,
+        maquinas: Vec<String>,
+        opciones: crate::cotejar::OpcionesCotejar,
+    },
     /// Escribir la convencion de llamada de SGT en una maquina.
     Convencion {
         maquina: String,
@@ -233,6 +239,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "documentar" => interpretar_documentar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
+        "cotejar" => interpretar_cotejar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
         "probar" => interpretar_probar(resto),
@@ -450,6 +457,33 @@ fn interpretar_compilar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Compilar {
         maquina,
         fuente,
+        opciones,
+    })
+}
+
+fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut opciones = crate::cotejar::OpcionesCotejar::default();
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = Some(numero(a, valor_de(resto, &mut i, a)?)?),
+            "-O0" | "-O1" | "-O2" | "-O3" => opciones.nivel = Some(a.as_bytes()[2] - b'0'),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let fuente = it.next().ok_or(ErrorUso::Falta("fuente"))?;
+    let maquinas: Vec<String> = it.collect();
+    if maquinas.len() < 2 {
+        return Err(ErrorUso::Falta("al menos dos maquinas"));
+    }
+    Ok(Orden::Cotejar {
+        fuente,
+        maquinas,
         opciones,
     })
 }

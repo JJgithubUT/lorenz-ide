@@ -205,3 +205,89 @@ fn la_convencion_de_una_maquina_inservible_falla_con_un_mensaje() {
     assert_ne!(c, 0);
     assert!(e.contains("pila-8") || e.contains("SGT"), "{e}");
 }
+
+const PRODUCTOS: &str = "var r: u16;\nfuncion principal() {\n    var i: u16 = 1;\n    mientras i <= 20 {\n        r += i * 3;\n        i += 1;\n    }\n}\n";
+
+fn fila(salida: &str, maquina: &str) -> Vec<String> {
+    salida
+        .lines()
+        .find(|l| l.starts_with(maquina))
+        .unwrap_or_else(|| panic!("no hay fila de {maquina}:\n{salida}"))
+        .split_whitespace()
+        .map(String::from)
+        .collect()
+}
+
+#[test]
+fn cotejar_compila_y_mide_en_varias_maquinas() {
+    let d = carpeta();
+    let fuente = d.join("p.sgt");
+    std::fs::write(&fuente, PRODUCTOS).unwrap();
+    let (c, salida, e) = correr(&[
+        "cotejar",
+        fuente.to_str().unwrap(),
+        &ejemplo("risc-16"),
+        &ejemplo("sgt-16"),
+    ]);
+    assert_eq!(c, 0, "{e}\n{salida}");
+    assert!(salida.contains("coinciden"), "{salida}");
+    let (r, s) = (fila(&salida, "risc-16"), fila(&salida, "sgt-16"));
+    // columnas: maquina, palabra, codigo(bits), instrucciones, ciclos
+    let ciclos = |f: &Vec<String>| f[4].parse::<u64>().unwrap();
+    let bits = |f: &Vec<String>| f[2].parse::<u64>().unwrap();
+    assert!(
+        ciclos(&s) < ciclos(&r),
+        "sgt-16 multiplica con una instruccion:\n{salida}"
+    );
+    assert!(bits(&s) < bits(&r), "{salida}");
+}
+
+#[test]
+fn cotejar_sigue_con_las_demas_cuando_una_maquina_no_sirve() {
+    let d = carpeta();
+    let fuente = d.join("p.sgt");
+    std::fs::write(&fuente, PRODUCTOS).unwrap();
+    let (c, salida, e) = correr(&[
+        "cotejar",
+        fuente.to_str().unwrap(),
+        &ejemplo("risc-16"),
+        &ejemplo("pila-8"),
+        &ejemplo("sgt-16"),
+    ]);
+    assert_eq!(c, 1, "{e}\n{salida}");
+    assert!(salida.contains("no se pudo"), "{salida}");
+    assert!(fila(&salida, "risc-16").len() >= 5);
+    assert!(fila(&salida, "sgt-16").len() >= 5);
+    assert!(e.contains("pila-8"), "{e}");
+}
+
+#[test]
+fn cotejar_pide_al_menos_dos_maquinas() {
+    let (c, _, e) = correr(&["cotejar", "x.sgt", &ejemplo("risc-16")]);
+    assert_eq!(c, 2);
+    assert!(e.contains("dos maquinas"), "{e}");
+}
+
+#[test]
+fn cotejar_respeta_el_nivel_de_optimizacion() {
+    let d = carpeta();
+    let fuente = d.join("p.sgt");
+    std::fs::write(
+        &fuente,
+        "var r: u16;\nfuncion principal() {\n    var x: u16 = 9;\n    r = x * 8 + x / 4;\n}\n",
+    )
+    .unwrap();
+    let mut tam = Vec::new();
+    for nivel in ["-O0", "-O3"] {
+        let (c, salida, e) = correr(&[
+            "cotejar",
+            fuente.to_str().unwrap(),
+            &ejemplo("risc-16"),
+            &ejemplo("sgt-16"),
+            nivel,
+        ]);
+        assert_eq!(c, 0, "{e}");
+        tam.push(fila(&salida, "risc-16")[2].parse::<u64>().unwrap());
+    }
+    assert!(tam[1] < tam[0], "{tam:?}");
+}
