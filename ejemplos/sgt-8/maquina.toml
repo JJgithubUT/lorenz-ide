@@ -1,0 +1,410 @@
+# Maquina de 8 bits pensada para compilar SGT con banderas: ocho registros, ALU de dos direcciones
+# (`rd = rd op rs`), comparacion que enciende Z y C, saltos por bandera y absolutos de 16 bits, y una
+# UART. No tiene salto por registro ni acceso indirecto a memoria: el compilador debe volver de las
+# funciones sin `JR` y direccionar solo con direcciones absolutas.
+
+[maquina]
+nombre         = "sgt-8"
+formato        = "0.1"
+bits_palabra   = 8
+bits_direccion = 16
+endianness     = "little"
+arranque       = 0x0000
+pila           = "descendente"
+
+[maquina.interrupciones]
+vectores = { 0 = 0x0010, 1 = 0x0020 }
+habilitadas_al_arrancar = false
+
+[flags]
+Z = { bit = 0, descripcion = "resultado igual a cero, o operandos iguales tras CMP" }
+C = { bit = 1, descripcion = "acarreo en la suma, prestamo en la resta, o primero menor que el segundo tras CMP" }
+
+[[registro]]
+nombre = "R0"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R1"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R2"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R3"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R4"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R5"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R6"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R7"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "SP"
+bits = 16
+rol = "sp"
+inicial = 0xEFFF
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+[[registro]]
+nombre = "F"
+bits = 8
+rol = "flags"
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 0000"
+semantica = ""
+ciclos    = 1
+descripcion = "No hace nada."
+
+
+[[instruccion]]
+mnemonico = "MOV"
+sintaxis  = "MOV {rd}, {rs}"
+codigo    = "0000 0001 | rd:4 rs:4"
+semantica = "rd = rs"
+ciclos    = 2
+descripcion = "Copia un registro en otro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "LDI"
+sintaxis  = "LDI {rd}, {imm}"
+codigo    = "0000 0010 | rd:4 .... | imm:8"
+semantica = "rd = imm"
+ciclos    = 3
+descripcion = "Carga una constante en un registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+
+[[instruccion]]
+mnemonico = "LD"
+sintaxis  = "LD {rd}, [{dir}]"
+codigo    = "0000 0011 | rd:4 .... | dir:8 | dir:8"
+semantica = "rd = mem[dir]"
+ciclos    = 5
+descripcion = "Lee una palabra de memoria."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "ST"
+sintaxis  = "ST [{dir}], {rs}"
+codigo    = "0000 0100 | rs:4 .... | dir:8 | dir:8"
+semantica = "mem[dir] = rs"
+ciclos    = 5
+descripcion = "Escribe un registro en memoria."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD {rd}, {rs}"
+codigo    = "00010000 | rd:4 rs:4"
+semantica = "rd = rd + rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "Suma: deja el resultado en el primer registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "SUB"
+sintaxis  = "SUB {rd}, {rs}"
+codigo    = "00010001 | rd:4 rs:4"
+semantica = "rd = rd - rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "Resta: deja el resultado en el primer registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "AND"
+sintaxis  = "AND {rd}, {rs}"
+codigo    = "00010010 | rd:4 rs:4"
+semantica = "rd = rd & rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "Y de bits: deja el resultado en el primer registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "OR"
+sintaxis  = "OR {rd}, {rs}"
+codigo    = "00010011 | rd:4 rs:4"
+semantica = "rd = rd | rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "O de bits: deja el resultado en el primer registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "XOR"
+sintaxis  = "XOR {rd}, {rs}"
+codigo    = "00010100 | rd:4 rs:4"
+semantica = "rd = rd ^ rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "O exclusivo de bits: deja el resultado en el primer registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "CMP"
+sintaxis  = "CMP {rd}, {rs}"
+codigo    = "0001 0101 | rd:4 rs:4"
+semantica = "Z = rd == rs; C = rd < rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "Compara sin signo: enciende Z si son iguales y C si el primero es menor."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "JMP"
+sintaxis  = "JMP {dir}"
+codigo    = "0010 0000 | dir:8 | dir:8"
+semantica = "pc = dir"
+ciclos    = 3
+descripcion = "Salta a una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "JZ"
+sintaxis  = "JZ {dir}"
+codigo    = "00100001 | dir:8 | dir:8"
+semantica = "si Z: pc = dir"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "Salta si Z encendida."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "JNZ"
+sintaxis  = "JNZ {dir}"
+codigo    = "00100010 | dir:8 | dir:8"
+semantica = "si !Z: pc = dir"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "Salta si Z apagada."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "JC"
+sintaxis  = "JC {dir}"
+codigo    = "00100011 | dir:8 | dir:8"
+semantica = "si C: pc = dir"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "Salta si C encendida."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "JNC"
+sintaxis  = "JNC {dir}"
+codigo    = "00100100 | dir:8 | dir:8"
+semantica = "si !C: pc = dir"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "Salta si C apagada."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+
+[[instruccion]]
+mnemonico = "IN"
+sintaxis  = "IN {rd}"
+codigo    = "0011 0000 | rd:4 ...."
+semantica = "rd = in[0x10]"
+ciclos    = 3
+descripcion = "Recibe un byte de la UART."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "OUT"
+sintaxis  = "OUT {rs}"
+codigo    = "0011 0001 | rs:4 ...."
+semantica = "out[0x10] = rs"
+ciclos    = 3
+descripcion = "Transmite un byte por la UART."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+
+[[instruccion]]
+mnemonico = "RETI"
+sintaxis  = "RETI"
+codigo    = "0011 0010"
+semantica = "pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1"
+ciclos    = 5
+descripcion = "Vuelve de una interrupcion y las habilita."
+
+
+[[instruccion]]
+mnemonico = "EI"
+sintaxis  = "EI"
+codigo    = "0011 0011"
+semantica = "ie = 1"
+ciclos    = 1
+descripcion = "Habilita las interrupciones."
+
+
+[[instruccion]]
+mnemonico = "DI"
+sintaxis  = "DI"
+codigo    = "0011 0100"
+semantica = "ie = 0"
+ciclos    = 1
+descripcion = "Inhabilita las interrupciones."
+
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 1111"
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+
+
+# --- memoria y dispositivos ---
+
+[[region]]
+nombre = "rom"
+desde  = 0x0000
+hasta  = 0x1FFF
+acceso = "r"
+
+[[region]]
+nombre = "ram"
+desde  = 0x2000
+hasta  = 0xEFFF
+acceso = "rw"
+
+[[dispositivo]]
+nombre  = "serie"
+tipo    = "uart"
+puertos = { datos = 0x10, estado = 0x11 }
