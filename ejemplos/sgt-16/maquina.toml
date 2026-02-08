@@ -322,7 +322,7 @@ descripcion = "Suma una constante de 16 bits."
 [[instruccion]]
 mnemonico = "LW"
 sintaxis  = "LW {rd}, [{rs}+{off}]"
-codigo    = "01100 rd:3 rs:3 ..... | off:16"
+codigo    = "01100 rd:3 rs:3 ..... | off:12 ...."
 semantica = "rd = mem[rs + off]"
 ciclos    = 2
 descripcion = "Lee una palabra de memoria."
@@ -344,7 +344,7 @@ descripcion = "Lee una palabra de memoria."
 [[instruccion]]
 mnemonico = "SW"
 sintaxis  = "SW {rd}, [{rs}+{off}]"
-codigo    = "01101 rd:3 rs:3 ..... | off:16"
+codigo    = "01101 rd:3 rs:3 ..... | off:12 ...."
 semantica = "mem[rs + off] = rd"
 ciclos    = 2
 descripcion = "Escribe una palabra en memoria."
@@ -366,7 +366,7 @@ descripcion = "Escribe una palabra en memoria."
 [[instruccion]]
 mnemonico = "BEQ"
 sintaxis  = "BEQ {rs}, {rt}, {off}"
-codigo    = "01110 rs:3 rt:3 ..... | off:16"
+codigo    = "01110 rs:3 rt:3 ..... | off:12 ...."
 semantica = "si rs == rt: pc = pc + off"
 ciclos    = 2
 descripcion = "Salta si rs == rt (sin signo)."
@@ -386,7 +386,7 @@ descripcion = "Salta si rs == rt (sin signo)."
 [[instruccion]]
 mnemonico = "BNE"
 sintaxis  = "BNE {rs}, {rt}, {off}"
-codigo    = "01111 rs:3 rt:3 ..... | off:16"
+codigo    = "01111 rs:3 rt:3 ..... | off:12 ...."
 semantica = "si rs != rt: pc = pc + off"
 ciclos    = 2
 descripcion = "Salta si rs != rt (sin signo)."
@@ -406,7 +406,7 @@ descripcion = "Salta si rs != rt (sin signo)."
 [[instruccion]]
 mnemonico = "BLT"
 sintaxis  = "BLT {rs}, {rt}, {off}"
-codigo    = "10000 rs:3 rt:3 ..... | off:16"
+codigo    = "10000 rs:3 rt:3 ..... | off:12 ...."
 semantica = "si rs < rt: pc = pc + off"
 ciclos    = 2
 descripcion = "Salta si rs < rt (sin signo)."
