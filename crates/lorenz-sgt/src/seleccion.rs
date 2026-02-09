@@ -101,6 +101,13 @@ pub enum Forma {
         cond: Cond,
         salto: Salto,
     },
+    /// Compara dos registros y enciende banderas: cada par es la bandera y la relacion que la
+    /// enciende (`Z = rd == rs`, `C = rd < rs`). No escribe en ningun registro.
+    Comparar {
+        a: Reg,
+        b: Reg,
+        banderas: Vec<(String, OpBinario)>,
+    },
     Entrada {
         d: Reg,
         puerto: Puerto,
@@ -335,6 +342,9 @@ impl Ctx<'_> {
                 _ => Forma::Otra,
             };
         }
+        if let Some(f) = self.comparacion(s) {
+            return f;
+        }
         match s.as_slice() {
             [] => Forma::Nada,
             [Sentencia::Detener] => Forma::Detener,
@@ -352,6 +362,40 @@ impl Ctx<'_> {
             },
             _ => Forma::Otra,
         }
+    }
+
+    /// `Z = rd == rs; C = rd < rs`: solo asigna banderas, cada una a una comparacion de los mismos
+    /// dos registros.
+    fn comparacion(&self, s: &[Sentencia]) -> Option<Forma> {
+        let mut regs: Option<(Reg, Reg)> = None;
+        let mut banderas = Vec::new();
+        for x in s {
+            let Sentencia::Asignar(Destino::Nombre(f), Expr::Binario(op, a, b)) = x else {
+                return None;
+            };
+            if !matches!(self.clase(f), Nombre::Bandera)
+                || !matches!(
+                    op,
+                    OpBinario::Igual
+                        | OpBinario::Distinto
+                        | OpBinario::Menor
+                        | OpBinario::MenorIgual
+                        | OpBinario::Mayor
+                        | OpBinario::MayorIgual
+                )
+            {
+                return None;
+            }
+            let par = (self.reg(a)?, self.reg(b)?);
+            match &regs {
+                None => regs = Some(par),
+                Some(r) if *r == par => {}
+                Some(_) => return None,
+            }
+            banderas.push((f.clone(), *op));
+        }
+        let (a, b) = regs?;
+        Some(Forma::Comparar { a, b, banderas })
     }
 
     fn asignacion(&self, d: &Destino, e: &Expr) -> Forma {
