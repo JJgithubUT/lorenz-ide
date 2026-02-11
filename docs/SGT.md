@@ -287,7 +287,7 @@ funcion principal() { r = 1; r += 2; }
 | `-O0` | nada |
 | `-O1` | plegado de constantes, ramas con condicion conocida, codigo muerto (por omision) |
 | `-O2` | ademas, identidades (`x + 0`, `x * 1`) y sentencias sin efecto |
-| `-O3` | ademas, `x * 2^k` como desplazamiento y division y resto sin signo entre potencias de dos |
+| `-O3` | ademas, `x * 2^k` como desplazamiento y division y resto sin signo entre potencias de dos (ejecuta menos instrucciones; en maquinas sin desplazamientos puede ocupar algo mas) |
 
 Ninguno cambia lo que el programa hace: nunca se elimina una division que pueda detener la maquina,
 ni una llamada, ni una lectura de puerto.
