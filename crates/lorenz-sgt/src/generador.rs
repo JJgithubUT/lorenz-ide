@@ -48,9 +48,18 @@ struct Gen<'a> {
     derrames: HashMap<(usize, String), u64>,
     fin_funcion: String,
     sustituye: Sustituye,
+    /// Se vuelve de las funciones por un numero de llamada y no por una direccion (la maquina no
+    /// puede saltar a un registro, o la direccion no cabe en uno).
+    por_indice: bool,
+    /// Por funcion, las etiquetas de retorno de cada sitio desde el que se la llama.
+    sitios: Vec<Vec<String>>,
 }
 
 type G<T> = Result<T, ()>;
+
+/// Palabras que se ponen a cero una a una, con direccion absoluta, si la maquina no puede hacerlo
+/// en un bucle.
+const MAXIMO_SIN_BUCLE: u64 = 512;
 
 fn op_maquina(op: OpBinario) -> Option<OpM> {
     Some(match op {
@@ -177,6 +186,7 @@ pub fn generar(
         .map(|r| r.desde)
         .unwrap_or(0);
     let temporales = repartir_registros(&mut em, region);
+    let g_em_salta_a_registro = em.salta_a_registro();
     let mut g = Gen {
         m,
         d,
@@ -192,6 +202,8 @@ pub fn generar(
         derrames: HashMap::new(),
         fin_funcion: String::new(),
         sustituye: Box::new(sustitucion_para(maq)),
+        por_indice: d.direccion > d.palabra || !g_em_salta_a_registro,
+        sitios: vec![Vec::new(); m.funciones.len()],
     };
     g.programa();
     if g.diag.is_empty() {
@@ -341,6 +353,14 @@ impl<'a> Gen<'a> {
         for f in orden {
             self.funcion_(f);
         }
+        if self.por_indice {
+            for f in 0..self.m.funciones.len() {
+                let fun = &self.m.funciones[f];
+                if fun.interrupcion.is_none() && fun.nombre != PRINCIPAL {
+                    self.despacho(f);
+                }
+            }
+        }
         if self.disp.libre > self.disp.limite + 1 {
             self.lugar = Lugar::nuevo(1, 1);
             self.error("los datos del programa no caben en la memoria de la maquina");
@@ -423,7 +443,16 @@ impl<'a> Gen<'a> {
     }
 
     fn limpiar(&mut self, desde: u64, hasta: u64) -> Result<(), Falta> {
-        if hasta - desde <= 3 {
+        // Un bucle con un puntero necesita escribir por registro y que la direccion quepa en uno;
+        // si no, se escribe cada palabra con su direccion absoluta.
+        let con_bucle = self.d.direccion <= self.d.palabra && self.em.escribe_por_registro();
+        if hasta - desde <= 3 || !con_bucle {
+            if hasta - desde > MAXIMO_SIN_BUCLE {
+                return Err(Falta::nueva(format!(
+                    "poner a cero {} palabras de datos al arrancar sin escribir por registro de direccion (el maximo es {MAXIMO_SIN_BUCLE})",
+                    hasta - desde
+                )));
+            }
             let z = self.libres[0].clone();
             self.em.cargar(&z, &Valor::Num(0))?;
             for a in desde..hasta {
@@ -479,13 +508,54 @@ impl<'a> Gen<'a> {
             let r = self.em.detener();
             let _ = self.r(r);
         } else {
+            if self.por_indice {
+                let vuelta = format!("{nombre}__vuelta");
+                let r = self.em.saltar(&vuelta);
+                let _ = self.r(r);
+            } else {
+                let s1 = self.em.s1();
+                let ra = self.ra[f];
+                let r = self.em.leer(&s1, &Sitio::Fija(ra));
+                let _ = self.r(r);
+                let r = self.em.saltar_reg(&s1);
+                let _ = self.r(r);
+            }
+        }
+    }
+
+    /// Vuelta de una funcion por numero de llamada: lee el numero que dejo quien llamo y salta a
+    /// la etiqueta de ese sitio. Se escribe al final, cuando ya se conocen todos los sitios.
+    fn despacho(&mut self, f: usize) {
+        let sitios = self.sitios[f].clone();
+        let nombre = self.nombre_funcion(f);
+        self.em.linea_fuente = Some(self.m.funciones[f].lugar.linea);
+        self.em.poner_etiqueta(&format!("{nombre}__vuelta"));
+        let Some((ultimo, resto)) = sitios.split_last() else {
+            // Nadie la llama: no hay a donde volver.
+            let r = self.em.detener();
+            let _ = self.r(r);
+            return;
+        };
+        if !resto.is_empty() {
+            // El primer registro lleva el valor que devuelve la funcion y no se toca: el numero de
+            // llamada va en el auxiliar y se compara con un temporal.
             let s1 = self.em.s1();
+            let Some(t) = self.temporales.first().cloned() else {
+                self.error("faltan registros temporales para volver de las funciones");
+                return;
+            };
             let ra = self.ra[f];
             let r = self.em.leer(&s1, &Sitio::Fija(ra));
             let _ = self.r(r);
-            let r = self.em.saltar_reg(&s1);
-            let _ = self.r(r);
+            for (k, etiqueta) in resto.iter().enumerate() {
+                let r = self.em.cargar(&t, &Valor::Num(k as i128 + 1));
+                let _ = self.r(r);
+                let r = self.em.saltar_si(OpM::Igual, &s1, &t, true, etiqueta);
+                let _ = self.r(r);
+            }
         }
+        let r = self.em.saltar(ultimo);
+        let _ = self.r(r);
     }
 
     /// Guarda (o repone) todos los registros del compilador: un manejador puede interrumpir al
@@ -1065,8 +1135,22 @@ impl<'a> Gen<'a> {
         }
         let ret = self.em.etiqueta_nueva("r");
         let s0 = self.em.s0();
-        let r = self.em.cargar(&s0, &Valor::Sim(ret.clone()));
-        self.r(r)?;
+        if self.por_indice {
+            self.sitios[id].push(ret.clone());
+            let numero = self.sitios[id].len() as i128;
+            if numero >= 1i128 << self.d.palabra {
+                self.error(format!(
+                    "`{}` se llama desde {numero} sitios y el numero de llamada no cabe en una palabra de {} bits",
+                    self.m.funciones[id].base, self.d.palabra
+                ));
+                return Err(());
+            }
+            let r = self.em.cargar(&s0, &Valor::Num(numero));
+            self.r(r)?;
+        } else {
+            let r = self.em.cargar(&s0, &Valor::Sim(ret.clone()));
+            self.r(r)?;
+        }
         let ra = self.ra[id];
         let r = self.em.escribir(&Sitio::Fija(ra), &s0);
         self.r(r)?;

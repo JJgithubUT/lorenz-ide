@@ -684,6 +684,30 @@ impl<'a> Emisor<'a> {
     // Memoria
     // ------------------------------------------------------------------
 
+    /// Si la maquina tiene una instruccion que salta a la direccion de un registro.
+    pub fn salta_a_registro(&self) -> bool {
+        self.perfil
+            .con_forma(|f| matches!(f, Forma::SaltarReg(_)))
+            .next()
+            .is_some()
+    }
+
+    /// Si la maquina puede escribir en una direccion que esta en un registro.
+    pub fn escribe_por_registro(&self) -> bool {
+        self.perfil
+            .con_forma(|f| {
+                matches!(
+                    f,
+                    Forma::Escribir {
+                        dir: Dir::Indirecta { .. },
+                        ..
+                    }
+                )
+            })
+            .next()
+            .is_some()
+    }
+
     fn forma_leer(&self) -> Vec<Instr> {
         self.perfil
             .con_forma(|f| matches!(f, Forma::Leer { .. }))
@@ -996,6 +1020,10 @@ impl<'a> Emisor<'a> {
                 );
             }
         }
+        // 1b. Banderas: comparar y saltar segun ellas.
+        if self.saltar_por_banderas(op, a, b, etiqueta).is_ok() {
+            return Ok(());
+        }
         // 2. Ordenar con un booleano (`rd = a < b`) y comparar con cero.
         if matches!(
             op,
@@ -1019,6 +1047,142 @@ impl<'a> Emisor<'a> {
             op.simbolo(),
             op.simbolo()
         )))
+    }
+
+    /// Salta segun una comparacion usando banderas: un `CMP` (o una resta sobre un registro
+    /// auxiliar) que las enciende y uno o dos saltos por bandera (RF-SGT-015).
+    fn saltar_por_banderas(&mut self, op: OpBinario, a: &str, b: &str, etiqueta: &str) -> R<()> {
+        let saltos: Vec<Instr> = self
+            .perfil
+            .con_forma(|f| {
+                matches!(
+                    f,
+                    Forma::SaltarSi {
+                        cond: Cond::Bandera(..),
+                        ..
+                    }
+                )
+            })
+            .cloned()
+            .collect();
+        if saltos.is_empty() {
+            return Err(Falta::nueva("saltar segun una bandera"));
+        }
+        for (x, y, o) in [(a, b, op), (b, a, intercambiar(op))] {
+            let objetivo = resultados(o);
+            // 1. Una instruccion que compara y enciende banderas sin escribir en registros.
+            let comparadoras: Vec<Instr> = self
+                .perfil
+                .con_forma(|f| matches!(f, Forma::Comparar { .. }))
+                .cloned()
+                .collect();
+            for i in &comparadoras {
+                let Forma::Comparar {
+                    a: ra,
+                    b: rb,
+                    banderas,
+                } = &i.forma
+                else {
+                    continue;
+                };
+                let (Some(oa), Some(ob)) = (nombre_op(ra), nombre_op(rb)) else {
+                    continue;
+                };
+                if !self.acepta(i, ra, x) || !self.acepta(i, rb, y) {
+                    continue;
+                }
+                let hechos: Vec<(String, u8)> = banderas
+                    .iter()
+                    .map(|(f, r)| (f.clone(), resultados(*r)))
+                    .collect();
+                if let Some(plan) = plan_de_saltos(&saltos, &hechos, objetivo) {
+                    self.emitir(i, &[(oa, x.to_string()), (ob, y.to_string())]);
+                    return self.saltos_del_plan(plan, etiqueta);
+                }
+            }
+            // 2. Una resta que enciende Z y C: se hace sobre una copia para no perder `x`.
+            let restas: Vec<Instr> = self
+                .perfil
+                .con_forma(|f| {
+                    matches!(
+                        f,
+                        Forma::Alu {
+                            op: OpBinario::Resta,
+                            b: Fuente::Reg(_),
+                            ..
+                        }
+                    )
+                })
+                .cloned()
+                .collect();
+            for i in &restas {
+                let Forma::Alu {
+                    d: rd,
+                    a: ra,
+                    b: Fuente::Reg(rb),
+                    ..
+                } = &i.forma
+                else {
+                    continue;
+                };
+                let (Some(od), Some(oa), Some(ob)) = (nombre_op(rd), nombre_op(ra), nombre_op(rb))
+                else {
+                    continue;
+                };
+                let afecta = &self.instruccion(i).afecta;
+                let mut hechos = Vec::new();
+                if afecta.iter().any(|f| f == "Z") {
+                    hechos.push(("Z".to_string(), IGUAL));
+                }
+                if afecta.iter().any(|f| f == "C") {
+                    hechos.push(("C".to_string(), MENOR));
+                }
+                if od != oa {
+                    continue;
+                }
+                let Some(plan) = plan_de_saltos(&saltos, &hechos, objetivo) else {
+                    continue;
+                };
+                let scratch = [self.s0(), self.s1()]
+                    .into_iter()
+                    .find(|r| r != x && r != y && self.acepta(i, rd, r) && self.acepta(i, rb, y));
+                let Some(scratch) = scratch else { continue };
+                self.mover(&scratch, x)?;
+                self.emitir(i, &[(od, scratch), (ob, y.to_string())]);
+                return self.saltos_del_plan(plan, etiqueta);
+            }
+        }
+        Err(Falta::nueva(format!(
+            "comparar `{}` entre dos registros encendiendo banderas y saltar segun ellas",
+            op.simbolo()
+        )))
+    }
+
+    fn saltos_del_plan(&mut self, plan: PlanDeSaltos, etiqueta: &str) -> R<()> {
+        match plan {
+            PlanDeSaltos::Directo(v) => {
+                for i in v {
+                    let Forma::SaltarSi { salto, .. } = &i.forma else {
+                        unreachable!()
+                    };
+                    self.salto_condicional(&i, salto, &[], etiqueta)?;
+                }
+            }
+            PlanDeSaltos::Complemento(v) => {
+                // Se salta por encima cuando el resultado es el contrario, y se salta de verdad
+                // en cualquier otro caso.
+                let paso = self.etiqueta_nueva("c");
+                for i in v {
+                    let Forma::SaltarSi { salto, .. } = &i.forma else {
+                        unreachable!()
+                    };
+                    self.salto_condicional(&i, salto, &[], &paso)?;
+                }
+                self.saltar(etiqueta)?;
+                self.poner_etiqueta(&paso);
+            }
+        }
+        Ok(())
     }
 
     /// Salta si el registro vale cero (`cero = true`) o no vale cero.
@@ -1158,6 +1322,78 @@ impl<'a> Emisor<'a> {
         }
         None
     }
+}
+
+// Resultados posibles de comparar dos valores, como bits de una mascara.
+const MENOR: u8 = 1;
+const IGUAL: u8 = 2;
+const MAYOR: u8 = 4;
+const TODOS: u8 = MENOR | IGUAL | MAYOR;
+
+/// Los resultados de la comparacion para los que `a op b` es cierto.
+fn resultados(op: OpBinario) -> u8 {
+    match op {
+        OpBinario::Menor => MENOR,
+        OpBinario::MenorIgual => MENOR | IGUAL,
+        OpBinario::Igual => IGUAL,
+        OpBinario::Distinto => MENOR | MAYOR,
+        OpBinario::Mayor => MAYOR,
+        OpBinario::MayorIgual => MAYOR | IGUAL,
+        _ => 0,
+    }
+}
+
+/// Como saltar para cubrir un conjunto de resultados.
+enum PlanDeSaltos {
+    /// Cada salto se toma en un subconjunto del objetivo y juntos lo cubren.
+    Directo(Vec<Instr>),
+    /// Los saltos cubren el complemento y llevan por encima de un salto incondicional.
+    Complemento(Vec<Instr>),
+}
+
+/// Elige, entre los saltos por bandera, uno o dos que cubran exactamente `objetivo`.
+fn plan_de_saltos(saltos: &[Instr], hechos: &[(String, u8)], objetivo: u8) -> Option<PlanDeSaltos> {
+    if objetivo == 0 || objetivo == TODOS {
+        return None;
+    }
+    // Cuando se toma cada salto, segun lo que se sabe de las banderas.
+    let opciones: Vec<(&Instr, u8)> = saltos
+        .iter()
+        .filter_map(|j| {
+            let Forma::SaltarSi {
+                cond: Cond::Bandera(f, enciende),
+                ..
+            } = &j.forma
+            else {
+                return None;
+            };
+            let (_, conjunto) = hechos.iter().find(|(n, _)| n == f)?;
+            let toma = if *enciende {
+                *conjunto
+            } else {
+                TODOS & !conjunto
+            };
+            Some((j, toma))
+        })
+        .collect();
+    let cubrir = |meta: u8| -> Option<Vec<Instr>> {
+        for (j, c) in &opciones {
+            if *c == meta {
+                return Some(vec![(*j).clone()]);
+            }
+        }
+        for (k, (j, c)) in opciones.iter().enumerate() {
+            for (l, d) in opciones.iter().skip(k + 1) {
+                if c | d == meta && c & !meta == 0 && d & !meta == 0 {
+                    return Some(vec![(*j).clone(), (*l).clone()]);
+                }
+            }
+        }
+        None
+    };
+    cubrir(objetivo)
+        .map(PlanDeSaltos::Directo)
+        .or_else(|| cubrir(TODOS & !objetivo).map(PlanDeSaltos::Complemento))
 }
 
 /// Si el perfil tiene alguna instruccion `rd = rs op rt` entre registros.

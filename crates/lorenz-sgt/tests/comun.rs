@@ -84,12 +84,13 @@ pub fn ejecutado_nivel(
 pub fn igual_al_oraculo(nombre: &str, fuente: &str) {
     let esperado = oraculo(nombre, fuente);
     let (obtenido, _) = ejecutado(nombre, fuente);
+    let mascara = (1i128 << maquina(nombre).bits_palabra) - 1;
     for (k, v) in &esperado.globales {
         // Las globales de apoyo del compilador no son del programa: el oraculo no las toca.
         if k.starts_with("__") {
             continue;
         }
-        let w = (*v) & 0xFFFF;
+        let w = (*v) & mascara;
         assert_eq!(
             obtenido[k], w,
             "global `{k}`: oraculo {v}, emulador {}",

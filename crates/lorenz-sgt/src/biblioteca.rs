@@ -78,29 +78,21 @@ funcion __sar(a: i{W}, k: u{W}) -> i{W} {
 
 funcion __divmod(a: u{W}, b: u{W}) -> u{W} {
     si b == 0 { __detener(); }
-    var r: u{W} = a;
+    var r: u{W} = 0;
     var q: u{W} = 0;
-    si b > r {
-        __resto = r;
-        devolver 0;
-    }
-    var d: [u{W}; {W}];
-    var k: [u{W}; {W}];
-    var n: u{W} = 0;
-    d[0] = b;
-    k[0] = 1;
-    mientras d[n] <= r - d[n] {
-        d[n + 1] = d[n] + d[n];
-        k[n + 1] = k[n] + k[n];
-        n += 1;
-    }
-    bucle {
-        si r >= d[n] {
-            r -= d[n];
-            q += k[n];
+    var x: u{W} = a;
+    var i: u{W} = {W};
+    mientras i != 0 {
+        var desborda: bool = r >= {TOP};
+        r += r;
+        si x >= {TOP} { r |= 1; }
+        x += x;
+        q += q;
+        si desborda || r >= b {
+            r -= b;
+            q |= 1;
         }
-        si n == 0 { romper; }
-        n -= 1;
+        i -= 1;
     }
     __resto = r;
     devolver q;

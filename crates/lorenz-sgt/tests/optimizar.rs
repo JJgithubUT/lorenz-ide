@@ -163,14 +163,17 @@ fn efectos_de_las_llamadas_se_conservan() {
 }
 
 #[test]
-fn niveles_mayores_no_empeoran_el_tamano() {
+fn niveles_mayores_no_empeoran_el_programa() {
     let t = todas(
         "var a: u16; var b: u16;
          funcion principal() { var x: u16 = 9; a = x * 4 + (2 + 3); b = x / 2 + 0; si verdadero { b += 1; } }",
     );
     for por_nivel in t {
-        for w in por_nivel.windows(2) {
+        // Hasta -O2 el codigo solo encoge; -O3 puede ocupar algo mas (llama a la rutina de
+        // desplazar en lugar de la de dividir) a cambio de ejecutar menos instrucciones.
+        for w in por_nivel[..3].windows(2) {
             assert!(w[1].0 <= w[0].0, "{por_nivel:?}");
         }
+        assert!(por_nivel[3].1 <= por_nivel[2].1, "{por_nivel:?}");
     }
 }
