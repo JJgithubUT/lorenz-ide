@@ -404,20 +404,34 @@ impl<'a> Gen<'a> {
             }) = &g.inicial
             {
                 let dir = self.disp.globales[i];
-                if self.una_palabra(&g.tipo).is_err() {
+                let n = palabras(self.m, self.d, &g.tipo);
+                if !matches!(g.tipo, Tipo::Entero { .. }) && self.una_palabra(&g.tipo).is_err() {
                     continue;
                 }
                 let t = match self.tmp() {
                     Ok(t) => t,
                     Err(()) => continue,
                 };
-                let r = self.em.cargar(&t, &Valor::Num(*v));
-                let _ = self.r(r);
-                let r = self.em.escribir(&Sitio::Fija(dir), &t);
-                let _ = self.r(r);
+                for (k, p) in self.palabras_de_valor(*v, n).into_iter().enumerate() {
+                    let r = self.em.cargar(&t, &Valor::Num(p));
+                    let _ = self.r(r);
+                    let r = self.em.escribir(&Sitio::Fija(dir + k as u64), &t);
+                    let _ = self.r(r);
+                }
                 self.liberar(&t);
             }
         }
+    }
+
+    /// Las `n` palabras de un valor, en el orden en que van en memoria.
+    fn palabras_de_valor(&self, v: i128, n: u64) -> Vec<i128> {
+        let w = self.d.palabra;
+        let mascara = (1i128 << w) - 1;
+        let mut ps: Vec<i128> = (0..n).map(|k| (v >> (k as u32 * w)) & mascara).collect();
+        if !self.d.little {
+            ps.reverse();
+        }
+        ps
     }
 
     /// Escribe el texto con que empieza un arreglo, un elemento por palabra.
@@ -428,16 +442,21 @@ impl<'a> Gen<'a> {
         let Tipo::Arreglo(elemento, _) = &g.tipo else {
             return;
         };
-        if self.una_palabra(elemento).is_err() {
+        if !matches!(**elemento, Tipo::Entero { .. }) && self.una_palabra(elemento).is_err() {
             return;
         }
+        let n = palabras(self.m, self.d, elemento);
         let base = self.disp.globales[global];
         let Ok(t) = self.tmp() else { return };
         for (k, v) in g.datos.iter().enumerate() {
-            let r = self.em.cargar(&t, &Valor::Num(*v));
-            let _ = self.r(r);
-            let r = self.em.escribir(&Sitio::Fija(base + k as u64), &t);
-            let _ = self.r(r);
+            for (j, p) in self.palabras_de_valor(*v, n).into_iter().enumerate() {
+                let r = self.em.cargar(&t, &Valor::Num(p));
+                let _ = self.r(r);
+                let r = self
+                    .em
+                    .escribir(&Sitio::Fija(base + k as u64 * n + j as u64), &t);
+                let _ = self.r(r);
+            }
         }
         self.liberar(&t);
     }
