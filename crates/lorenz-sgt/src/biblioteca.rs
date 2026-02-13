@@ -206,14 +206,110 @@ funcion cad_comparar(a: *u{W}, b: *u{W}) -> i{W} {
 }
 "#;
 
+/// Rutinas para enteros de `{B}` bits, varias palabras (RF-SGT-001); se bajan con
+/// [`crate::multipalabra`] como cualquier otro codigo.
+const PLANTILLA_ANCHA: &str = r#"
+var __resto{B}: u{B};
+
+funcion __mul{B}(a: u{B}, b: u{B}) -> u{B} {
+    var r: u{B} = 0;
+    mientras b != 0 {
+        si (b & 1) != 0 { r += a; }
+        a = a << 1;
+        b = b >> 1;
+    }
+    devolver r;
+}
+
+funcion __shl{B}(a: u{B}, k: u{B}) -> u{B} {
+    si k >= {B} { devolver 0; }
+    mientras k != 0 { a = a << 1; k -= 1; }
+    devolver a;
+}
+
+funcion __shr{B}(a: u{B}, k: u{B}) -> u{B} {
+    si k >= {B} { devolver 0; }
+    mientras k != 0 { a = a >> 1; k -= 1; }
+    devolver a;
+}
+
+funcion __sar{B}(a: i{B}, k: u{B}) -> i{B} {
+    si k >= {B} {
+        si a < 0 { devolver -1; }
+        devolver 0;
+    }
+    mientras k != 0 { a = a >> 1; k -= 1; }
+    devolver a;
+}
+
+funcion __divmod{B}(a: u{B}, b: u{B}) -> u{B} {
+    si b == 0 { __detener(); }
+    var r: u{B} = 0;
+    var q: u{B} = 0;
+    var i: u{B} = {B};
+    mientras i != 0 {
+        var desborda: bool = r >= {TOPB};
+        r = r << 1;
+        si a >= {TOPB} { r |= 1; }
+        a = a << 1;
+        q = q << 1;
+        si desborda || r >= b {
+            r -= b;
+            q |= 1;
+        }
+        i -= 1;
+    }
+    __resto{B} = r;
+    devolver q;
+}
+
+funcion __divu{B}(a: u{B}, b: u{B}) -> u{B} {
+    devolver __divmod{B}(a, b);
+}
+
+funcion __modu{B}(a: u{B}, b: u{B}) -> u{B} {
+    __divmod{B}(a, b);
+    devolver __resto{B};
+}
+
+funcion __abs{B}(a: i{B}) -> u{B} {
+    si a < 0 { devolver 0 - (a como u{B}); }
+    devolver a como u{B};
+}
+
+funcion __divs{B}(a: i{B}, b: i{B}) -> i{B} {
+    var q: u{B} = __divmod{B}(__abs{B}(a), __abs{B}(b));
+    si (a < 0) != (b < 0) { devolver (0 - q) como i{B}; }
+    devolver q como i{B};
+}
+
+funcion __mods{B}(a: i{B}, b: i{B}) -> i{B} {
+    __divmod{B}(__abs{B}(a), __abs{B}(b));
+    si a < 0 { devolver (0 - __resto{B}) como i{B}; }
+    devolver __resto{B} como i{B};
+}
+"#;
+
 /// Texto de la biblioteca para palabras de `w` bits.
 pub fn fuente(w: u32) -> String {
     let top = 1u128 << (w - 1);
-    PLANTILLA
+    let mut s = PLANTILLA
         .replace("{W}", &w.to_string())
         .replace("{TOP}", &top.to_string())
         .replace("{MAXS}", &(top - 1).to_string())
-        .replace("{MAX}", &((top << 1) - 1).to_string())
+        .replace("{MAX}", &((top << 1) - 1).to_string());
+    // Los anchos de entero que son varias palabras: 2 y 4 palabras mientras no pasen de 64 bits.
+    for k in [2u32, 4] {
+        let b = w * k;
+        if b <= 64 {
+            s.push_str(
+                &PLANTILLA_ANCHA
+                    .replace("{TOPB}", &(1u128 << (b - 1)).to_string())
+                    .replace("{B}", &b.to_string()),
+            );
+        }
+    }
+    s
 }
 
 pub fn programa(w: u32) -> Result<Programa, Diagnostico> {
