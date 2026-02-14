@@ -46,3 +46,22 @@ fn una_maquina_sin_registros_suficientes_no_tiene_convencion() {
     let e = describir(&maquina("pila-8")).unwrap_err();
     assert!(e.contains("registros"), "{e}");
 }
+
+#[test]
+fn el_retorno_con_datos_lejanos_no_pisa_el_valor_devuelto() {
+    // Con mas de 64 palabras de datos la direccion de retorno no cabe en el desplazamiento de la
+    // instruccion y se calcula en un registro: no puede ser el que lleva el valor devuelto.
+    let mut decl = String::new();
+    let mut uso = String::new();
+    for i in 0..70 {
+        decl.push_str(&format!("var g{i}: u16; "));
+        uso.push_str(&format!("g{i} = {i}; "));
+    }
+    let fuente = format!(
+        "{decl} var r: u16; funcion triple(x: u16) -> u16 {{ devolver x + x + x; }}
+         funcion principal() {{ {uso} r = triple(14); }}"
+    );
+    for m in ["risc-16", "sgt-16"] {
+        igual_al_oraculo(m, &fuente);
+    }
+}

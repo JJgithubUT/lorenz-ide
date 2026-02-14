@@ -730,6 +730,7 @@ impl<'a> Emisor<'a> {
         forma: &Dir,
         i: &Instr,
         reg_dato: &str,
+        lectura: bool,
     ) -> R<Option<Vec<(String, String)>>> {
         match (sitio, forma) {
             (Sitio::Fija(a), Dir::Absoluta(op)) => {
@@ -754,7 +755,12 @@ impl<'a> Emisor<'a> {
                         ]));
                     }
                 }
-                let s = if reg_dato == self.pool[1] {
+                // Al leer, el propio destino sirve de registro de direccion y no se pisa ningun otro
+                // (el primero lleva el valor que devuelve una funcion); al escribir hace falta uno
+                // distinto del que lleva el dato.
+                let s = if lectura {
+                    reg_dato.to_string()
+                } else if reg_dato == self.pool[1] {
                     self.s0()
                 } else {
                     self.s1()
@@ -795,7 +801,7 @@ impl<'a> Emisor<'a> {
             if !self.acepta(&i, rd, d) {
                 continue;
             }
-            if let Some(mut v) = self.acceso(sitio, dir, &i, d)? {
+            if let Some(mut v) = self.acceso(sitio, dir, &i, d, true)? {
                 v.push((od.to_string(), d.to_string()));
                 let v: Vec<(&str, String)> =
                     v.iter().map(|(a, b)| (a.as_str(), b.clone())).collect();
@@ -818,7 +824,7 @@ impl<'a> Emisor<'a> {
             if !self.acepta(&i, rs, s) {
                 continue;
             }
-            if let Some(mut v) = self.acceso(sitio, dir, &i, s)? {
+            if let Some(mut v) = self.acceso(sitio, dir, &i, s, false)? {
                 v.push((os.to_string(), s.to_string()));
                 let v: Vec<(&str, String)> =
                     v.iter().map(|(a, b)| (a.as_str(), b.clone())).collect();
