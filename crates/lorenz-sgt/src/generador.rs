@@ -1112,11 +1112,26 @@ impl<'a> Gen<'a> {
     }
 
     fn llamada(&mut self, id: usize, args: &[Expr]) -> G<Option<String>> {
-        // Todos los argumentos antes de tocar las posiciones de los parametros: un argumento puede
-        // ser otra llamada a la misma funcion.
+        // Un argumento puede ser otra llamada a la misma funcion, que pisaria los parametros ya
+        // escritos: hasta el ultimo argumento que contiene una llamada se calculan todos antes de
+        // tocar las posiciones de los parametros. Los de despues no pueden pisar nada, asi que se
+        // guardan al calcularlos y no ocupan registros mientras se calculan los demas (un entero
+        // ancho pasa varias palabras).
+        let retener = args
+            .iter()
+            .rposition(puede_llamar)
+            .map_or(0, |ultimo| ultimo + 1);
         let mut valores = Vec::new();
-        for a in args {
+        for a in &args[..retener] {
             valores.push(self.expr(a)?.ok_or(())?);
+        }
+        for (k, a) in args.iter().enumerate().skip(retener) {
+            let v = self.expr(a)?.ok_or(())?;
+            let p = self.m.funciones[id].parametros[k];
+            let dir = self.disp.locales[id][p];
+            let r = self.em.escribir(&Sitio::Fija(dir), &v);
+            self.r(r)?;
+            self.liberar(&v);
         }
         self.llamar_con(id, &valores)
     }
@@ -1187,5 +1202,39 @@ impl<'a> Gen<'a> {
             self.r(r)?;
         }
         Ok(destino)
+    }
+}
+
+/// Si evaluar la expresion puede ejecutar una funcion (una llamada, o un operador que la maquina
+/// sustituye por una rutina de la biblioteca).
+fn puede_llamar(e: &Expr) -> bool {
+    match &e.clase {
+        ClaseExpr::Llamada(..) => true,
+        ClaseExpr::Binario(op, a, b) => {
+            matches!(
+                op,
+                OpBinario::Mul
+                    | OpBinario::Div
+                    | OpBinario::Mod
+                    | OpBinario::DespIzq
+                    | OpBinario::DespDer
+                    | OpBinario::SumaSat
+                    | OpBinario::RestaSat
+            ) || puede_llamar(a)
+                || puede_llamar(b)
+        }
+        ClaseExpr::Unario(_, a) | ClaseExpr::Cast(a) | ClaseExpr::Entrada(a) => puede_llamar(a),
+        ClaseExpr::Leer(s) | ClaseExpr::Direccion(s) => sitio_puede_llamar(s),
+        ClaseExpr::Const(_) | ClaseExpr::Bandera(_) => false,
+    }
+}
+
+fn sitio_puede_llamar(s: &crate::hir::Sitio) -> bool {
+    use crate::hir::ClaseSitio;
+    match &s.clase {
+        ClaseSitio::Variable(_) | ClaseSitio::Registro(_) => false,
+        ClaseSitio::Indice(b, i, _) => sitio_puede_llamar(b) || puede_llamar(i),
+        ClaseSitio::Campo(b, _) => sitio_puede_llamar(b),
+        ClaseSitio::Deref(p) => puede_llamar(p),
     }
 }
