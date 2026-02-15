@@ -198,3 +198,43 @@ fn globales_con_valor_inicial() {
          funcion principal() { c = a + 1; }",
     );
 }
+
+#[test]
+fn cuatro_palabras() {
+    ambas(
+        "var a: u64; var b: u64; var c: i64; var d: u64; var e: u64; var f: u64; var r: u16;
+         funcion principal() { var x: u64 = 0x0123456789ABCDEF; var y: u64 = 0xFEDCBA9876543210; var s: i64 = -0x123456789AB;
+           a = x + y; b = y - x; c = s * 3; d = x ^ (y >> 9); e = x * 1000003; f = y / 12345 + y % 1000;
+           si x < y { r += 1; } si s < 0 { r += 2; } si x != y { r += 4; } c = c >> 5; }",
+        "var a: u32; var b: u32; var c: i32; var d: u32; var e: u32; var f: u32; var r: u8;
+         funcion principal() { var x: u32 = 0x01234567; var y: u32 = 0xFEDCBA98; var s: i32 = -0x123456;
+           a = x + y; b = y - x; c = s * 3; d = x ^ (y >> 9); e = x * 1003; f = y / 12345 + y % 1000;
+           si x < y { r += 1; } si s < 0 { r += 2; } si x != y { r += 4; } c = c >> 5; }",
+    );
+}
+
+#[test]
+fn en_todos_los_niveles_de_optimizacion() {
+    let f16 = "var a: u32; var b: u32; var c: i32; var d: u32;
+         funcion f(x: u32, y: u32) -> u32 { si x > y { devolver x - y; } devolver y - x + 1; }
+         funcion principal() { var x: u32 = 100000; var s: i32 = -300000;
+           a = f(x, 7) + f(3, x); b = (x << 3) | (x >> 2); c = s / 7 + (s % 7); d = x * 0 + (x & 0xFFFF) + 0; }";
+    let f8 = "var a: u16; var b: u16; var c: i16; var d: u16;
+         funcion f(x: u16, y: u16) -> u16 { si x > y { devolver x - y; } devolver y - x + 1; }
+         funcion principal() { var x: u16 = 1000; var s: i16 = -3000;
+           a = f(x, 7) + f(3, x); b = (x << 3) | (x >> 2); c = s / 7 + (s % 7); d = x * 0 + (x & 0xFF) + 0; }";
+    for (m, f) in [("risc-16", f16), ("sgt-16", f16), ("sgt-8", f8)] {
+        let esperado = oraculo(m, f);
+        for nivel in 0..=3 {
+            let ((g, _), c) = ejecutado_nivel(m, f, nivel);
+            for (k, v) in esperado
+                .globales
+                .iter()
+                .filter(|(k, _)| !k.starts_with("__"))
+            {
+                let mascara = (1i128 << bits_de_global(&c, k, maquina(m).bits_palabra)) - 1;
+                assert_eq!(g[k], *v & mascara, "nivel {nivel} en {m}: global `{k}`");
+            }
+        }
+    }
+}
