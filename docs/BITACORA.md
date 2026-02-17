@@ -17,6 +17,53 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Compilador SGT: optimizacion, costes, biblioteca, 8 bits y enteros anchos
+
+**Hecho:**
+- Optimizador `-O0` a `-O3` sobre la HIR; costes en ciclos por funcion y `@presupuesto`.
+- Biblioteca de apoyo en SGT (multiplicar, dividir, desplazar, saturar) y publica (`mem_*`, `cad_*`),
+  podada por alcance; textos como valor inicial de arreglos.
+- Convencion de llamada documentada por arquitectura; `lorenz cotejar`; sugerencias en errores.
+- Maquinas sin salto por registro, sin escritura indirecta y con ALU de dos direcciones
+  (`ejemplos/sgt-8`): comparacion y saltos por banderas.
+- Enteros de varias palabras (pasada `multipalabra`): u32/u64 en 16 bits y u16/u32 en 8.
+
+**Decidido:**
+- **D-064** — El optimizador nunca elimina una division que pueda detener la maquina, una llamada ni
+  una lectura de puerto. `-O1` pliega y quita ramas muertas, `-O2` aplica identidades, `-O3`
+  reduce potencias de dos a desplazamientos.
+- **D-065** — El coste de una funcion se estima en ciclos con el modelo de la descripcion de la
+  maquina; `@presupuesto(n)` es un error de compilacion si el peor camino lo supera.
+- **D-066** — Un texto inicializa un arreglo de enteros con un caracter por elemento; las funciones
+  `mem_*` y `cad_*` son reservadas y las que empiezan por `__` son del compilador.
+- **D-067** — Una comparacion se resuelve por mascaras de resultado de banderas con dos planes
+  (directo y complementario); las banderas siguen D-013 (Z resultado cero, C prestamo o acarreo).
+- **D-068** — Sin salto por registro, o con direcciones mas anchas que la palabra, una funcion
+  vuelve por el numero de sitio de llamada que dejo quien la llamo.
+- **D-069** — En `sgt-16` el desplazamiento de los saltos condicionales cabe en 12 bits; la prueba de
+  conformidad de la maquina lo exige.
+- **D-070** — Un entero ancho es una lista de palabras, de la menos a la mas significativa, y cada
+  palabra va en memoria segun el orden de bytes. La suma y la resta propagan el acarreo, comparar
+  mira desde la palabra alta, multiplicar, dividir y desplazar por variable llaman a rutinas SGT
+  de la biblioteca de cada ancho. Un parametro ancho llega partido en palabras; un resultado ancho
+  vuelve con su palabra baja como valor y las demas en `__rv1`, `__rv2`... Quedan fuera `segun`,
+  `salida` y los punteros de varias palabras.
+- **D-071** — Los argumentos posteriores al ultimo que puede ejecutar una funcion se guardan en su
+  parametro al calcularlos; los anteriores se retienen en registros porque una llamada anidada a la
+  misma funcion pisaria los parametros ya escritos.
+- **D-072** — Al leer una direccion lejana, el propio registro destino sirve de registro de
+  direccion; antes se usaba el primero del compilador, que lleva el valor devuelto, y se perdia.
+
+**Pendiente:** expresiones de bandera dentro del lenguaje (RF-SGT-015), modulos con `importar`
+(RF-SGT-018), genericos (RF-SGT-021), punteros de varias palabras, y la fase 5 (CIC, segmentacion
+y cache).
+
+**Requisitos:** RF-SGT-001, 002, 015, 020, 024, 027, 030, 031, 033, 034, 037, 039, 040, 041.
+
+**Commits:** 418 a 459 (`feat/sgt-optimizacion`, `feat/sgt-ocho-bits`, `feat/sgt-multipalabra`).
+
+---
+
 ## 2026-10-16 — Compilador SGT: dispositivos, interrupciones y registros
 
 **Hecho:**
