@@ -404,20 +404,34 @@ impl<'a> Gen<'a> {
             }) = &g.inicial
             {
                 let dir = self.disp.globales[i];
-                if self.una_palabra(&g.tipo).is_err() {
+                let n = palabras(self.m, self.d, &g.tipo);
+                if !matches!(g.tipo, Tipo::Entero { .. }) && self.una_palabra(&g.tipo).is_err() {
                     continue;
                 }
                 let t = match self.tmp() {
                     Ok(t) => t,
                     Err(()) => continue,
                 };
-                let r = self.em.cargar(&t, &Valor::Num(*v));
-                let _ = self.r(r);
-                let r = self.em.escribir(&Sitio::Fija(dir), &t);
-                let _ = self.r(r);
+                for (k, p) in self.palabras_de_valor(*v, n).into_iter().enumerate() {
+                    let r = self.em.cargar(&t, &Valor::Num(p));
+                    let _ = self.r(r);
+                    let r = self.em.escribir(&Sitio::Fija(dir + k as u64), &t);
+                    let _ = self.r(r);
+                }
                 self.liberar(&t);
             }
         }
+    }
+
+    /// Las `n` palabras de un valor, en el orden en que van en memoria.
+    fn palabras_de_valor(&self, v: i128, n: u64) -> Vec<i128> {
+        let w = self.d.palabra;
+        let mascara = (1i128 << w) - 1;
+        let mut ps: Vec<i128> = (0..n).map(|k| (v >> (k as u32 * w)) & mascara).collect();
+        if !self.d.little {
+            ps.reverse();
+        }
+        ps
     }
 
     /// Escribe el texto con que empieza un arreglo, un elemento por palabra.
@@ -428,16 +442,21 @@ impl<'a> Gen<'a> {
         let Tipo::Arreglo(elemento, _) = &g.tipo else {
             return;
         };
-        if self.una_palabra(elemento).is_err() {
+        if !matches!(**elemento, Tipo::Entero { .. }) && self.una_palabra(elemento).is_err() {
             return;
         }
+        let n = palabras(self.m, self.d, elemento);
         let base = self.disp.globales[global];
         let Ok(t) = self.tmp() else { return };
         for (k, v) in g.datos.iter().enumerate() {
-            let r = self.em.cargar(&t, &Valor::Num(*v));
-            let _ = self.r(r);
-            let r = self.em.escribir(&Sitio::Fija(base + k as u64), &t);
-            let _ = self.r(r);
+            for (j, p) in self.palabras_de_valor(*v, n).into_iter().enumerate() {
+                let r = self.em.cargar(&t, &Valor::Num(p));
+                let _ = self.r(r);
+                let r = self
+                    .em
+                    .escribir(&Sitio::Fija(base + k as u64 * n + j as u64), &t);
+                let _ = self.r(r);
+            }
         }
         self.liberar(&t);
     }
@@ -1093,11 +1112,26 @@ impl<'a> Gen<'a> {
     }
 
     fn llamada(&mut self, id: usize, args: &[Expr]) -> G<Option<String>> {
-        // Todos los argumentos antes de tocar las posiciones de los parametros: un argumento puede
-        // ser otra llamada a la misma funcion.
+        // Un argumento puede ser otra llamada a la misma funcion, que pisaria los parametros ya
+        // escritos: hasta el ultimo argumento que contiene una llamada se calculan todos antes de
+        // tocar las posiciones de los parametros. Los de despues no pueden pisar nada, asi que se
+        // guardan al calcularlos y no ocupan registros mientras se calculan los demas (un entero
+        // ancho pasa varias palabras).
+        let retener = args
+            .iter()
+            .rposition(puede_llamar)
+            .map_or(0, |ultimo| ultimo + 1);
         let mut valores = Vec::new();
-        for a in args {
+        for a in &args[..retener] {
             valores.push(self.expr(a)?.ok_or(())?);
+        }
+        for (k, a) in args.iter().enumerate().skip(retener) {
+            let v = self.expr(a)?.ok_or(())?;
+            let p = self.m.funciones[id].parametros[k];
+            let dir = self.disp.locales[id][p];
+            let r = self.em.escribir(&Sitio::Fija(dir), &v);
+            self.r(r)?;
+            self.liberar(&v);
         }
         self.llamar_con(id, &valores)
     }
@@ -1168,5 +1202,39 @@ impl<'a> Gen<'a> {
             self.r(r)?;
         }
         Ok(destino)
+    }
+}
+
+/// Si evaluar la expresion puede ejecutar una funcion (una llamada, o un operador que la maquina
+/// sustituye por una rutina de la biblioteca).
+fn puede_llamar(e: &Expr) -> bool {
+    match &e.clase {
+        ClaseExpr::Llamada(..) => true,
+        ClaseExpr::Binario(op, a, b) => {
+            matches!(
+                op,
+                OpBinario::Mul
+                    | OpBinario::Div
+                    | OpBinario::Mod
+                    | OpBinario::DespIzq
+                    | OpBinario::DespDer
+                    | OpBinario::SumaSat
+                    | OpBinario::RestaSat
+            ) || puede_llamar(a)
+                || puede_llamar(b)
+        }
+        ClaseExpr::Unario(_, a) | ClaseExpr::Cast(a) | ClaseExpr::Entrada(a) => puede_llamar(a),
+        ClaseExpr::Leer(s) | ClaseExpr::Direccion(s) => sitio_puede_llamar(s),
+        ClaseExpr::Const(_) | ClaseExpr::Bandera(_) => false,
+    }
+}
+
+fn sitio_puede_llamar(s: &crate::hir::Sitio) -> bool {
+    use crate::hir::ClaseSitio;
+    match &s.clase {
+        ClaseSitio::Variable(_) | ClaseSitio::Registro(_) => false,
+        ClaseSitio::Indice(b, i, _) => sitio_puede_llamar(b) || puede_llamar(i),
+        ClaseSitio::Campo(b, _) => sitio_puede_llamar(b),
+        ClaseSitio::Deref(p) => puede_llamar(p),
     }
 }

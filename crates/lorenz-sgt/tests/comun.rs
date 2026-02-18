@@ -48,6 +48,37 @@ pub fn oraculo(nombre: &str, fuente: &str) -> Resultado {
     ejecutar(&h, &d, HashMap::<u64, VecDeque<u64>>::new(), 10_000_000).unwrap()
 }
 
+/// Valor sin signo de una global escalar, que puede ocupar varias palabras.
+pub fn leer_global(emu: &Emulador, c: &Compilado, i: usize, m: &Maquina) -> i128 {
+    let g = &c.modulo.globales[i];
+    let a = c.disposicion.globales[i];
+    let w = m.bits_palabra;
+    let n = match &g.tipo {
+        lorenz_sgt::tipos::Tipo::Entero { bits, .. } => (*bits).div_ceil(w) as u64,
+        _ => 1,
+    };
+    let little = matches!(m.endianness, lorenz_arch::modelo::Endianness::Little);
+    let mut v = 0i128;
+    for k in 0..n {
+        let desp = if little { k } else { n - 1 - k };
+        let p = i128::from(emu.memoria().leer_privilegiado(a + desp).unwrap());
+        v |= p << (k as u32 * w);
+    }
+    v
+}
+
+pub fn bits_de_global(c: &Compilado, nombre: &str, palabra: u32) -> u32 {
+    c.modulo
+        .globales
+        .iter()
+        .find(|g| g.nombre == nombre)
+        .map(|g| match &g.tipo {
+            lorenz_sgt::tipos::Tipo::Entero { bits, .. } => *bits,
+            _ => palabra,
+        })
+        .unwrap_or(palabra)
+}
+
 /// Compila, ejecuta en el emulador y devuelve el valor final de cada global escalar.
 pub fn ejecutado(nombre: &str, fuente: &str) -> (HashMap<String, i128>, u64) {
     ejecutado_nivel(nombre, fuente, Opciones::default().nivel).0
@@ -70,11 +101,7 @@ pub fn ejecutado_nivel(
     let mut out = HashMap::new();
     for (i, g) in c.modulo.globales.iter().enumerate() {
         if g.tipo.es_escalar() {
-            let a = c.disposicion.globales[i];
-            out.insert(
-                g.nombre.clone(),
-                i128::from(emu.memoria().leer_privilegiado(a).unwrap()),
-            );
+            out.insert(g.nombre.clone(), leer_global(&emu, &c, i, &maquina(nombre)));
         }
     }
     ((out, r.instrucciones), c)
@@ -84,12 +111,14 @@ pub fn ejecutado_nivel(
 pub fn igual_al_oraculo(nombre: &str, fuente: &str) {
     let esperado = oraculo(nombre, fuente);
     let (obtenido, _) = ejecutado(nombre, fuente);
-    let mascara = (1i128 << maquina(nombre).bits_palabra) - 1;
+    let c = compilar_en(nombre, fuente).unwrap();
+    let palabra = maquina(nombre).bits_palabra;
     for (k, v) in &esperado.globales {
         // Las globales de apoyo del compilador no son del programa: el oraculo no las toca.
         if k.starts_with("__") {
             continue;
         }
+        let mascara = (1i128 << bits_de_global(&c, k, palabra)) - 1;
         let w = (*v) & mascara;
         assert_eq!(
             obtenido[k], w,
@@ -121,11 +150,7 @@ pub fn correr(nombre: &str, fuente: &str, recibido: &[u8]) -> Corrida {
     let mut globales = HashMap::new();
     for (i, g) in c.modulo.globales.iter().enumerate() {
         if g.tipo.es_escalar() {
-            let a = c.disposicion.globales[i];
-            globales.insert(
-                g.nombre.clone(),
-                i128::from(emu.memoria().leer_privilegiado(a).unwrap()),
-            );
+            globales.insert(g.nombre.clone(), leer_global(&emu, &c, i, &maquina(nombre)));
         }
     }
     Corrida {

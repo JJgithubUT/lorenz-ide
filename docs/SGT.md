@@ -44,8 +44,9 @@ funcion principal() {
 
 Los enteros se llaman `u` (sin signo) o `i` (con signo) seguidos de los bits. Los tipos que
 existen salen del ancho de palabra de la maquina: en una de 16 bits son `u16`, `i16`, `u32`,
-`i32`, `u64` e `i64`. El compilador solo opera hoy con enteros de una palabra; usar uno mas ancho
-da un error que nombra la maquina.
+`i32`, `u64` e `i64`. Los de mas de una palabra se operan palabra a palabra (suma y resta con
+acarreo, comparacion desde la palabra alta, desplazamientos, y multiplicar y dividir con rutinas de
+la biblioteca); quedan fuera de ellos `segun`, `salida` y los punteros de varias palabras.
 
 - `bool`: `verdadero` o `falso`.
 - `*T`: puntero a `T`. `&x` da la direccion de `x` y `*p` lee o escribe lo apuntado. Sumar `n` a un
@@ -299,12 +300,12 @@ con su nombre:
 
 ```sgt-error
 var x: u32;
-funcion principal() { x = x + 1; }
-// error: palabras
+funcion principal() { segun x { 1 => { } otro => { } } }
+// error: varias palabras
 ```
 
 ## Lo que falta
 
-Enteros de mas de una palabra, saltos por banderas, modulos con `importar`, genericos y comparar
+Saltos por banderas, modulos con `importar`, genericos y comparar
 el mismo programa en varias maquinas estan descritos en la ERS y se haran en fases posteriores
 (vease `docs/TRAZABILIDAD.md`).

@@ -262,7 +262,7 @@ conocida, escrita en la columna de evidencia.
 
 | Requisito | Descripcion | Estado | Evidencia |
 | --- | --- | --- | --- |
-| RF-SGT-001, 002 | Enteros con y sin signo derivados de la palabra | Parcial | `tipos`; el generador solo opera con una palabra, mas ancho es error en terminos de la maquina |
+| RF-SGT-001, 002 | Enteros con y sin signo derivados de la palabra | Hecho | `tipos`; los de varias palabras (u32/u64 en 16 bits, u16/u32 en 8) se bajan en `multipalabra`; `tests/multipalabra.rs` en risc-16, sgt-16 y sgt-8. Fuera quedan `segun`, `salida` y punteros de varias palabras |
 | RF-SGT-003 a 006 | Booleano, punteros, arreglos, estructuras | Hecho | `analisis`, `interprete`, `tests/compilado.rs` |
 | RF-SGT-007 | Disposicion fijada de una estructura | Parcial | campo `@ n` en la sintaxis; sin pruebas de generacion propias |
 | RF-SGT-008 a 010 | Constantes, funciones, control de flujo | Hecho | `tests/analisis.rs`, `tests/compilado.rs` |
@@ -277,7 +277,14 @@ conocida, escrita en la columna de evidencia.
 | RF-SGT-032, 038 | Ensamblador por linea y depuracion | Hecho | `Compilado::lineas`, `lorenz compilar --lineas` |
 | RF-SGT-035, 036 | Errores en terminos de la maquina, con posicion | Hecho | `Falta`, `diagnostico` |
 | RF-SGT-042 | Compilar desde la linea de comandos | Hecho | `lorenz compilar`, `crates/lorenz-cli/tests/compilar.rs` |
-| RF-SGT-015, 018, 021, 027, 030, 031, 033, 037, 039, 040, 041 | Banderas, modulos, genericos, convencion documentada, coste, optimizacion, sugerencias, multi-arquitectura, biblioteca | Pendiente | ver bitacora |
+| RF-SGT-015 | Saltos y comparaciones por banderas | Parcial | el generador compara por banderas (`seleccion::Forma::Comparar`, `emisor::saltar_por_banderas`, `tests/ocho_bits.rs`); falta la expresion de bandera dentro del lenguaje |
+| RF-SGT-027 | Convencion de llamada documentada por arquitectura | Hecho | `convencion`, `lorenz compilar convencion`, `docs/sgt/convencion-*.md` |
+| RF-SGT-030, 031 | Coste en ciclos y presupuesto | Hecho | `costes`, `@presupuesto`, `lorenz compilar --costes`, `tests/costes.rs` |
+| RF-SGT-033, 034 | Niveles de optimizacion `-O0` a `-O3` | Hecho | `optimizar`, `tests/optimizar.rs` |
+| RF-SGT-037 | Sugerencias en los errores | Hecho | `analisis::conversion_sugerida`, `tests/sugerencias.rs` |
+| RF-SGT-039, 040 | El mismo programa en varias maquinas y comparacion | Hecho | `lorenz cotejar`, `tests/ocho_bits.rs`, `ejemplos/sgt-8`, `ejemplos/sgt-16` |
+| RF-SGT-041 | Biblioteca de apoyo en SGT | Hecho | `biblioteca` (`__mul`, `__divmod`, `mem_*`, `cad_*`, rutinas por ancho), `podar` |
+| RF-SGT-018, 021 | Modulos con `importar` y genericos | Pendiente | ver bitacora |
 
 ## Concordancia con los commits anteriores
 
