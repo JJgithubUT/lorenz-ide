@@ -923,10 +923,7 @@ impl<'a> Gen<'a> {
                 self.r(r)?;
                 Ok(Some(t))
             }
-            ClaseExpr::Bandera(n) => {
-                self.error(format!("leer la bandera `{n}` todavia no se compila"));
-                Err(())
-            }
+            ClaseExpr::Bandera(_) => self.bool_por_rama_de(e),
         }
     }
 
@@ -1042,6 +1039,10 @@ impl<'a> Gen<'a> {
                 Ok(())
             }
             ClaseExpr::Unario(OpUnario::No, x) => self.rama(x, destino, !cuando),
+            ClaseExpr::Bandera(n) => {
+                let r = self.em.saltar_si_bandera(n, cuando, destino);
+                self.r(r)
+            }
             ClaseExpr::Binario(OpBinario::YLogico, a, b) => {
                 if !cuando {
                     self.rama(a, destino, false)?;

@@ -1192,6 +1192,46 @@ impl<'a> Emisor<'a> {
     }
 
     /// Salta si el registro vale cero (`cero = true`) o no vale cero.
+    /// Salta a `etiqueta` si la bandera vale `valor` en este momento (RF-SGT-015).
+    pub fn saltar_si_bandera(&mut self, bandera: &str, valor: bool, etiqueta: &str) -> R<()> {
+        let saltos: Vec<Instr> = self
+            .perfil
+            .con_forma(|f| {
+                matches!(
+                    f,
+                    Forma::SaltarSi {
+                        cond: Cond::Bandera(n, _),
+                        ..
+                    } if n == bandera
+                )
+            })
+            .cloned()
+            .collect();
+        let directo = saltos.iter().find(|i| {
+            matches!(&i.forma, Forma::SaltarSi { cond: Cond::Bandera(_, x), .. } if *x == valor)
+        });
+        if let Some(i) = directo {
+            let Forma::SaltarSi { salto, .. } = &i.forma else {
+                unreachable!()
+            };
+            return self.salto_condicional(i, salto, &[], etiqueta);
+        }
+        // Solo hay el salto contrario: se salta por encima de un salto incondicional.
+        if let Some(i) = saltos.first() {
+            let Forma::SaltarSi { salto, .. } = &i.forma else {
+                unreachable!()
+            };
+            let paso = self.etiqueta_nueva("p");
+            self.salto_condicional(i, salto, &[], &paso)?;
+            self.saltar(etiqueta)?;
+            self.poner_etiqueta(&paso);
+            return Ok(());
+        }
+        Err(Falta::nueva(format!(
+            "saltar segun la bandera `{bandera}` (una instruccion de salto condicional por esa bandera)"
+        )))
+    }
+
     pub fn saltar_si_cero(&mut self, r: &str, cero: bool, etiqueta: &str) -> R<()> {
         let candidatas: Vec<Instr> = self
             .perfil
