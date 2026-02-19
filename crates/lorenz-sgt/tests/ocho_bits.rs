@@ -146,3 +146,26 @@ fn multiplicar_y_dividir_con_la_biblioteca() {
     dif("var p: u8; var q: u8; var r: u8; var d: u8;
          funcion principal() { var a: u8 = 13; var b: u8 = 7; p = a * b; q = a / b; r = a % b; d = a << 2; }");
 }
+
+#[test]
+fn leer_banderas_tras_una_operacion() {
+    let (g, _) = ejecutado(
+        "sgt-8",
+        "var acarreo: u8; var cero: u8; var sin: u8; var v: bool;
+         funcion principal() {
+           var a: u8 = 200; var b: u8 = 100;
+           var s: u8 = a + b;
+           si bandera.C { acarreo = 1; }
+           s = a - a;
+           si bandera.Z { cero = 1; }
+           s = a + 1;
+           si !bandera.Z && !bandera.C { sin = 1; }
+           s = a - a;
+           v = bandera.Z;
+         }",
+    );
+    assert_eq!(g["acarreo"], 1);
+    assert_eq!(g["cero"], 1);
+    assert_eq!(g["sin"], 1);
+    assert_eq!(g["v"], 1);
+}
