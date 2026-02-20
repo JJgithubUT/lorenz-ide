@@ -293,6 +293,26 @@ funcion principal() { r = 1; r += 2; }
 Ninguno cambia lo que el programa hace: nunca se elimina una division que pueda detener la maquina,
 ni una llamada, ni una lectura de puerto.
 
+## Banderas de la maquina (RF-SGT-015)
+
+Una maquina con banderas (por ejemplo `sgt-8`, con `Z` y `C`) las expone como `bandera.NOMBRE`,
+un `bool` que vale lo que la bandera tiene en ese momento. Sirve en cualquier condicion:
+
+```
+var acarreo: u8;
+funcion principal() {
+    var a: u8 = 200;
+    var s: u8 = a + 100;
+    si bandera.C { acarreo = 1; }
+}
+```
+
+La bandera es la que dejo la ultima instruccion que la actualizo, asi que hay que leerla justo
+despues de la operacion que interesa: entre una sentencia y otra el compilador solo mueve datos
+(las cargas y los guardados no tocan las banderas), pero con `-O1` o mas una operacion constante
+puede desaparecer y con ella el efecto sobre la bandera. Pedir una bandera que la maquina no tiene
+es un error que lista las que si tiene. El interprete de referencia no las modela.
+
 ## Errores (RF-SGT-035, 036)
 
 Cada diagnostico lleva archivo, linea y columna. Cuando la maquina no puede hacer algo, lo dice
@@ -306,6 +326,5 @@ funcion principal() { segun x { 1 => { } otro => { } } }
 
 ## Lo que falta
 
-Saltos por banderas, modulos con `importar`, genericos y comparar
-el mismo programa en varias maquinas estan descritos en la ERS y se haran en fases posteriores
+Los modulos con `importar` y los genericos estan descritos en la ERS y se haran despues
 (vease `docs/TRAZABILIDAD.md`).
