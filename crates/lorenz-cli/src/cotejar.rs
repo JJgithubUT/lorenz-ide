@@ -6,7 +6,7 @@ use std::io::Write;
 
 use lorenz_emu::Emulador;
 use lorenz_sgt::analisis::Opciones;
-use lorenz_sgt::compilar::compilar;
+use lorenz_sgt::compilar::{compilar_con, en_carpeta_de};
 
 use crate::ordenes::{SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_OK};
 
@@ -49,12 +49,13 @@ fn medir(ruta_maquina: &str, ruta_fuente: &str, texto: &str, opciones: &Opciones
         if let Some(n) = opciones.nivel {
             o.nivel = n;
         }
-        let c = compilar(ruta_fuente, texto, &maquina, o).map_err(|e| {
-            e.iter()
-                .map(|d| d.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        })?;
+        let c = compilar_con(ruta_fuente, texto, &maquina, o, &en_carpeta_de(ruta_fuente))
+            .map_err(|e| {
+                e.iter()
+                    .map(|d| d.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })?;
         let palabras = c.palabras();
         let mut emu = Emulador::nuevo(maquina.clone()).map_err(|e| e.to_string())?;
         for (dir, w) in &palabras {

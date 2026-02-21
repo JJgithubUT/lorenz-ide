@@ -4,7 +4,7 @@ use std::io::Write;
 
 use lorenz_arch::modelo::Maquina;
 use lorenz_sgt::analisis::Opciones;
-use lorenz_sgt::compilar::{compilar, Compilado};
+use lorenz_sgt::compilar::{compilar_con, en_carpeta_de, Compilado};
 
 use crate::ensamblar::imagen_hex;
 use crate::ordenes::{SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_OK};
@@ -49,7 +49,7 @@ pub fn compilar_archivo(
     if let Some(n) = nivel {
         opciones.nivel = n;
     }
-    match compilar(ruta, &texto, maquina, opciones) {
+    match compilar_con(ruta, &texto, maquina, opciones, &en_carpeta_de(ruta)) {
         Ok(c) => Ok((c, texto)),
         Err(e) => Err(e
             .iter()
