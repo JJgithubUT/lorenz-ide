@@ -6,6 +6,18 @@ use crate::diagnostico::Lugar;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Programa {
     pub elementos: Vec<Elemento>,
+    /// Modulos importados, directa o indirectamente; cada uno va despues de los que importa.
+    pub modulos: Vec<ModuloFuente>,
+}
+
+/// Un archivo importado con `importar` (RF-SGT-018).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModuloFuente {
+    /// Nombre con que se importa; es tambien el prefijo de sus simbolos en el programa.
+    pub nombre: String,
+    /// Archivo de donde salio, para los diagnosticos.
+    pub archivo: String,
+    pub elementos: Vec<Elemento>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
