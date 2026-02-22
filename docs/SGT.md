@@ -182,6 +182,31 @@ funcion principal() {
 Si la maquina no tiene instruccion para un operador, el compilador llama a una rutina escrita en
 SGT (`__mul`, `__divu`...). La lista, por maquina, esta en `docs/sgt/`.
 
+## Modulos (RF-SGT-018)
+
+Un programa puede repartirse en archivos. `importar` nombra otro archivo (`nombre.sgt`, en la
+carpeta del que importa) y los simbolos que se quieren usar de el:
+
+```
+importar geom { Punto, norma1, ESCALA };
+
+var p: Punto;
+var r: u16;
+
+funcion principal() {
+    p.x = 4;
+    p.y = 5;
+    r = norma1(&p) + ESCALA;
+}
+```
+
+Se pueden importar funciones, constantes, variables globales y estructuras. Lo que no se importa
+es privado del modulo: el programa no lo ve aunque exista, y puede tener otro simbolo con el mismo
+nombre. Un modulo puede importar de otros; los ciclos son un error. Los nombres internos del
+programa compilado llevan el nombre del modulo como prefijo (`geom__norma1`), que es lo que se ve
+en la tabla de costes. Un modulo tambien puede llamar a la biblioteca de SGT (`mem_*`, `cad_*`).
+Los errores citan el archivo y la linea del modulo donde estan.
+
 ## Textos y biblioteca (RF-SGT-041)
 
 Un texto inicia un arreglo de enteros global: un caracter por elemento y un cero final. Debe sobrar
@@ -326,5 +351,4 @@ funcion principal() { segun x { 1 => { } otro => { } } }
 
 ## Lo que falta
 
-Los modulos con `importar` y los genericos estan descritos en la ERS y se haran despues
-(vease `docs/TRAZABILIDAD.md`).
+Los genericos estan descritos en la ERS y se haran despues (vease `docs/TRAZABILIDAD.md`).
