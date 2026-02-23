@@ -27,6 +27,7 @@ Formato de una entrada:
 - Maquinas sin salto por registro, sin escritura indirecta y con ALU de dos direcciones
   (`ejemplos/sgt-8`): comparacion y saltos por banderas.
 - Enteros de varias palabras (pasada `multipalabra`): u32/u64 en 16 bits y u16/u32 en 8.
+- Lectura de banderas (`bandera.Z`) en condiciones y modulos con `importar`.
 
 **Decidido:**
 - **D-064** — El optimizador nunca elimina una division que pueda detener la maquina, una llamada ni
@@ -53,14 +54,18 @@ Formato de una entrada:
   misma funcion pisaria los parametros ya escritos.
 - **D-072** — Al leer una direccion lejana, el propio registro destino sirve de registro de
   direccion; antes se usaba el primero del compilador, que lleva el valor devuelto, y se perdia.
+- **D-073** — Un modulo es un archivo `nombre.sgt` en la carpeta del que importa. Sus simbolos se
+  llaman `nombre__simbolo` en el programa; `importar m { a, b };` hace visibles solo esos. Un nombre
+  se busca primero en el propio modulo, luego entre los importados y, desde un modulo, en la
+  biblioteca de SGT; el programa no ve lo privado de un modulo y los ciclos son un error.
 
-**Pendiente:** expresiones de bandera dentro del lenguaje (RF-SGT-015), modulos con `importar`
-(RF-SGT-018), genericos (RF-SGT-021), punteros de varias palabras, y la fase 5 (CIC, segmentacion
-y cache).
+**Pendiente:** genericos (RF-SGT-021, opcional), punteros de varias palabras, y la fase 5 (CIC,
+segmentacion y cache).
 
-**Requisitos:** RF-SGT-001, 002, 015, 020, 024, 027, 030, 031, 033, 034, 037, 039, 040, 041.
+**Requisitos:** RF-SGT-001, 002, 015, 018, 020, 024, 027, 030, 031, 033, 034, 037, 039, 040, 041.
 
-**Commits:** 418 a 459 (`feat/sgt-optimizacion`, `feat/sgt-ocho-bits`, `feat/sgt-multipalabra`).
+**Commits:** 418 a 471 (`feat/sgt-optimizacion`, `feat/sgt-ocho-bits`, `feat/sgt-multipalabra`,
+`feat/sgt-banderas`, `feat/sgt-modulos`).
 
 ---
 
