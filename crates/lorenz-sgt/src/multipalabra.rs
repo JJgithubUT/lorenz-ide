@@ -397,10 +397,10 @@ impl Bajador {
                 out.push(self.sent(ClaseSent::Bucle(b2)));
             }
             ClaseSent::Devolver(Some(v)) => {
-                if let Some(n) = self.multi(&v.tipo) {
+                if self.multi(&v.tipo).is_some() {
                     let mut ws = self.pal(v, out);
-                    for k in 1..n {
-                        let w = ws[k].clone();
+                    for (k, w) in ws.iter().enumerate().skip(1) {
+                        let w = w.clone();
                         let g = self.rv[k - 1];
                         let dest = Sitio {
                             tipo: self.tw(),

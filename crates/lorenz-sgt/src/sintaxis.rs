@@ -19,7 +19,10 @@ pub fn analizar_programa(archivo: &str, texto: &str) -> Result<Programa, Diagnos
     while p.ver() != &Token::Fin {
         elementos.push(p.elemento()?);
     }
-    Ok(Programa { elementos })
+    Ok(Programa {
+        elementos,
+        modulos: Vec::new(),
+    })
 }
 
 /// Analiza una sola expresion; sirve para las pruebas y para las constantes de la linea de comandos.

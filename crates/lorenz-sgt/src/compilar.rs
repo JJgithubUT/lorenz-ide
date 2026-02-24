@@ -63,20 +63,50 @@ impl Compilado {
     }
 }
 
+/// Busca el texto de un modulo por su nombre: devuelve el archivo de donde sale y su contenido.
+pub type Cargador<'a> = &'a dyn Fn(&str) -> Option<(String, String)>;
+
+/// Un cargador que busca cada modulo como `nombre.sgt` en la carpeta del archivo que se compila.
+pub fn en_carpeta_de(archivo: &str) -> impl Fn(&str) -> Option<(String, String)> {
+    let carpeta = std::path::Path::new(archivo)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_default();
+    move |modulo: &str| {
+        let ruta = carpeta.join(format!("{modulo}.sgt"));
+        let texto = std::fs::read_to_string(&ruta).ok()?;
+        Some((ruta.to_string_lossy().into_owned(), texto))
+    }
+}
+
+/// Compila un solo archivo: `importar` no encuentra ningun modulo.
 pub fn compilar(
     archivo: &str,
     texto: &str,
     maquina: &Maquina,
     opciones: Opciones,
 ) -> Result<Compilado, Vec<Diagnostico>> {
+    compilar_con(archivo, texto, maquina, opciones, &|_| None)
+}
+
+/// Compila un programa que puede importar modulos (RF-SGT-018); `cargador` los busca por nombre.
+pub fn compilar_con(
+    archivo: &str,
+    texto: &str,
+    maquina: &Maquina,
+    opciones: Opciones,
+    cargador: Cargador<'_>,
+) -> Result<Compilado, Vec<Diagnostico>> {
     let programa = analizar_programa(archivo, texto).map_err(|d| vec![d])?;
     let destino = Destino::de(maquina);
     reservados(archivo, &programa)?;
+    let modulos = cargar_modulos(&programa, cargador)?;
     // La biblioteca de apoyo va primero; lo que no se use se poda despues.
     let mut completo = crate::biblioteca::programa(maquina.bits_palabra).map_err(|d| vec![d])?;
     completo
         .elementos
         .extend(programa.elementos.iter().cloned());
+    completo.modulos = modulos;
     let nivel = opciones.nivel.min(crate::optimizar::NIVEL_MAXIMO);
     let mut modulo = analizar(archivo, &completo, &destino, opciones)?;
     crate::multipalabra::bajar(&mut modulo, &destino)?;
@@ -137,6 +167,66 @@ pub fn compilar(
         archivo,
         &format!("el ensamblador rechazo el codigo generado: {msg}\n--- ensamblador generado ---\n{texto}"),
     )])
+}
+
+/// Carga, de forma transitiva, los modulos que importa el programa. Cada uno queda despues de los
+/// que importa. Los que el cargador no encuentra los reporta el analizador.
+fn cargar_modulos(
+    programa: &crate::ast::Programa,
+    cargador: Cargador<'_>,
+) -> Result<Vec<crate::ast::ModuloFuente>, Vec<Diagnostico>> {
+    let mut hechos: Vec<crate::ast::ModuloFuente> = Vec::new();
+    let mut en_curso: Vec<String> = Vec::new();
+    cargar_de(
+        &programa.elementos,
+        "",
+        cargador,
+        &mut hechos,
+        &mut en_curso,
+    )?;
+    Ok(hechos)
+}
+
+fn cargar_de(
+    elementos: &[crate::ast::Elemento],
+    archivo: &str,
+    cargador: Cargador<'_>,
+    hechos: &mut Vec<crate::ast::ModuloFuente>,
+    en_curso: &mut Vec<String>,
+) -> Result<(), Vec<Diagnostico>> {
+    use crate::ast::Elemento;
+    for e in elementos {
+        let Elemento::Importar(i) = e else { continue };
+        if hechos.iter().any(|m| m.nombre == i.modulo) {
+            continue;
+        }
+        if en_curso.contains(&i.modulo) {
+            let mut ciclo = en_curso.clone();
+            ciclo.push(i.modulo.clone());
+            return Err(vec![Diagnostico::nuevo(
+                archivo,
+                i.lugar,
+                format!("los modulos se importan en ciclo: {}", ciclo.join(" -> ")),
+            )
+            .con_sugerencia(
+                "saca lo que comparten a un tercer modulo".to_string(),
+            )]);
+        }
+        let Some((ruta, texto)) = cargador(&i.modulo) else {
+            continue;
+        };
+        let modulo = analizar_programa(&ruta, &texto).map_err(|d| vec![d])?;
+        reservados(&ruta, &modulo)?;
+        en_curso.push(i.modulo.clone());
+        cargar_de(&modulo.elementos, &ruta, cargador, hechos, en_curso)?;
+        en_curso.pop();
+        hechos.push(crate::ast::ModuloFuente {
+            nombre: i.modulo.clone(),
+            archivo: ruta,
+            elementos: modulo.elementos,
+        });
+    }
+    Ok(())
 }
 
 fn interno(archivo: &str, msg: &str) -> Diagnostico {

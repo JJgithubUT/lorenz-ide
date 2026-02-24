@@ -291,3 +291,31 @@ fn cotejar_respeta_el_nivel_de_optimizacion() {
     }
     assert!(tam[1] < tam[0], "{tam:?}");
 }
+
+#[test]
+fn compila_un_programa_con_modulos_de_su_carpeta() {
+    let dir = carpeta();
+    std::fs::write(
+        dir.join("util.sgt"),
+        "const BASE: u16 = 40;\nfuncion mas_dos(x: u16) -> u16 { devolver x + 2; }\n",
+    )
+    .unwrap();
+    let ruta = dir.join("p.sgt");
+    std::fs::write(
+        &ruta,
+        "importar util { mas_dos, BASE };\nvar r: u16;\nfuncion principal() { r = mas_dos(BASE); }\n",
+    )
+    .unwrap();
+    let ruta = ruta.to_string_lossy().into_owned();
+    let (c, s, e) = correr(&["compilar", &ejemplo("risc-16"), &ruta]);
+    assert_eq!((c, e.as_str()), (0, ""), "{e}");
+    assert!(s.starts_with("# origen"), "{s}");
+}
+
+#[test]
+fn un_modulo_que_falta_se_dice_con_su_nombre() {
+    let ruta = fuente("importar fantasma { x };\nfuncion principal() { }\n");
+    let (c, _, e) = correr(&["compilar", &ejemplo("risc-16"), &ruta]);
+    assert_ne!(c, 0);
+    assert!(e.contains("no se encontro el modulo `fantasma`"), "{e}");
+}

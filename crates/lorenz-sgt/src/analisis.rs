@@ -59,8 +59,11 @@ struct Firma {
 }
 
 struct Analizador<'a> {
-    archivo: &'a str,
+    archivo: String,
     destino: &'a Destino,
+    /// Modulo que se analiza (vacio para el programa) y los simbolos importados por cada uno.
+    mod_actual: String,
+    alias: HashMap<(String, String), String>,
     diag: Vec<Diagnostico>,
     modulo: hir::Modulo,
     estructuras: HashMap<String, usize>,
@@ -111,8 +114,10 @@ fn distancia(a: &str, b: &str) -> usize {
 impl<'a> Analizador<'a> {
     fn nuevo(archivo: &'a str, destino: &'a Destino) -> Self {
         Self {
-            archivo,
+            archivo: archivo.to_string(),
             destino,
+            mod_actual: String::new(),
+            alias: HashMap::new(),
             diag: Vec::new(),
             modulo: hir::Modulo {
                 archivo: archivo.to_string(),
@@ -133,12 +138,47 @@ impl<'a> Analizador<'a> {
 
     fn error(&mut self, lugar: Lugar, mensaje: impl Into<String>) {
         self.diag
-            .push(Diagnostico::nuevo(self.archivo, lugar, mensaje));
+            .push(Diagnostico::nuevo(&self.archivo, lugar, mensaje));
+    }
+
+    /// Nombre unico de un simbolo de un modulo en el programa completo.
+    fn nombre_en(modulo: &str, n: &str) -> String {
+        if modulo.is_empty() {
+            n.to_string()
+        } else {
+            format!("{modulo}__{n}")
+        }
+    }
+
+    fn existe_simbolo(&self, k: &str) -> bool {
+        self.estructuras.contains_key(k)
+            || self.consts.contains_key(k)
+            || self.globales.contains_key(k)
+            || self.funciones.contains_key(k)
+    }
+
+    /// El nombre unico al que se refiere `n` desde el modulo que se analiza: un simbolo propio,
+    /// uno importado o, desde un modulo, uno de la biblioteca de SGT.
+    fn clave(&self, n: &str) -> String {
+        let propio = Self::nombre_en(&self.mod_actual, n);
+        if self.existe_simbolo(&propio) {
+            return propio;
+        }
+        if let Some(a) = self.alias.get(&(self.mod_actual.clone(), n.to_string())) {
+            return a.clone();
+        }
+        if !self.mod_actual.is_empty()
+            && crate::biblioteca::es_reservado(n)
+            && self.existe_simbolo(n)
+        {
+            return n.to_string();
+        }
+        propio
     }
 
     fn error_con(&mut self, lugar: Lugar, mensaje: impl Into<String>, sugerencia: String) {
         self.diag
-            .push(Diagnostico::nuevo(self.archivo, lugar, mensaje).con_sugerencia(sugerencia));
+            .push(Diagnostico::nuevo(&self.archivo, lugar, mensaje).con_sugerencia(sugerencia));
     }
 
     /// Un error de tipos: si hay una conversion que lo arregla, la sugiere (RF-SGT-037).
@@ -180,7 +220,7 @@ impl<'a> Analizador<'a> {
         if nombre == "usize" {
             return Tipo::u(self.destino.direccion);
         }
-        if let Some(&i) = self.estructuras.get(nombre) {
+        if let Some(&i) = self.estructuras.get(&self.clave(nombre)) {
             return Tipo::Estructura(i);
         }
         let forma = nombre
@@ -198,7 +238,7 @@ impl<'a> Analizador<'a> {
                     self.destino.palabra,
                     self.lista_de_enteros()
                 );
-                let d = Diagnostico::nuevo(self.archivo, lugar, m);
+                let d = Diagnostico::nuevo(&self.archivo, lugar, m);
                 // Una cifra casi igual a un ancho que existe (u61 por u16).
                 let cercano = self
                     .destino
@@ -234,7 +274,11 @@ impl<'a> Analizador<'a> {
             .filter(|c| distancia(c, nombre) <= 2)
             .min_by_key(|c| distancia(c, nombre))
             .cloned();
-        let d = Diagnostico::nuevo(self.archivo, lugar, format!("no existe el tipo `{nombre}`"));
+        let d = Diagnostico::nuevo(
+            &self.archivo,
+            lugar,
+            format!("no existe el tipo `{nombre}`"),
+        );
         self.diag.push(match cercano {
             Some(c) => d.con_sugerencia(format!("quiza querias decir `{c}`")),
             None => d,
@@ -295,57 +339,144 @@ impl<'a> Analizador<'a> {
     // Programa
     // ------------------------------------------------------------------
 
-    fn programa(&mut self, p: &Programa, opciones: Opciones) {
-        // 1. Nombres de estructuras, para que se puedan citar entre ellas.
-        let mut defs = Vec::new();
-        for e in &p.elementos {
-            if let Elemento::Estructura(d) = e {
-                if self.estructuras.contains_key(&d.nombre) {
-                    self.error(
-                        d.lugar,
-                        format!("la estructura `{}` ya esta declarada", d.nombre),
-                    );
-                    continue;
-                }
-                let i = self.modulo.estructuras.len();
-                self.estructuras.insert(d.nombre.clone(), i);
-                self.modulo.estructuras.push(hir::Estructura {
-                    nombre: d.nombre.clone(),
-                    campos: Vec::new(),
-                    tamano: 0,
-                });
-                defs.push((i, d));
+    /// Anota que simbolos importa cada modulo y comprueba que existan (RF-SGT-018).
+    fn registrar_importaciones(&mut self, unidades: &[(String, String, &[Elemento])]) {
+        use std::collections::BTreeSet;
+        let mut definidos: HashMap<String, BTreeSet<String>> = HashMap::new();
+        for (modulo, _, elementos) in unidades {
+            let nombres = definidos.entry(modulo.clone()).or_default();
+            for e in *elementos {
+                match e {
+                    Elemento::Const(c) => nombres.insert(c.nombre.clone()),
+                    Elemento::Global(g) => nombres.insert(g.nombre.clone()),
+                    Elemento::Estructura(d) => nombres.insert(d.nombre.clone()),
+                    Elemento::Funcion(f) => nombres.insert(f.nombre.clone()),
+                    Elemento::Importar(_) => false,
+                };
             }
         }
-        for (i, d) in defs {
+        for (modulo, archivo, elementos) in unidades {
+            self.archivo = archivo.clone();
+            for e in *elementos {
+                let Elemento::Importar(i) = e else { continue };
+                let Some(propios) = definidos.get(&i.modulo) else {
+                    self.error_con(
+                        i.lugar,
+                        format!("no se encontro el modulo `{}`", i.modulo),
+                        format!("crea `{}.sgt` junto al archivo que lo importa", i.modulo),
+                    );
+                    continue;
+                };
+                if i.modulo.is_empty() || i.modulo == *modulo {
+                    self.error(i.lugar, "un modulo no puede importarse a si mismo");
+                    continue;
+                }
+                for s in &i.simbolos {
+                    if !propios.contains(s) {
+                        let tiene = if propios.is_empty() {
+                            "no define nada".to_string()
+                        } else {
+                            format!(
+                                "define: {}",
+                                propios.iter().cloned().collect::<Vec<_>>().join(", ")
+                            )
+                        };
+                        self.error(
+                            i.lugar,
+                            format!("el modulo `{}` no define `{s}` ({tiene})", i.modulo),
+                        );
+                        continue;
+                    }
+                    let clave = (modulo.clone(), s.clone());
+                    if self.alias.contains_key(&clave) {
+                        self.error(i.lugar, format!("`{s}` ya esta importado"));
+                        continue;
+                    }
+                    self.alias.insert(clave, Self::nombre_en(&i.modulo, s));
+                }
+            }
+        }
+    }
+
+    fn programa(&mut self, p: &Programa, opciones: Opciones) {
+        // Los modulos importados van primero y el programa al final; los simbolos de cada modulo
+        // llevan su nombre como prefijo (RF-SGT-018).
+        let raiz = self.archivo.clone();
+        let mut unidades: Vec<(String, String, &[Elemento])> = p
+            .modulos
+            .iter()
+            .map(|m| (m.nombre.clone(), m.archivo.clone(), &m.elementos[..]))
+            .collect();
+        unidades.push((String::new(), raiz.clone(), &p.elementos[..]));
+        self.registrar_importaciones(&unidades);
+        // 1. Nombres de estructuras, para que se puedan citar entre ellas.
+        let mut defs = Vec::new();
+        for (modulo, archivo, elementos) in &unidades {
+            self.mod_actual = modulo.clone();
+            self.archivo = archivo.clone();
+            for e in *elementos {
+                if let Elemento::Estructura(d) = e {
+                    let clave = Self::nombre_en(&self.mod_actual, &d.nombre);
+                    if self.estructuras.contains_key(&clave)
+                        || self
+                            .alias
+                            .contains_key(&(self.mod_actual.clone(), d.nombre.clone()))
+                    {
+                        self.error(
+                            d.lugar,
+                            format!("la estructura `{}` ya esta declarada", d.nombre),
+                        );
+                        continue;
+                    }
+                    let i = self.modulo.estructuras.len();
+                    self.estructuras.insert(clave.clone(), i);
+                    self.modulo.estructuras.push(hir::Estructura {
+                        nombre: clave,
+                        campos: Vec::new(),
+                        tamano: 0,
+                    });
+                    defs.push((modulo.clone(), archivo.clone(), i, d));
+                }
+            }
+        }
+        for (modulo, archivo, i, d) in defs {
+            self.mod_actual = modulo;
+            self.archivo = archivo;
             self.disponer_estructura(i, d);
         }
         // 2. Constantes y variables globales, en orden de aparicion.
-        for e in &p.elementos {
-            match e {
-                Elemento::Const(c) => self.def_const(c),
-                Elemento::Global(g) => self.def_global(g),
-                Elemento::Importar(i) => self.error_con(
-                    i.lugar,
-                    format!("el modulo `{}` no se puede importar todavia", i.modulo),
-                    "esta version compila un solo archivo".to_string(),
-                ),
-                _ => {}
+        for (modulo, archivo, elementos) in &unidades {
+            self.mod_actual = modulo.clone();
+            self.archivo = archivo.clone();
+            for e in *elementos {
+                match e {
+                    Elemento::Const(c) => self.def_const(c),
+                    Elemento::Global(g) => self.def_global(g),
+                    _ => {}
+                }
             }
         }
         // 3. Firmas de funciones.
         let mut cuerpos = Vec::new();
-        for e in &p.elementos {
-            if let Elemento::Funcion(f) = e {
-                if let Some(id) = self.firma(f) {
-                    cuerpos.push((id, f));
+        for (modulo, archivo, elementos) in &unidades {
+            self.mod_actual = modulo.clone();
+            self.archivo = archivo.clone();
+            for e in *elementos {
+                if let Elemento::Funcion(f) = e {
+                    if let Some(id) = self.firma(f) {
+                        cuerpos.push((modulo.clone(), archivo.clone(), id, f));
+                    }
                 }
             }
         }
         // 4. Cuerpos.
-        for (id, f) in cuerpos {
+        for (modulo, archivo, id, f) in cuerpos {
+            self.mod_actual = modulo;
+            self.archivo = archivo;
             self.cuerpo(id, f);
         }
+        self.mod_actual = String::new();
+        self.archivo = raiz;
         self.sin_recursion();
         if opciones.exige_principal {
             match self.funciones.get(PRINCIPAL) {
@@ -437,7 +568,13 @@ impl<'a> Analizador<'a> {
     }
 
     fn def_const(&mut self, c: &DefConst) {
-        if self.consts.contains_key(&c.nombre) || self.globales.contains_key(&c.nombre) {
+        let clave = Self::nombre_en(&self.mod_actual, &c.nombre);
+        if self.consts.contains_key(&clave)
+            || self.globales.contains_key(&clave)
+            || self
+                .alias
+                .contains_key(&(self.mod_actual.clone(), c.nombre.clone()))
+        {
             self.error(c.lugar, format!("`{}` ya esta declarado", c.nombre));
             return;
         }
@@ -470,7 +607,7 @@ impl<'a> Analizador<'a> {
         }
         match v.clase {
             CE::Const(valor) => {
-                self.consts.insert(c.nombre.clone(), (tipo, valor));
+                self.consts.insert(clave, (tipo, valor));
             }
             _ => self.error_con(
                 c.valor.lugar,
@@ -484,7 +621,13 @@ impl<'a> Analizador<'a> {
     }
 
     fn def_global(&mut self, g: &DefGlobal) {
-        if self.consts.contains_key(&g.nombre) || self.globales.contains_key(&g.nombre) {
+        let clave = Self::nombre_en(&self.mod_actual, &g.nombre);
+        if self.consts.contains_key(&clave)
+            || self.globales.contains_key(&clave)
+            || self
+                .alias
+                .contains_key(&(self.mod_actual.clone(), g.nombre.clone()))
+        {
             self.error(g.lugar, format!("`{}` ya esta declarado", g.nombre));
             return;
         }
@@ -550,9 +693,9 @@ impl<'a> Analizador<'a> {
                 Some(v)
             });
         let id = self.modulo.globales.len();
-        self.globales.insert(g.nombre.clone(), id);
+        self.globales.insert(clave.clone(), id);
         self.modulo.globales.push(hir::Variable {
-            nombre: g.nombre.clone(),
+            nombre: clave,
             tipo,
             lugar: g.lugar,
             direccion,
@@ -638,7 +781,12 @@ impl<'a> Analizador<'a> {
     }
 
     fn firma(&mut self, f: &DefFuncion) -> Option<hir::IdFuncion> {
-        if self.funciones.contains_key(&f.nombre) {
+        let clave = Self::nombre_en(&self.mod_actual, &f.nombre);
+        if self.funciones.contains_key(&clave)
+            || self
+                .alias
+                .contains_key(&(self.mod_actual.clone(), f.nombre.clone()))
+        {
             self.error(
                 f.lugar,
                 format!("la funcion `{}` ya esta declarada", f.nombre),
@@ -732,14 +880,14 @@ impl<'a> Analizador<'a> {
             );
         }
         let id = self.modulo.funciones.len();
-        self.funciones.insert(f.nombre.clone(), id);
+        self.funciones.insert(clave.clone(), id);
         self.firmas.push(Firma {
             parametros,
             retorno: retorno.clone(),
             manejador: manejador.is_some(),
         });
         self.modulo.funciones.push(hir::Funcion {
-            nombre: f.nombre.clone(),
+            nombre: clave,
             base: f.nombre.clone(),
             raiz: 0,
             lugar: f.lugar,
@@ -1202,7 +1350,7 @@ impl<'a> Analizador<'a> {
             let nombre = resto[i + 1..fin].trim().to_string();
             let r = if let Some(l) = self.buscar_local(&nombre) {
                 Ref::Local(l)
-            } else if let Some(&g) = self.globales.get(&nombre) {
+            } else if let Some(&g) = self.globales.get(&self.clave(&nombre)) {
                 Ref::Global(g)
             } else {
                 self.error(
@@ -1295,13 +1443,13 @@ impl<'a> Analizador<'a> {
                         clase: ClaseSitio::Variable(Ref::Local(l)),
                     });
                 }
-                if let Some(&g) = self.globales.get(n) {
+                if let Some(&g) = self.globales.get(&self.clave(n)) {
                     return Some(Sitio {
                         tipo: self.modulo.globales[g].tipo.clone(),
                         clase: ClaseSitio::Variable(Ref::Global(g)),
                     });
                 }
-                if self.consts.contains_key(n) {
+                if self.consts.contains_key(&self.clave(n)) {
                     self.error(
                         e.lugar,
                         format!("`{n}` es una constante y no se puede modificar"),
@@ -1371,7 +1519,7 @@ impl<'a> Analizador<'a> {
                 if let ClaseExpr::Nombre(n) = &base.clase {
                     if n == "reg"
                         && self.buscar_local(n).is_none()
-                        && !self.globales.contains_key(n)
+                        && !self.globales.contains_key(&self.clave(n))
                     {
                         return self.registro(campo, e.lugar);
                     }
@@ -1549,7 +1697,7 @@ impl<'a> Analizador<'a> {
             .iter()
             .filter(|v| distancia(v, n) <= 2)
             .min_by_key(|v| distancia(v, n));
-        let d = Diagnostico::nuevo(self.archivo, lugar, format!("no existe `{n}`"));
+        let d = Diagnostico::nuevo(&self.archivo, lugar, format!("no existe `{n}`"));
         self.diag.push(match cercano {
             Some(c) => d.con_sugerencia(format!("quiza querias decir `{c}`")),
             None => d,
@@ -1563,7 +1711,7 @@ impl<'a> Analizador<'a> {
     fn expr_o_sitio(&mut self, e: &Expr) -> Option<Base> {
         match &e.clase {
             ClaseExpr::Nombre(n)
-                if self.buscar_local(n).is_some() || self.globales.contains_key(n) =>
+                if self.buscar_local(n).is_some() || self.globales.contains_key(&self.clave(n)) =>
             {
                 self.sitio(e).map(Base::Sitio)
             }
@@ -1619,16 +1767,16 @@ impl<'a> Analizador<'a> {
                 self.error_expr(lugar)
             }
             ClaseExpr::Nombre(n) => {
-                if self.buscar_local(n).is_some() || self.globales.contains_key(n) {
+                if self.buscar_local(n).is_some() || self.globales.contains_key(&self.clave(n)) {
                     return match self.sitio(e) {
                         Some(s) => self.leer_valor(lugar, s),
                         None => self.error_expr(lugar),
                     };
                 }
-                if let Some((t, v)) = self.consts.get(n).cloned() {
+                if let Some((t, v)) = self.consts.get(&self.clave(n)).cloned() {
                     return self.constante(lugar, t, v);
                 }
-                if self.funciones.contains_key(n) {
+                if self.funciones.contains_key(&self.clave(n)) {
                     self.error(
                         lugar,
                         format!("`{n}` es una funcion; para llamarla escribe `{n}(...)`"),
@@ -1649,7 +1797,7 @@ impl<'a> Analizador<'a> {
                 if let ClaseExpr::Nombre(n) = &base.clase {
                     if n == "bandera"
                         && self.buscar_local(n).is_none()
-                        && !self.globales.contains_key(n)
+                        && !self.globales.contains_key(&self.clave(n))
                     {
                         if self.destino.banderas.iter().any(|b| b == campo) {
                             return hir::Expr {
@@ -1958,7 +2106,7 @@ impl<'a> Analizador<'a> {
             );
             return self.error_expr(lugar);
         }
-        let Some(&id) = self.funciones.get(nombre) else {
+        let Some(&id) = self.funciones.get(&self.clave(nombre)) else {
             self.nombre_desconocido(nombre, lugar);
             for a in args {
                 self.expr(a, None);
