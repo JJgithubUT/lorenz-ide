@@ -1,0 +1,46 @@
+// Cargador de arranque (RF-ECO-040).
+//
+// Es lo primero que corre al encender la maquina: prepara la pantalla, comprueba que la memoria
+// responde, anuncia el sistema y deja el control al nucleo. Los manejadores de interrupcion
+// (`teclado.sgt` y `reloj.sgt`) los instala el compilador en los vectores de la maquina.
+
+importar pantalla { borrar, escribir_texto, escribir_numero, nueva_linea };
+
+/// Zona de RAM que la prueba de arranque escribe y vuelve a leer.
+var zona_de_prueba: [u16; 32];
+
+var palabras_buenas: u16;
+
+/// Escribe dos patrones complementarios en cada palabra de la zona y cuenta las que los conservan.
+funcion probar_memoria() -> u16 {
+    var buenas: u16 = 0;
+    var i: u16 = 0;
+    mientras i < 32 {
+        var bien: bool = verdadero;
+        zona_de_prueba[i] = 0x5555;
+        si zona_de_prueba[i] != 0x5555 { bien = falso; }
+        zona_de_prueba[i] = 0xAAAA;
+        si zona_de_prueba[i] != 0xAAAA { bien = falso; }
+        zona_de_prueba[i] = 0;
+        si bien { buenas += 1; }
+        i += 1;
+    }
+    devolver buenas;
+}
+
+var titulo: [u16; 12] = "LORENZ OS";
+var texto_memoria: [u16; 8] = "RAM ";
+var texto_lista: [u16; 8] = "LISTO";
+
+/// Deja la maquina lista y escribe el anuncio de arranque.
+funcion arrancar() {
+    borrar();
+    escribir_texto(&titulo[0]);
+    nueva_linea();
+    palabras_buenas = probar_memoria();
+    escribir_texto(&texto_memoria[0]);
+    escribir_numero(palabras_buenas);
+    nueva_linea();
+    escribir_texto(&texto_lista[0]);
+    nueva_linea();
+}

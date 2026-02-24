@@ -1,0 +1,34 @@
+// Controlador de teclado (RF-ECO-040).
+//
+// Cada tecla pulsada levanta la interrupcion 1 y deja su codigo en el puerto 0x20. El manejador lo
+// guarda en una cola circular de 16 entradas y el programa lo recoge cuando quiere con `leer`.
+
+var cola: [u16; 16];
+var cabeza: u16;
+var cola_cuantas: u16;
+
+@interrupcion(1)
+funcion al_pulsar() {
+    var codigo: u16 = entrada(0x20);
+    si cola_cuantas < 16 {
+        cola[(cabeza + cola_cuantas) & 15] = codigo;
+        cola_cuantas += 1;
+    }
+}
+
+/// Hay alguna tecla esperando.
+funcion hay_tecla() -> bool {
+    devolver cola_cuantas != 0;
+}
+
+/// Espera una tecla y la devuelve.
+funcion leer() -> u16 {
+    mientras cola_cuantas == 0 { }
+    var codigo: u16 = cola[cabeza];
+    // El manejador usa `cabeza` y `cola_cuantas`: se cambian juntos con las interrupciones cerradas.
+    asm("DI");
+    cabeza = (cabeza + 1) & 15;
+    cola_cuantas -= 1;
+    asm("EI");
+    devolver codigo;
+}
