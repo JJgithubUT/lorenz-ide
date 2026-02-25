@@ -57,6 +57,12 @@ pub enum Orden {
         maquinas: Vec<String>,
         opciones: crate::cotejar::OpcionesCotejar,
     },
+    /// Crear un proyecto nuevo copiando una carpeta plantilla.
+    Nuevo {
+        plantilla: String,
+        destino: String,
+        nombre: Option<String>,
+    },
     /// Escribir la convencion de llamada de SGT en una maquina.
     Convencion {
         maquina: String,
@@ -239,6 +245,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "documentar" => interpretar_documentar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
+        "nuevo" => interpretar_nuevo(resto),
         "cotejar" => interpretar_cotejar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
@@ -485,6 +492,31 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
         fuente,
         maquinas,
         opciones,
+    })
+}
+
+fn interpretar_nuevo(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut nombre) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--nombre" => nombre = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let plantilla = it.next().ok_or(ErrorUso::Falta("plantilla"))?;
+    let destino = it.next().ok_or(ErrorUso::Falta("destino"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Nuevo {
+        plantilla,
+        destino,
+        nombre,
     })
 }
 

@@ -32,6 +32,7 @@ Uso:
   lorenz compilar <maquina.toml> <fuente.sgt> [-O0|-O1|-O2|-O3] [-o PROGRAMA.hex] [--asm ARCHIVO] [--lineas ARCHIVO] [--costes ARCHIVO]
   lorenz cotejar <fuente.sgt> <maquina.toml> <maquina.toml>... [-O0|-O1|-O2|-O3] [--limite N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
+  lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
@@ -207,6 +208,11 @@ pub fn ejecutar_cli_con_entrada(
             maquinas,
             opciones,
         } => crate::cotejar::cotejar_cli(&fuente, &maquinas, &opciones, salida, errores),
+        Orden::Nuevo {
+            plantilla,
+            destino,
+            nombre,
+        } => crate::nuevo::nuevo_cli(&plantilla, &destino, nombre.as_deref(), salida, errores),
         Orden::Convencion {
             maquina,
             salida: archivo,
