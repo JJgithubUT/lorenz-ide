@@ -252,6 +252,10 @@ extensiones) llega con su fase.
 | RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
 | RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
 | RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
+| RF-ECO-027 | Ejemplo de sistema operativo completo | Hecho | `ejemplos/so-ejemplo`, `tests/so_ejemplo.rs` |
+| RF-ECO-039 | Ejemplo en varios modulos con pantalla y teclado | Hecho | `ejemplos/so-ejemplo/*.sgt` |
+| RF-ECO-040 | Ejemplo con interrupciones | Hecho | teclado por interrupcion 1 en Lorenz OS |
+| RF-ECO-042 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `lorenz-cli/src/nuevo.rs` |
 | RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
 | RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
 

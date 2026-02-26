@@ -17,6 +17,17 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Lorenz OS y la orden `nuevo`
+
+Se cierra el ejemplo de sistema operativo en varios modulos (pantalla, teclado por interrupcion,
+reloj, arranque y nucleo), con pruebas en el emulador. La orden `lorenz nuevo PLANTILLA DESTINO
+[--nombre N]` copia una carpeta plantilla, renombra la maquina y se niega a pisar una carpeta con
+contenido.
+
+**Requisitos:** RF-ECO-027, RF-ECO-039, RF-ECO-040, RF-ECO-042.
+
+**Commits:** 475 a 478 en `develop`.
+
 ## 2026-10-16 — Compilador SGT: optimizacion, costes, biblioteca, 8 bits y enteros anchos
 
 **Hecho:**
