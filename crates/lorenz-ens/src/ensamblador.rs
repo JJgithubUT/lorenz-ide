@@ -94,6 +94,26 @@ pub struct Objeto {
     pub externos: BTreeMap<String, Externo>,
     /// Instrucciones pendientes de enlazar.
     pub reubicaciones: Vec<Reubicacion>,
+    /// Cosas dudosas que no impiden ensamblar (RF-ENS-028).
+    pub avisos: Vec<Aviso>,
+}
+
+/// Un aviso del ensamblador: el programa se ensambla, pero algo merece una segunda mirada.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Aviso {
+    pub archivo: String,
+    pub linea: usize,
+    pub mensaje: String,
+}
+
+impl std::fmt::Display for Aviso {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{}: aviso: {}",
+            self.archivo, self.linea, self.mensaje
+        )
+    }
 }
 
 impl Objeto {
@@ -269,8 +289,10 @@ impl<'m> Ensamblador<'m> {
         if !errores.is_empty() {
             return Err(errores);
         }
+        let avisos = self.avisar_banderas(&elementos, &simbolos);
         let mut objeto = self.segunda_pasada(elementos, simbolos, &externos, &mut errores);
         objeto.externos = externos;
+        objeto.avisos = avisos;
         if errores.is_empty() {
             Ok(objeto)
         } else {
@@ -872,7 +894,123 @@ impl<'m> Ensamblador<'m> {
             mapa,
             externos: BTreeMap::new(),
             reubicaciones,
+            avisos: Vec::new(),
         }
+    }
+
+    /// Avisa de los saltos condicionales que leen una bandera que ninguna instruccion fijo
+    /// desde el principio del programa, o que una llamada pudo alterar (RF-ENS-028).
+    ///
+    /// El analisis recorre el programa en el orden escrito. Una etiqueta puede alcanzarse desde
+    /// cualquier sitio, asi que ahi todo se da por bueno y el aviso se calla; solo se avisa
+    /// cuando la bandera es indeterminada de verdad dentro del tramo que se ve.
+    fn avisar_banderas(
+        &self,
+        elementos: &[Elemento],
+        simbolos: &BTreeMap<String, Simbolo>,
+    ) -> Vec<Aviso> {
+        use lorenz_arch::semantica::ast::{Destino, Expr, Sentencia};
+        #[derive(Clone, Copy, PartialEq)]
+        enum Estado {
+            SinFijar,
+            Fijada,
+            Alterada,
+            Heredada,
+        }
+        fn nombres(e: &Expr, fuera: &mut Vec<String>) {
+            match e {
+                Expr::Nombre(n) => fuera.push(n.clone()),
+                Expr::Mem(a) | Expr::Entrada(a) | Expr::Unario(_, a) => nombres(a, fuera),
+                Expr::Binario(_, a, b) => {
+                    nombres(a, fuera);
+                    nombres(b, fuera);
+                }
+                Expr::Literal(_) => {}
+            }
+        }
+        /// Destinos asignados, y si algun salto condicional asigna `pc`: `(cond, asigna pc)`.
+        fn recorrer(
+            s: &[Sentencia],
+            destinos: &mut Vec<String>,
+            condiciones: &mut Vec<Vec<String>>,
+        ) {
+            for x in s {
+                match x {
+                    Sentencia::Asignar(Destino::Nombre(n), _) => destinos.push(n.clone()),
+                    Sentencia::Si(c, cuerpo) => {
+                        let (mut d, mut k) = (Vec::new(), Vec::new());
+                        recorrer(cuerpo, &mut d, &mut k);
+                        if d.iter().any(|n| n == "pc") {
+                            let mut v = Vec::new();
+                            nombres(c, &mut v);
+                            condiciones.push(v);
+                        }
+                        destinos.extend(d);
+                        condiciones.extend(k);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let m = self.maquina;
+        if m.banderas.is_empty() {
+            return Vec::new();
+        }
+        let mut estado: BTreeMap<&str, Estado> = m
+            .banderas
+            .iter()
+            .map(|b| (b.nombre.as_str(), Estado::SinFijar))
+            .collect();
+        let etiquetas: std::collections::BTreeSet<u64> = simbolos
+            .values()
+            .filter(|s| s.etiqueta)
+            .map(|s| s.valor as u64)
+            .collect();
+        let mut avisos = Vec::new();
+        for el in elementos {
+            if etiquetas.contains(&el.direccion) {
+                estado.values_mut().for_each(|e| *e = Estado::Heredada);
+            }
+            let Contenido::Instruccion { forma, .. } = &el.contenido else {
+                continue;
+            };
+            let ins = &m.instrucciones[self.formas[*forma].indice];
+            let (mut destinos, mut condiciones) = (Vec::new(), Vec::new());
+            recorrer(&ins.programa.sentencias, &mut destinos, &mut condiciones);
+            for condicion in &condiciones {
+                for n in condicion {
+                    let Some(e) = estado.get(n.as_str()).copied() else {
+                        continue;
+                    };
+                    let porque = match e {
+                        Estado::SinFijar => "ninguna instruccion la ha fijado todavia",
+                        Estado::Alterada => "una llamada anterior pudo cambiarla",
+                        _ => continue,
+                    };
+                    avisos.push(Aviso {
+                        archivo: el.origen.archivo.clone(),
+                        linea: el.origen.linea,
+                        mensaje: format!(
+                            "`{}` salta segun la bandera {n}, que es indeterminada: {porque}",
+                            ins.mnemonico
+                        ),
+                    });
+                }
+            }
+            let escribe = |n: &str| destinos.iter().any(|d| d == n);
+            let es_llamada = escribe("pc") && escribe("sp");
+            for b in &m.banderas {
+                let fija = ins.afecta.iter().any(|a| *a == b.nombre) || escribe(&b.nombre);
+                if let Some(e) = estado.get_mut(b.nombre.as_str()) {
+                    if fija {
+                        *e = Estado::Fijada;
+                    } else if es_llamada {
+                        *e = Estado::Alterada;
+                    }
+                }
+            }
+        }
+        avisos
     }
 
     /// Los simbolos externos que un elemento necesita, sin repetir.

@@ -181,5 +181,6 @@ pub fn enlazar(
         mapa,
         externos: BTreeMap::new(),
         reubicaciones: Vec::new(),
+        avisos: Vec::new(),
     })
 }
