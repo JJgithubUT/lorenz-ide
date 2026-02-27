@@ -264,3 +264,19 @@ fn ensamblar_puede_guardar_el_archivo_objeto() {
     assert!(t.contains("lorenz-objeto-0.1"));
     assert!(t.contains("0x20") || t.contains("32"));
 }
+
+#[test]
+fn ensamblar_avisa_de_banderas_indeterminadas_sin_fallar() {
+    let fuente = temporal("sin-bandera.s", "LDI A, 1\nJZ fin\nfin: HLT\n");
+    let r = correr(&["ensamblar", &maquina(), &fuente]);
+    assert_eq!(r.codigo, SALIDA_OK, "{}", r.errores);
+    assert!(r.errores.contains("aviso:"), "{}", r.errores);
+    assert!(r.errores.contains("bandera Z"), "{}", r.errores);
+}
+
+#[test]
+fn ensamblar_no_avisa_si_la_bandera_esta_fijada() {
+    let r = correr(&["ensamblar", &maquina(), &ejemplo("suma.s")]);
+    assert_eq!(r.codigo, SALIDA_OK);
+    assert!(!r.errores.contains("aviso:"), "{}", r.errores);
+}
