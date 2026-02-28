@@ -24,9 +24,17 @@ reloj, arranque y nucleo), con pruebas en el emulador. La orden `lorenz nuevo PL
 [--nombre N]` copia una carpeta plantilla, renombra la maquina y se niega a pisar una carpeta con
 contenido.
 
-**Requisitos:** RF-ECO-027, RF-ECO-039, RF-ECO-040, RF-ECO-042.
+**Decisiones:**
 
-**Commits:** 475 a 478 en `develop`.
+- **D-074** — El aviso de banderas indeterminadas (RF-ENS-028) recorre el programa en el orden
+  escrito. Una bandera esta *sin fijar* hasta que una instruccion la lista en `afecta` o la asigna,
+  y *alterada* tras una instruccion que escribe `pc` y `sp` (una llamada). Una etiqueta puede
+  alcanzarse desde cualquier sitio, asi que ahi el analisis se calla. Los avisos van en
+  `Objeto::avisos` y no impiden ensamblar.
+
+**Requisitos:** RF-ECO-027, RF-ECO-039, RF-ECO-040, RF-ECO-042, RF-ENS-028.
+
+**Commits:** 475 a 481 en `develop`.
 
 ## 2026-10-16 — Compilador SGT: optimizacion, costes, biblioteca, 8 bits y enteros anchos
 
