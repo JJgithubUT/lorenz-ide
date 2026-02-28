@@ -13,7 +13,7 @@ pub mod memoria;
 
 pub use memoria::{
     AccesoVigilado, Escritura, EscrituraRegistrada, LecturaSinInicializar, Memoria, TipoAcceso,
-    MAX_LECTURAS_SIN_INICIALIZAR,
+    Trafico, MAX_LECTURAS_SIN_INICIALIZAR,
 };
 pub mod estado;
 pub mod programa;
