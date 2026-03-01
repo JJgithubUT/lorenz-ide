@@ -1,0 +1,13 @@
+[package]
+name = "lorenz-cic"
+description = "Simulacion ciclo a ciclo: pipeline, riesgos, prediccion de saltos, cache y metricas"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+serde.workspace = true
+toml.workspace = true
