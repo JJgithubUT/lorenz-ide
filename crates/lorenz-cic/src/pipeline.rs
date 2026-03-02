@@ -363,9 +363,7 @@ impl Planificador {
             }
         }
         self.bloqueo = bloqueo;
-        for s in 0..n {
-            self.libre[s] = entra[s + 1];
-        }
+        self.libre[..n].copy_from_slice(&entra[1..=n]);
         let id = self.siguiente_id;
         self.siguiente_id += 1;
         Planificada {
