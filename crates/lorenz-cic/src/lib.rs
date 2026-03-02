@@ -7,9 +7,11 @@
 //! emulador funcional ignora (RF-CIC-002).
 
 pub mod cache;
+pub mod config;
 pub mod pipeline;
 
 pub use cache::{
     Cache, ConfigCache, Escritura, EstadisticasCache, FilaCache, Reemplazo, ResultadoCache,
 };
+pub use config::{cargar_config, Config, LatenciaRegion};
 pub use pipeline::{Causa, ConfigPipeline, Entrada, Etapa, Planificada, Planificador, Prediccion};
