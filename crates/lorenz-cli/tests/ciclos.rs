@@ -1,0 +1,115 @@
+//! La orden `ciclos` (RF-CIC-001, RF-CIC-002, RF-CIC-012, RF-CIC-025, RF-CIC-026, RF-CIC-031).
+
+use std::path::PathBuf;
+
+use lorenz_cli::{ejecutar_cli, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK};
+
+fn raiz() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn ruta(r: &str) -> String {
+    raiz().join(r).to_string_lossy().into_owned()
+}
+
+fn correr(args: &[&str]) -> (i32, String, String) {
+    let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    let (mut s, mut e) = (Vec::new(), Vec::new());
+    let c = ejecutar_cli(&args, &mut s, &mut e);
+    (
+        c,
+        String::from_utf8(s).unwrap(),
+        String::from_utf8(e).unwrap(),
+    )
+}
+
+fn maquina() -> String {
+    ruta("ejemplos/ejemplo-8-ciclos/maquina.toml")
+}
+
+fn suma() -> String {
+    ruta("ejemplos/ejemplo-8-ciclos/programas/suma.s")
+}
+
+fn bucle() -> String {
+    ruta("ejemplos/ejemplo-8-ciclos/programas/bucle.s")
+}
+
+#[test]
+fn cuenta_ciclos_instrucciones_y_tamano_del_codigo() {
+    let (c, s, e) = correr(&["ciclos", &maquina(), &suma()]);
+    assert_eq!(c, SALIDA_OK, "{e}");
+    assert!(s.contains("ciclos: "), "{s}");
+    assert!(s.contains("instrucciones: 4"), "{s}");
+    assert!(s.contains("tamano del codigo: 6 bytes"), "{s}");
+    assert!(s.contains("ciclos por instruccion: "), "{s}");
+}
+
+#[test]
+fn el_mismo_programa_y_la_misma_descripcion_sirven_en_los_dos_modos() {
+    let (c1, _, e1) = correr(&["ejecutar", &maquina(), &suma()]);
+    let (c2, _, e2) = correr(&["ciclos", &maquina(), &suma()]);
+    assert_eq!((c1, c2), (SALIDA_OK, SALIDA_OK), "{e1}{e2}");
+}
+
+#[test]
+fn la_vista_muestra_el_pipeline_ciclo_a_ciclo() {
+    let (c, s, _) = correr(&["ciclos", &maquina(), &suma(), "--vista", "6"]);
+    assert_eq!(c, SALIDA_OK);
+    assert!(s.contains("ciclo    0 | IF LDI@0x0000"), "{s}");
+    assert!(s.contains("| ID "), "{s}");
+}
+
+#[test]
+fn el_diagrama_dibuja_una_fila_por_instruccion() {
+    let (_, s, _) = correr(&["ciclos", &maquina(), &suma(), "--diagrama", "4"]);
+    assert!(s.contains("instruccion"), "{s}");
+    assert!(s.contains("ADD@0x0004"), "{s}");
+}
+
+#[test]
+fn el_perfil_atribuye_ciclos_a_cada_instruccion() {
+    let (_, s, _) = correr(&["ciclos", &maquina(), &suma(), "--perfil"]);
+    assert!(
+        s.contains("# direccion instruccion ejecuciones ciclos"),
+        "{s}"
+    );
+    let total: u64 = s
+        .lines()
+        .skip_while(|l| !l.starts_with("# direccion"))
+        .skip(1)
+        .map(|l| l.split_whitespace().last().unwrap().parse::<u64>().unwrap())
+        .sum();
+    let ciclos: u64 = s
+        .lines()
+        .find_map(|l| l.strip_prefix("ciclos: "))
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(total, ciclos, "{s}");
+}
+
+#[test]
+fn un_bucle_infinito_llega_al_limite_y_cuenta_los_saltos() {
+    let (c, s, _) = correr(&["ciclos", &maquina(), &bucle(), "--limite", "100"]);
+    assert_eq!(c, SALIDA_LIMITE, "{s}");
+    assert!(s.contains("saltos: 50"), "{s}");
+}
+
+#[test]
+fn el_volcado_de_la_cache_se_pide_aparte() {
+    let (_, s, _) = correr(&["ciclos", &maquina(), &suma(), "--cache"]);
+    assert!(
+        s.contains("# conjunto via valida sucia etiqueta direccion"),
+        "{s}"
+    );
+}
+
+#[test]
+fn argumentos_incorrectos() {
+    let (c, _, _) = correr(&["ciclos", &maquina()]);
+    assert_eq!(c, SALIDA_ERROR_USO);
+    let (c, _, e) = correr(&["ciclos", "no-existe.toml", &suma()]);
+    assert_eq!(c, SALIDA_ERROR_USO);
+    assert!(e.contains("no-existe.toml"), "{e}");
+}

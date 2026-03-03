@@ -40,5 +40,8 @@ pub mod compilar;
 
 pub mod nuevo;
 
+/// Simulacion ciclo a ciclo.
+pub mod ciclos;
+
 /// El mismo programa SGT en varias maquinas.
 pub mod cotejar;

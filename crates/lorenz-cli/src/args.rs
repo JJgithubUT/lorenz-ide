@@ -57,6 +57,12 @@ pub enum Orden {
         maquinas: Vec<String>,
         opciones: crate::cotejar::OpcionesCotejar,
     },
+    /// Ejecutar un programa contando ciclos con la temporizacion de la descripcion.
+    Ciclos {
+        maquina: String,
+        programa: String,
+        opciones: crate::ciclos::OpcionesCiclos,
+    },
     /// Crear un proyecto nuevo copiando una carpeta plantilla.
     Nuevo {
         plantilla: String,
@@ -246,6 +252,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
+        "ciclos" => interpretar_ciclos(resto),
         "cotejar" => interpretar_cotejar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
@@ -491,6 +498,38 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Cotejar {
         fuente,
         maquinas,
+        opciones,
+    })
+}
+
+fn interpretar_ciclos(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::ciclos::OpcionesCiclos::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--vista" => opciones.vista = Some(numero(a, valor_de(resto, &mut i, a)?)?),
+            "--diagrama" => {
+                opciones.diagrama = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize)
+            }
+            "--perfil" => opciones.perfil = true,
+            "--cache" => opciones.volcar_cache = true,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Ciclos {
+        maquina,
+        programa,
         opciones,
     })
 }
