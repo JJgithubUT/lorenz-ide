@@ -114,3 +114,23 @@ fn el_emulador_funcional_acepta_las_mismas_secciones() {
     assert!(lorenz_arch::cargar(&con).is_ok());
     assert!(cargar_config(&con).unwrap().pipeline.is_some());
 }
+
+#[test]
+fn un_hijo_hereda_la_temporizacion_del_padre_y_puede_cambiar_una_latencia() {
+    let dir = std::env::temp_dir().join(format!("lorenz-cic-herencia-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let padre = std::fs::read_to_string("../../ejemplos/ejemplo-8-ciclos/maquina.toml").unwrap();
+    std::fs::write(dir.join("padre.toml"), padre).unwrap();
+    std::fs::write(
+        dir.join("hijo.toml"),
+        "[maquina]\nnombre = \"hijo\"\nhereda = \"padre.toml\"\n\n[[region]]\nnombre = \"ram\"\ndesde = 0x2000\nhasta = 0xEFFF\nacceso = \"rw\"\nlatencia = 9\n",
+    )
+    .unwrap();
+    let c = lorenz_cic::cargar_config_archivo(dir.join("hijo.toml")).unwrap();
+    assert!(
+        c.pipeline.is_some() && c.cache.is_some(),
+        "hereda las secciones"
+    );
+    assert_eq!(c.latencia_de(0x2100), 9, "redefine la latencia de la ram");
+    assert_eq!(c.latencia_de(0x10), 2, "conserva la de la rom");
+}

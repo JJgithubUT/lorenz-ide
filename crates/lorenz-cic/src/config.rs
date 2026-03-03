@@ -112,6 +112,20 @@ struct RegionCruda {
 /// configuracion vacia: el modelo ciclo a ciclo funciona igual, con un pipeline de una etapa.
 pub fn cargar_config(texto: &str) -> Result<Config, String> {
     let a: Archivo = toml::from_str(texto).map_err(|e| e.to_string())?;
+    desde_archivo(a)
+}
+
+/// Como [`cargar_config`], pero desde un archivo y siguiendo su herencia: un hijo que no declara
+/// `[pipeline]` usa el de su padre, y puede redefinir una region para cambiarle la latencia.
+pub fn cargar_config_archivo(ruta: impl AsRef<std::path::Path>) -> Result<Config, String> {
+    let tabla = lorenz_arch::mezclar_archivo(ruta).map_err(|e| e.to_string())?;
+    let a: Archivo = toml::Value::Table(tabla)
+        .try_into()
+        .map_err(|e: toml::de::Error| e.to_string())?;
+    desde_archivo(a)
+}
+
+fn desde_archivo(a: Archivo) -> Result<Config, String> {
     let mut cfg = Config::default();
     for r in &a.regiones {
         if let Some(l) = r.latencia {
