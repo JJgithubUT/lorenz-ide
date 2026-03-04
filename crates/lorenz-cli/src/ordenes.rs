@@ -33,6 +33,9 @@ Uso:
   lorenz cotejar <fuente.sgt> <maquina.toml> <maquina.toml>... [-O0|-O1|-O2|-O3] [--limite N]
   lorenz ciclos <maquina.toml> <programa.hex | fuente.s | fuente.sgt> [--limite N] [--direccion A]
                [--vista CICLOS] [--diagrama INSTRUCCIONES] [--perfil] [--cache]
+               [--calor] [--calor-html ARCHIVO] [--historial ARCHIVO [--etiqueta TEXTO]] [--vigilar]
+  lorenz comparar-ciclos <maquina-a.toml> <maquina-b.toml> <programa> [--limite N] [--direccion A]
+  lorenz historial-ciclos <historial.toml>
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
   lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
@@ -215,6 +218,17 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::ciclos::ciclos_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::CompararCiclos {
+            maquina_a,
+            maquina_b,
+            programa,
+            opciones,
+        } => crate::ciclos::comparar_ciclos_cli(
+            &maquina_a, &maquina_b, &programa, &opciones, salida, errores,
+        ),
+        Orden::HistorialCiclos { archivo } => {
+            crate::historial_ciclos::historial_cli(&archivo, salida, errores)
+        }
         Orden::Nuevo {
             plantilla,
             destino,

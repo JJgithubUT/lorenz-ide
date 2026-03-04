@@ -22,6 +22,7 @@ lorenz-tst = { path = "../lorenz-tst" }
 lorenz-sgt = { path = "../lorenz-sgt" }
 lorenz-cic = { path = "../lorenz-cic" }
 thiserror.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

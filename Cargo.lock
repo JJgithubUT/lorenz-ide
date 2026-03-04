@@ -62,6 +62,7 @@ dependencies = [
  "lorenz-tst",
  "serde_json",
  "thiserror",
+ "toml",
 ]
 
 [[package]]
