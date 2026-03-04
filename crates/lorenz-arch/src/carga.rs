@@ -29,6 +29,8 @@ struct ArchivoCrudo {
     registros: Vec<RegistroCrudo>,
     #[serde(default, rename = "par")]
     pares: Vec<ParCrudo>,
+    #[serde(default, rename = "banco")]
+    bancos: Vec<BancoCrudo>,
     #[serde(default, rename = "instruccion")]
     instrucciones: Vec<InstruccionCruda>,
     #[serde(default, rename = "region")]
@@ -86,6 +88,13 @@ struct RegistroCrudo {
     rol: String,
     #[serde(default)]
     inicial: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BancoCrudo {
+    selector: String,
+    registros: Vec<String>,
+    copias: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -523,6 +532,15 @@ fn convertir(
         pila,
         registros,
         pares,
+        bancos_registros: crudo
+            .bancos
+            .into_iter()
+            .map(|b| BancoRegistros {
+                selector: b.selector,
+                registros: b.registros,
+                copias: b.copias,
+            })
+            .collect(),
         banderas,
         instrucciones,
         regiones,

@@ -66,6 +66,17 @@ pub struct ParRegistros {
     pub bajo: String,
 }
 
+/// Registros que existen en varias copias, de las que solo se ve una a la vez (RF-ARQ-012).
+///
+/// El valor del registro selector elige la copia activa; cada copia conserva su propio valor
+/// mientras no esta activa. Si el selector vale mas que el numero de copias, se cuenta en vueltas.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BancoRegistros {
+    pub selector: String,
+    pub registros: Vec<String>,
+    pub copias: u32,
+}
+
 /// Un bit con nombre dentro del registro de banderas.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bandera {
@@ -243,6 +254,8 @@ pub struct Maquina {
     pub pila: SentidoPila,
     pub registros: Vec<Registro>,
     pub pares: Vec<ParRegistros>,
+    /// Registros conmutables (RF-ARQ-012).
+    pub bancos_registros: Vec<BancoRegistros>,
     pub banderas: Vec<Bandera>,
     pub instrucciones: Vec<Instruccion>,
     pub regiones: Vec<Region>,
