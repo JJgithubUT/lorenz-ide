@@ -25,6 +25,17 @@ struct RegionMem {
     celdas: Vec<u64>,
     /// Quien escribio cada celda por ultima vez; vacio mientras el seguimiento esta apagado.
     origen: Vec<u64>,
+    /// Bancos conmutables (RF-ARQ-033). `celdas` y `origen` son los del banco visible; los demas
+    /// esperan aqui, y la posicion del banco visible queda vacia hasta que se cambie.
+    banco: Option<Bancos>,
+}
+
+#[derive(Debug, Clone)]
+struct Bancos {
+    puerto: u64,
+    activo: usize,
+    celdas: Vec<Vec<u64>>,
+    origen: Vec<Vec<u64>>,
 }
 
 const SIN_ESCRIBIR: u64 = 0;
@@ -134,6 +145,15 @@ impl Memoria {
                 dispositivo: r.dispositivo.clone(),
                 celdas: vec![0; celdas as usize],
                 origen: Vec::new(),
+                banco: match (r.bancos > 1, r.selector_puerto) {
+                    (true, Some(puerto)) => Some(Bancos {
+                        puerto,
+                        activo: 0,
+                        celdas: (0..r.bancos).map(|_| vec![0; celdas as usize]).collect(),
+                        origen: vec![Vec::new(); r.bancos as usize],
+                    }),
+                    _ => None,
+                },
             });
         }
         regiones.sort_by_key(|r| r.desde);
@@ -155,6 +175,81 @@ impl Memoria {
             escrituras: Vec::new(),
             suma,
         })
+    }
+
+    // --- Bancos de memoria conmutables por puerto (RF-ARQ-033) ---
+
+    /// `true` si el puerto elige el banco visible de alguna region.
+    pub fn es_selector_de_banco(&self, puerto: u64) -> bool {
+        self.regiones
+            .iter()
+            .any(|r| r.banco.as_ref().is_some_and(|b| b.puerto == puerto))
+    }
+
+    /// Banco visible de la region que se elige con ese puerto.
+    pub fn banco_de_puerto(&self, puerto: u64) -> Option<u64> {
+        self.regiones
+            .iter()
+            .find_map(|r| r.banco.as_ref().filter(|b| b.puerto == puerto))
+            .map(|b| b.activo as u64)
+    }
+
+    /// Banco visible de una region por su nombre, si es conmutable.
+    pub fn banco_activo(&self, region: &str) -> Option<usize> {
+        self.regiones
+            .iter()
+            .find(|r| r.nombre == region)
+            .and_then(|r| r.banco.as_ref())
+            .map(|b| b.activo)
+    }
+
+    /// Escribir `valor` en el puerto selector: se ve el banco `valor` (en vueltas si hay menos).
+    /// No hace nada si el puerto no elige ningun banco.
+    pub fn seleccionar_banco(&mut self, puerto: u64, valor: u64) {
+        let mut suma = self.suma;
+        for r in &mut self.regiones {
+            let Some(b) = r.banco.as_mut().filter(|b| b.puerto == puerto) else {
+                continue;
+            };
+            let nuevo = (valor % b.celdas.len() as u64) as usize;
+            if nuevo == b.activo {
+                continue;
+            }
+            for (i, v) in r.celdas.iter().enumerate() {
+                suma = suma.wrapping_sub(aporte(r.desde + i as u64, *v));
+            }
+            std::mem::swap(&mut r.celdas, &mut b.celdas[nuevo]);
+            std::mem::swap(&mut r.origen, &mut b.origen[nuevo]);
+            // El banco que se oculta pasa a su posicion; el que se ve sale de la suya.
+            b.celdas.swap(b.activo, nuevo);
+            b.origen.swap(b.activo, nuevo);
+            b.activo = nuevo;
+            for (i, v) in r.celdas.iter().enumerate() {
+                suma = suma.wrapping_add(aporte(r.desde + i as u64, *v));
+            }
+        }
+        self.suma = suma;
+    }
+
+    /// Contenido de una celda de un banco concreto de una region, visible o no.
+    pub fn leer_en_banco(
+        &self,
+        region: &str,
+        banco: usize,
+        direccion: u64,
+    ) -> Result<u64, ErrorEjecucion> {
+        let r = self
+            .regiones
+            .iter()
+            .find(|r| r.nombre == region && (r.desde..=r.hasta).contains(&direccion))
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let celda = (direccion - r.desde) as usize;
+        match &r.banco {
+            None if banco == 0 => Ok(r.celdas[celda]),
+            Some(b) if banco == b.activo => Ok(r.celdas[celda]),
+            Some(b) if banco < b.celdas.len() => Ok(b.celdas[banco][celda]),
+            _ => Err(ErrorEjecucion::FueraDeRegion { direccion }),
+        }
     }
 
     /// Indice de la region que contiene la direccion, si hay alguna.
@@ -366,6 +461,18 @@ impl Memoria {
                 .iter()
                 .map(|c| if *c == 0 { SIN_ESCRIBIR } else { CARGADA })
                 .collect();
+            if let Some(b) = &mut r.banco {
+                b.origen = b
+                    .celdas
+                    .iter()
+                    .map(|banco| {
+                        banco
+                            .iter()
+                            .map(|c| if *c == 0 { SIN_ESCRIBIR } else { CARGADA })
+                            .collect()
+                    })
+                    .collect();
+            }
         }
         self.seguimiento = true;
     }

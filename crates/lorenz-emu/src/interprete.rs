@@ -166,6 +166,9 @@ impl Interprete {
             }
             Expr::Entrada(puerto) => {
                 let p = self.evaluar(puerto, instruccion, dec, entorno)?;
+                if let Some(banco) = entorno.memoria.banco_de_puerto(p as u64) {
+                    return Ok(i128::from(banco));
+                }
                 Ok(i128::from(entorno.puertos.leer(p as u64)?))
             }
             Expr::Unario(op, e) => {
@@ -275,6 +278,11 @@ impl Interprete {
             Destino::Salida(puerto) => {
                 let p = self.evaluar(puerto, instruccion, dec, entorno)?;
                 let truncado = (valor as u64) & self.mascara_palabra;
+                if entorno.memoria.es_selector_de_banco(p as u64) {
+                    entorno.memoria.seleccionar_banco(p as u64, truncado);
+                    registrar(truncado, self.mascara_palabra, seg);
+                    return Ok(());
+                }
                 entorno.puertos.escribir(p as u64, truncado)?;
                 registrar(truncado, self.mascara_palabra, seg);
                 Ok(())
