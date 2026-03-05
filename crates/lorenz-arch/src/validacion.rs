@@ -23,6 +23,7 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     bancos_de_registros(m, &mut fallos);
     nombres_duplicados(m, &mut fallos);
     regiones(m, &mut fallos);
+    bancos_de_memoria(m, &mut fallos);
     arranque(m, &mut fallos);
     dispositivos_citados(m, &mut fallos);
     banderas_citadas(m, &mut fallos);
@@ -410,6 +411,45 @@ fn regiones(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                     ),
                 ));
             }
+        }
+    }
+}
+
+/// RF-ARQ-033: una region con bancos tiene al menos dos, un puerto selector que no usa ninguna otra
+/// region, y no es la de un dispositivo; una region sin bancos no declara selector.
+fn bancos_de_memoria(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    let mut puertos: BTreeSet<u64> = BTreeSet::new();
+    for r in &m.regiones {
+        let mut mal = |detalle: String| fallos.push(fallo(Regla::BancoMemoriaInvalido, detalle));
+        if r.bancos == 0 {
+            mal(format!("la region '{}' declara 0 bancos", r.nombre));
+        }
+        if r.bancos > 1 {
+            match r.selector_puerto {
+                None => mal(format!(
+                    "la region '{}' tiene {} bancos pero no dice con que puerto se elige el banco (selector_puerto)",
+                    r.nombre, r.bancos
+                )),
+                Some(p) => {
+                    if !puertos.insert(p) {
+                        mal(format!(
+                            "el puerto {p:#x} elige el banco de mas de una region ('{}' entre ellas)",
+                            r.nombre
+                        ));
+                    }
+                }
+            }
+            if r.dispositivo.is_some() {
+                mal(format!(
+                    "la region '{}' es de un dispositivo y no puede tener bancos",
+                    r.nombre
+                ));
+            }
+        } else if r.selector_puerto.is_some() {
+            mal(format!(
+                "la region '{}' declara selector_puerto pero solo tiene un banco",
+                r.nombre
+            ));
         }
     }
 }

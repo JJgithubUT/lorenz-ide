@@ -149,6 +149,14 @@ struct RegionCruda {
     dispositivo: Option<String>,
     #[serde(default)]
     contenido: Option<String>,
+    #[serde(default = "un_banco")]
+    bancos: u32,
+    #[serde(default)]
+    selector_puerto: Option<u64>,
+}
+
+fn un_banco() -> u32 {
+    1
 }
 
 fn acceso_por_defecto() -> String {
@@ -438,6 +446,8 @@ fn convertir(
                 acceso,
                 dispositivo: r.dispositivo,
                 contenido: r.contenido,
+                bancos: r.bancos,
+                selector_puerto: r.selector_puerto,
             }
         })
         .collect();

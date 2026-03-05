@@ -108,3 +108,55 @@ fn rechaza_registros_de_rol_especial_el_selector_dentro_y_los_repetidos() {
 fn el_error_cita_el_requisito() {
     assert_eq!(Regla::BancoInvalido.requisito(), "RF-ARQ-012");
 }
+
+// --- bancos de memoria conmutables por puerto (RF-ARQ-033) ---
+
+fn con_region(extra: &str) -> String {
+    base("").replace(
+        "[[region]]\nnombre = \"ram\"\ndesde = 0x0000\nhasta = 0xFFFF\nacceso = \"rw\"",
+        &format!(
+            "[[region]]\nnombre = \"ram\"\ndesde = 0x0000\nhasta = 0x7FFF\nacceso = \"rw\"\n\n[[region]]\nnombre = \"ventana\"\ndesde = 0x8000\nhasta = 0x8FFF\nacceso = \"rw\"\n{extra}\n"
+        ),
+    )
+}
+
+#[test]
+fn acepta_una_region_con_bancos_y_puerto() {
+    let m = cargar(&con_region("bancos = 4\nselector_puerto = 0x10")).unwrap();
+    let v = m.regiones.iter().find(|r| r.nombre == "ventana").unwrap();
+    assert_eq!((v.bancos, v.selector_puerto), (4, Some(0x10)));
+    let r = m.regiones.iter().find(|r| r.nombre == "ram").unwrap();
+    assert_eq!((r.bancos, r.selector_puerto), (1, None));
+}
+
+#[test]
+fn varios_bancos_sin_puerto_selector_no_se_aceptan() {
+    let c = codigos(&con_region("bancos = 4"));
+    assert_eq!(c, vec![Regla::BancoMemoriaInvalido.codigo()]);
+}
+
+#[test]
+fn un_puerto_sin_bancos_tampoco() {
+    let c = codigos(&con_region("selector_puerto = 0x10"));
+    assert_eq!(c, vec![Regla::BancoMemoriaInvalido.codigo()]);
+}
+
+#[test]
+fn cero_bancos_no_tiene_sentido() {
+    assert!(!codigos(&con_region("bancos = 0")).is_empty());
+}
+
+#[test]
+fn dos_regiones_no_comparten_el_puerto_selector() {
+    let t = con_region("bancos = 2\nselector_puerto = 0x10").replace(
+        "nombre = \"ram\"\ndesde = 0x0000\nhasta = 0x7FFF\nacceso = \"rw\"",
+        "nombre = \"ram\"\ndesde = 0x0000\nhasta = 0x7FFF\nacceso = \"rw\"\nbancos = 2\nselector_puerto = 0x10",
+    );
+    let c = codigos(&t);
+    assert_eq!(c, vec![Regla::BancoMemoriaInvalido.codigo()]);
+}
+
+#[test]
+fn el_error_de_memoria_cita_su_requisito() {
+    assert_eq!(Regla::BancoMemoriaInvalido.requisito(), "RF-ARQ-033");
+}

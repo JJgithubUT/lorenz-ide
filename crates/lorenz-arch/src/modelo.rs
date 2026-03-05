@@ -176,6 +176,10 @@ pub struct Region {
     pub dispositivo: Option<String>,
     /// Archivo a precargar al arrancar.
     pub contenido: Option<String>,
+    /// Copias de la region de las que se ve una a la vez (RF-ARQ-033); 1 si no es conmutable.
+    pub bancos: u32,
+    /// Puerto de salida cuyo valor elige el banco visible; obligatorio si hay mas de un banco.
+    pub selector_puerto: Option<u64>,
 }
 
 impl Region {
