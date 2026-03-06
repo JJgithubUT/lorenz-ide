@@ -195,6 +195,7 @@ impl Objeto {
                     simbolos: r.simbolos,
                 })
                 .collect(),
+            avisos: Vec::new(),
         };
         Ok((a.maquina, objeto))
     }

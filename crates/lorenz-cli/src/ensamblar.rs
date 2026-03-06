@@ -127,6 +127,9 @@ pub fn ensamblar_cli(
             return SALIDA_ERROR_USO;
         }
     };
+    for a in &objeto.avisos {
+        escribir(errores, &format!("{a}\n"));
+    }
     if !objeto.reubicaciones.is_empty() {
         // El programa depende de simbolos de otros archivos: solo el objeto sirve para enlazar.
         let Some(ruta) = &opciones.objeto else {
