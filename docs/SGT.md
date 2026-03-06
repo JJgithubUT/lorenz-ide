@@ -352,3 +352,8 @@ funcion principal() { segun x { 1 => { } otro => { } } }
 ## Lo que falta
 
 Los genericos estan descritos en la ERS y se haran despues (vease `docs/TRAZABILIDAD.md`).
+
+## Proyecto nuevo desde una plantilla (RF-ECO-042)
+
+`lorenz nuevo ejemplos/so-ejemplo mi-so --nombre mi-so` copia la carpeta, cambia el nombre de la
+maquina en `maquina.toml` y deja un proyecto listo para `lorenz compilar`.
