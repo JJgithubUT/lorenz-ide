@@ -20,14 +20,67 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     sintaxis_de_instrucciones(m, &mut fallos);
     roles_de_registro(m, &mut fallos);
     pares_de_registros(m, &mut fallos);
+    bancos_de_registros(m, &mut fallos);
     nombres_duplicados(m, &mut fallos);
     regiones(m, &mut fallos);
+    bancos_de_memoria(m, &mut fallos);
     arranque(m, &mut fallos);
     dispositivos_citados(m, &mut fallos);
     banderas_citadas(m, &mut fallos);
     nombres_de_semantica(m, &mut fallos);
     rangos(m, &mut fallos);
     fallos
+}
+
+/// RF-ARQ-012: un banco de registros tiene un selector que existe, al menos dos copias y registros
+/// que existen, son de uso general y no estan en otro banco ni son el propio selector.
+fn bancos_de_registros(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    let mut en_banco: BTreeSet<&str> = BTreeSet::new();
+    for (i, b) in m.bancos_registros.iter().enumerate() {
+        let mut mal = |detalle: String| fallos.push(fallo(Regla::BancoInvalido, detalle));
+        if b.copias < 2 {
+            mal(format!(
+                "el banco {} declara {} copia(s): necesita al menos 2",
+                i + 1,
+                b.copias
+            ));
+        }
+        match m.registro(&b.selector) {
+            None => mal(format!(
+                "el banco {} usa el selector '{}', que no es un registro",
+                i + 1,
+                b.selector
+            )),
+            Some(r) if r.rol == RolRegistro::Fijo => mal(format!(
+                "el selector '{}' es un registro fijo: no se puede cambiar de banco",
+                b.selector
+            )),
+            Some(_) => {}
+        }
+        if b.registros.is_empty() {
+            mal(format!("el banco {} no lista ningun registro", i + 1));
+        }
+        for n in &b.registros {
+            match m.registro(n) {
+                None => mal(format!(
+                    "el banco {} lista '{n}', que no es un registro",
+                    i + 1
+                )),
+                Some(r) if r.rol != RolRegistro::General => mal(format!(
+                    "el registro '{n}' tiene un rol especial y no puede ir en un banco"
+                )),
+                Some(_) => {}
+            }
+            if *n == b.selector {
+                mal(format!(
+                    "el selector '{n}' no puede estar en su propio banco"
+                ));
+            }
+            if !en_banco.insert(n.as_str()) {
+                mal(format!("el registro '{n}' esta en mas de un banco"));
+            }
+        }
+    }
 }
 
 /// RF-ARQ-013: la sintaxis de cada instruccion empieza por su mnemonico y menciona exactamente
@@ -358,6 +411,45 @@ fn regiones(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                     ),
                 ));
             }
+        }
+    }
+}
+
+/// RF-ARQ-033: una region con bancos tiene al menos dos, un puerto selector que no usa ninguna otra
+/// region, y no es la de un dispositivo; una region sin bancos no declara selector.
+fn bancos_de_memoria(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    let mut puertos: BTreeSet<u64> = BTreeSet::new();
+    for r in &m.regiones {
+        let mut mal = |detalle: String| fallos.push(fallo(Regla::BancoMemoriaInvalido, detalle));
+        if r.bancos == 0 {
+            mal(format!("la region '{}' declara 0 bancos", r.nombre));
+        }
+        if r.bancos > 1 {
+            match r.selector_puerto {
+                None => mal(format!(
+                    "la region '{}' tiene {} bancos pero no dice con que puerto se elige el banco (selector_puerto)",
+                    r.nombre, r.bancos
+                )),
+                Some(p) => {
+                    if !puertos.insert(p) {
+                        mal(format!(
+                            "el puerto {p:#x} elige el banco de mas de una region ('{}' entre ellas)",
+                            r.nombre
+                        ));
+                    }
+                }
+            }
+            if r.dispositivo.is_some() {
+                mal(format!(
+                    "la region '{}' es de un dispositivo y no puede tener bancos",
+                    r.nombre
+                ));
+            }
+        } else if r.selector_puerto.is_some() {
+            mal(format!(
+                "la region '{}' declara selector_puerto pero solo tiene un banco",
+                r.nombre
+            ));
         }
     }
 }

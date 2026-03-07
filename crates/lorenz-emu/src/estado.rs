@@ -54,6 +54,21 @@ pub struct Estado {
     sin_inicializar: Vec<LecturaDeRegistro>,
     /// Pares de registros usados como uno ancho (RF-ARQ-010).
     pares: Vec<ParIndexado>,
+    /// Registros conmutables (RF-ARQ-012).
+    bancos: Vec<BancoActivo>,
+}
+
+/// Un banco de registros resuelto a posiciones (RF-ARQ-012).
+///
+/// Los registros del banco muestran en `valores` la copia activa; las demas copias esperan en
+/// `almacen`, una fila por copia.
+#[derive(Debug, Clone)]
+struct BancoActivo {
+    selector: usize,
+    registros: Vec<usize>,
+    copias: usize,
+    activo: usize,
+    almacen: Vec<Vec<u64>>,
 }
 
 /// Un par de registros resuelto a posiciones.
@@ -115,7 +130,25 @@ impl Estado {
                 })
             })
             .collect();
+        let bancos: Vec<BancoActivo> = maquina
+            .bancos_registros
+            .iter()
+            .filter_map(|b| {
+                let pos = |n: &str| maquina.registros.iter().position(|r| r.nombre == n);
+                let registros: Vec<usize> = b.registros.iter().filter_map(|n| pos(n)).collect();
+                let copias = b.copias.max(1) as usize;
+                let fila: Vec<u64> = registros.iter().map(|i| iniciales[*i]).collect();
+                Some(BancoActivo {
+                    selector: pos(&b.selector)?,
+                    registros,
+                    copias,
+                    activo: 0,
+                    almacen: vec![fila; copias],
+                })
+            })
+            .collect();
         let mut estado = Self {
+            bancos,
             pares,
             declarados,
             seguimiento: false,
@@ -198,7 +231,50 @@ impl Estado {
         if self.seguimiento {
             self.inicializados[i] = true;
         }
+        self.conmutar_bancos(i);
         Ok(())
+    }
+
+    /// Si el registro recien escrito es el selector de un banco, cambia la copia que se ve.
+    fn conmutar_bancos(&mut self, selector: usize) {
+        for g in 0..self.bancos.len() {
+            if self.bancos[g].selector != selector {
+                continue;
+            }
+            let nueva = (self.valores[selector] % self.bancos[g].copias as u64) as usize;
+            let b = &mut self.bancos[g];
+            if nueva == b.activo {
+                continue;
+            }
+            let guardar: Vec<u64> = b.registros.iter().map(|i| self.valores[*i]).collect();
+            b.almacen[b.activo] = guardar;
+            b.activo = nueva;
+            for (k, i) in b.registros.iter().enumerate() {
+                self.valores[*i] = b.almacen[nueva][k];
+            }
+        }
+    }
+
+    /// Copia activa de cada banco, en el orden en que se declararon (RF-ARQ-012).
+    pub fn bancos_activos(&self) -> Vec<usize> {
+        self.bancos.iter().map(|b| b.activo).collect()
+    }
+
+    /// Valor de un registro en una copia concreta del banco, la activa o no.
+    pub fn registro_en_banco(&self, nombre: &str, copia: usize) -> Result<u64, ErrorEjecucion> {
+        let i = self.indice(nombre)?;
+        for b in &self.bancos {
+            if let Some(k) = b.registros.iter().position(|r| *r == i) {
+                return match copia {
+                    c if c >= b.copias => Err(ErrorEjecucion::RegistroInexistente {
+                        nombre: format!("{nombre} (copia {c})"),
+                    }),
+                    c if c == b.activo => Ok(self.valores[i]),
+                    c => Ok(b.almacen[c][k]),
+                };
+            }
+        }
+        Ok(self.valores[i])
     }
 
     /// Empieza a anotar las lecturas de registros que nadie ha escrito (RF-DEP-040). Un registro de
@@ -309,6 +385,11 @@ impl Estado {
     /// (RF-EMU-014).
     pub fn reiniciar(&mut self) {
         self.valores.clone_from(&self.iniciales);
+        for b in &mut self.bancos {
+            b.activo = 0;
+            let fila: Vec<u64> = b.registros.iter().map(|i| self.iniciales[*i]).collect();
+            b.almacen = vec![fila; b.copias];
+        }
         if self.seguimiento {
             self.inicializados = self.declarados.clone();
             self.sin_inicializar.clear();

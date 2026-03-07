@@ -29,6 +29,8 @@ struct ArchivoCrudo {
     registros: Vec<RegistroCrudo>,
     #[serde(default, rename = "par")]
     pares: Vec<ParCrudo>,
+    #[serde(default, rename = "banco")]
+    bancos: Vec<BancoCrudo>,
     #[serde(default, rename = "instruccion")]
     instrucciones: Vec<InstruccionCruda>,
     #[serde(default, rename = "region")]
@@ -89,6 +91,13 @@ struct RegistroCrudo {
 }
 
 #[derive(Debug, Deserialize)]
+struct BancoCrudo {
+    selector: String,
+    registros: Vec<String>,
+    copias: u32,
+}
+
+#[derive(Debug, Deserialize)]
 struct ParCrudo {
     nombre: String,
     alto: String,
@@ -140,6 +149,14 @@ struct RegionCruda {
     dispositivo: Option<String>,
     #[serde(default)]
     contenido: Option<String>,
+    #[serde(default = "un_banco")]
+    bancos: u32,
+    #[serde(default)]
+    selector_puerto: Option<u64>,
+}
+
+fn un_banco() -> u32 {
+    1
 }
 
 fn acceso_por_defecto() -> String {
@@ -429,6 +446,8 @@ fn convertir(
                 acceso,
                 dispositivo: r.dispositivo,
                 contenido: r.contenido,
+                bancos: r.bancos,
+                selector_puerto: r.selector_puerto,
             }
         })
         .collect();
@@ -523,6 +542,15 @@ fn convertir(
         pila,
         registros,
         pares,
+        bancos_registros: crudo
+            .bancos
+            .into_iter()
+            .map(|b| BancoRegistros {
+                selector: b.selector,
+                registros: b.registros,
+                copias: b.copias,
+            })
+            .collect(),
         banderas,
         instrucciones,
         regiones,

@@ -107,6 +107,10 @@ pub enum Regla {
     SintaxisInvalida,
     /// Un par de registros nombra registros que no existen, repite uno o no cabe en 64 bits.
     ParInvalido,
+    /// Un banco de registros nombra registros que no existen, se repite o tiene menos de dos copias.
+    BancoInvalido,
+    /// Una region con bancos no cumple las condiciones para conmutar por puerto.
+    BancoMemoriaInvalido,
 }
 
 impl Regla {
@@ -126,6 +130,8 @@ impl Regla {
             Regla::SemanticaInvalida => "E-SEMANT",
             Regla::SintaxisInvalida => "E-SINTAXIS",
             Regla::ParInvalido => "E-PAR",
+            Regla::BancoInvalido => "E-BANCO",
+            Regla::BancoMemoriaInvalido => "E-BANCO-MEM",
         }
     }
 
@@ -145,6 +151,8 @@ impl Regla {
             Regla::SemanticaInvalida => "RF-ARQ-022",
             Regla::SintaxisInvalida => "RF-ARQ-013",
             Regla::ParInvalido => "RF-ARQ-010",
+            Regla::BancoInvalido => "RF-ARQ-012",
+            Regla::BancoMemoriaInvalido => "RF-ARQ-033",
         }
     }
 }
