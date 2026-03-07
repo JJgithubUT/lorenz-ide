@@ -40,10 +40,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-cic"
+version = "0.1.0"
+dependencies = [
+ "lorenz-arch",
+ "lorenz-emu",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "lorenz-cli"
 version = "0.1.0"
 dependencies = [
  "lorenz-arch",
+ "lorenz-cic",
  "lorenz-dbg",
  "lorenz-emu",
  "lorenz-ens",
@@ -51,6 +62,7 @@ dependencies = [
  "lorenz-tst",
  "serde_json",
  "thiserror",
+ "toml",
 ]
 
 [[package]]

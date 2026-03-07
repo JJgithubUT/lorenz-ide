@@ -185,6 +185,17 @@ pub fn cargar_archivo(ruta: impl AsRef<Path>) -> Result<Maquina, ErrorArquitectu
     construir(&texto, ruta.parent(), &mut vec![canonica])
 }
 
+/// La descripcion de un archivo con su herencia ya mezclada, sin validar.
+///
+/// Sirve a las herramientas que leen secciones propias de la descripcion (la temporizacion, por
+/// ejemplo) y quieren ver lo mismo que ve el cargador: lo heredado y lo redefinido.
+pub fn mezclar_archivo(ruta: impl AsRef<Path>) -> Result<toml::Table, ErrorArquitectura> {
+    let ruta = ruta.as_ref();
+    let texto = std::fs::read_to_string(ruta)?;
+    let canonica = ruta.canonicalize().unwrap_or_else(|_| ruta.to_path_buf());
+    crate::herencia::resolver(&texto, ruta.parent(), &mut vec![canonica])
+}
+
 /// Lee y valida una descripcion de arquitectura desde su texto TOML.
 ///
 /// Devuelve la maquina solo si pasa todas las reglas de validacion; en caso contrario devuelve la

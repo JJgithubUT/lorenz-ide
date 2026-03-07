@@ -15,7 +15,7 @@ pub mod semantica;
 pub mod validacion;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
-pub use carga::{cargar, cargar_archivo};
+pub use carga::{cargar, cargar_archivo, mezclar_archivo};
 pub use error::{ErrorArquitectura, FalloValidacion, Posicion, Regla};
 pub use herencia::cadena as cadena_de_herencia;
 pub use modelo::{

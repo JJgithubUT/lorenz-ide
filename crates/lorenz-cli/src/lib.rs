@@ -40,5 +40,11 @@ pub mod compilar;
 
 pub mod nuevo;
 
+/// Simulacion ciclo a ciclo.
+pub mod ciclos;
+
+/// Historico de metricas por version de la arquitectura.
+pub mod historial_ciclos;
+
 /// El mismo programa SGT en varias maquinas.
 pub mod cotejar;

@@ -1000,7 +1000,7 @@ impl<'m> Ensamblador<'m> {
             let escribe = |n: &str| destinos.iter().any(|d| d == n);
             let es_llamada = escribe("pc") && escribe("sp");
             for b in &m.banderas {
-                let fija = ins.afecta.iter().any(|a| *a == b.nombre) || escribe(&b.nombre);
+                let fija = ins.afecta.contains(&b.nombre) || escribe(&b.nombre);
                 if let Some(e) = estado.get_mut(b.nombre.as_str()) {
                     if fija {
                         *e = Estado::Fijada;

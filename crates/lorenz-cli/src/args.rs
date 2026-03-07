@@ -57,6 +57,23 @@ pub enum Orden {
         maquinas: Vec<String>,
         opciones: crate::cotejar::OpcionesCotejar,
     },
+    /// Ejecutar un programa contando ciclos con la temporizacion de la descripcion.
+    Ciclos {
+        maquina: String,
+        programa: String,
+        opciones: crate::ciclos::OpcionesCiclos,
+    },
+    /// El mismo programa en dos descripciones, con sus cifras de ciclos lado a lado.
+    CompararCiclos {
+        maquina_a: String,
+        maquina_b: String,
+        programa: String,
+        opciones: crate::ciclos::OpcionesCiclos,
+    },
+    /// Listar el historico de mediciones de ciclos.
+    HistorialCiclos {
+        archivo: String,
+    },
     /// Crear un proyecto nuevo copiando una carpeta plantilla.
     Nuevo {
         plantilla: String,
@@ -246,6 +263,15 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
+        "ciclos" => interpretar_ciclos(resto),
+        "comparar-ciclos" => interpretar_comparar_ciclos(resto),
+        "historial-ciclos" => match resto {
+            [archivo] => Ok(Orden::HistorialCiclos {
+                archivo: archivo.clone(),
+            }),
+            [] => Err(ErrorUso::Falta("archivo")),
+            [_, extra, ..] => Err(ErrorUso::Sobra(extra.clone())),
+        },
         "cotejar" => interpretar_cotejar(resto),
         "desensamblar" => interpretar_desensamblar(resto),
         "depurar" => interpretar_depurar(resto),
@@ -491,6 +517,71 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Cotejar {
         fuente,
         maquinas,
+        opciones,
+    })
+}
+
+fn interpretar_ciclos(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::ciclos::OpcionesCiclos::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--vista" => opciones.vista = Some(numero(a, valor_de(resto, &mut i, a)?)?),
+            "--diagrama" => {
+                opciones.diagrama = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize)
+            }
+            "--perfil" => opciones.perfil = true,
+            "--cache" => opciones.volcar_cache = true,
+            "--calor" => opciones.calor = true,
+            "--calor-html" => opciones.calor_html = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--historial" => opciones.historial = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--etiqueta" => opciones.etiqueta = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--vigilar" => opciones.vigilar = true,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Ciclos {
+        maquina,
+        programa,
+        opciones,
+    })
+}
+
+fn interpretar_comparar_ciclos(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::ciclos::OpcionesCiclos::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina_a = it.next().ok_or(ErrorUso::Falta("maquina-a"))?;
+    let maquina_b = it.next().ok_or(ErrorUso::Falta("maquina-b"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::CompararCiclos {
+        maquina_a,
+        maquina_b,
+        programa,
         opciones,
     })
 }

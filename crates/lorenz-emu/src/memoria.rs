@@ -77,6 +77,13 @@ pub struct LecturaSinInicializar {
     pub pc: u64,
 }
 
+/// Un acceso a datos hecho por una instruccion (RF-CIC-018, RF-CIC-020).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Trafico {
+    pub direccion: u64,
+    pub escritura: bool,
+}
+
 /// El espacio de memoria completo de una maquina.
 #[derive(Debug, Clone)]
 pub struct Memoria {
@@ -90,6 +97,8 @@ pub struct Memoria {
     vigiladas_escritura: BTreeSet<u64>,
     accesos: Vec<AccesoVigilado>,
     registrando: bool,
+    /// Accesos a datos desde la ultima vez que se tomaron; `None` si no se anotan.
+    trafico: Option<Vec<Trafico>>,
     escrituras: Vec<EscrituraRegistrada>,
     /// Resumen del contenido, puesto al dia en cada escritura (ver `suma_de_verificacion`).
     suma: u64,
@@ -142,6 +151,7 @@ impl Memoria {
             vigiladas_escritura: BTreeSet::new(),
             accesos: Vec::new(),
             registrando: false,
+            trafico: None,
             escrituras: Vec::new(),
             suma,
         })
@@ -233,6 +243,12 @@ impl Memoria {
             });
         }
         let celda = (direccion - r.desde) as usize;
+        if let Some(t) = &mut self.trafico {
+            t.push(Trafico {
+                direccion,
+                escritura: true,
+            });
+        }
         let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
         self.suma = self
@@ -354,6 +370,19 @@ impl Memoria {
         self.seguimiento = true;
     }
 
+    /// Empieza o deja de anotar los accesos a datos de las instrucciones.
+    pub fn anotar_trafico(&mut self, activo: bool) {
+        self.trafico = activo.then(Vec::new);
+    }
+
+    /// Los accesos a datos anotados desde la ultima llamada, en orden.
+    pub fn tomar_trafico(&mut self) -> Vec<Trafico> {
+        self.trafico
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
+    }
+
     pub fn seguimiento_activo(&self) -> bool {
         self.seguimiento
     }
@@ -366,6 +395,12 @@ impl Memoria {
     /// Como `leer`, pero anota si la celda nunca se habia escrito.
     pub fn leer_vigilada(&mut self, direccion: u64) -> Result<u64, ErrorEjecucion> {
         let valor = self.leer(direccion)?;
+        if let Some(t) = &mut self.trafico {
+            t.push(Trafico {
+                direccion,
+                escritura: false,
+            });
+        }
         if self.vigiladas_lectura.contains(&direccion) {
             self.accesos.push(AccesoVigilado {
                 direccion,
