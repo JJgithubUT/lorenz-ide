@@ -439,20 +439,29 @@ impl<'a> Analizador<'a> {
                 }
             }
         }
+        // Las constantes se definen antes de disponer las estructuras: el desplazamiento de un
+        // campo (`@ n`) y la longitud de un arreglo pueden nombrarlas (RF-SGT-007).
+        for (modulo, archivo, elementos) in &unidades {
+            self.mod_actual = modulo.clone();
+            self.archivo = archivo.clone();
+            for e in *elementos {
+                if let Elemento::Const(c) = e {
+                    self.def_const(c);
+                }
+            }
+        }
         for (modulo, archivo, i, d) in defs {
             self.mod_actual = modulo;
             self.archivo = archivo;
             self.disponer_estructura(i, d);
         }
-        // 2. Constantes y variables globales, en orden de aparicion.
+        // 2. Variables globales, en orden de aparicion.
         for (modulo, archivo, elementos) in &unidades {
             self.mod_actual = modulo.clone();
             self.archivo = archivo.clone();
             for e in *elementos {
-                match e {
-                    Elemento::Const(c) => self.def_const(c),
-                    Elemento::Global(g) => self.def_global(g),
-                    _ => {}
+                if let Elemento::Global(g) = e {
+                    self.def_global(g);
                 }
             }
         }
