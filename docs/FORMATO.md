@@ -125,6 +125,29 @@ alto   = "H"
 bajo   = "L"
 ```
 
+## `[[banco]]`
+
+Un banco de registros junta registros que existen en varias copias, de las que solo se ve una a la
+vez (RF-ARQ-012): los registros sombra de las interrupciones, o los conjuntos de registros por
+tarea. El valor de un registro selector elige la copia visible; las demás conservan el suyo.
+
+| Clave | Tipo | Significado |
+| --- | --- | --- |
+| `selector` | texto | Registro cuyo valor elige la copia; si vale más que `copias`, se cuenta en vueltas |
+| `registros` | lista | Registros de uso general que tienen una copia por banco |
+| `copias` | entero | Cuántas copias hay, al menos 2 |
+
+Cada copia empieza con el valor `inicial` del registro. `reiniciar` vuelve a la copia 0 y restablece
+todas. Reglas (`E-BANCO`): el selector y los registros existen, los registros son de rol `general`,
+ninguno es el propio selector ni está en dos bancos.
+
+```toml
+[[banco]]
+selector  = "MODO"
+registros = ["R4", "R5", "R6"]
+copias    = 2
+```
+
 ## `[[instruccion]]`
 
 | Clave | Tipo | Por omisión | Significado |
@@ -178,8 +201,16 @@ Un `desplazamiento` es relativo al contador de programa y siempre lleva signo.
 | `acceso` | `"r"`, `"w"` o `"rw"` | `"rw"` | Qué puede hacer el programa; el acceso privilegiado del depurador no se limita |
 | `dispositivo` | texto | ninguno | Dispositivo mapeado en la región |
 | `contenido` | texto | ninguno | Archivo `.hex` que llena la región al cargar; la ruta es relativa a la carpeta de la descripción |
+| `bancos` | entero | `1` | Copias de la región, de las que se ve una a la vez (RF-ARQ-033) |
+| `selector_puerto` | entero | ninguno | Puerto de salida cuyo valor elige el banco visible; obligatorio si `bancos` pasa de 1 |
+| `latencia` | entero | `1` | Ciclos que cuesta tocar una palabra; solo la usa `lorenz ciclos` (ver `docs/CICLOS.md`) |
 
 Las regiones no se solapan (`E-SOLAPE`) y la dirección de arranque cae dentro de una (`E-ARRANQUE`).
+
+Con `bancos`, escribir `n` en `out[selector_puerto]` muestra el banco `n` (en vueltas si hay menos) y
+leer ese puerto devuelve el banco visible. Cada banco empieza a cero y guarda sus propios datos en
+las mismas direcciones. Reglas (`E-BANCO-MEM`): con varios bancos hay selector, dos regiones no
+comparten puerto y la región no es de un dispositivo.
 
 ## `[[dispositivo]]`
 
@@ -236,5 +267,7 @@ el requisito que lo exige y la línea y columna del archivo (RF-ARQ-034).
 | `E-RANGO` | Los valores están dentro de lo que admite el formato | RF-ARQ-003 |
 | `E-SEMANT` | La semántica se analiza y solo cita nombres que existen | RF-ARQ-022 |
 | `E-SINTAXIS` | La plantilla de sintaxis es válida y cuadra con los operandos | RF-ARQ-013 |
+| `E-BANCO` | Los bancos de registros tienen selector, copias y registros válidos | RF-ARQ-012 |
+| `E-BANCO-MEM` | Las regiones con bancos tienen puerto selector propio | RF-ARQ-033 |
 
 `lorenz validar maquina.toml` aplica todas las reglas y muestra los fallos de una vez.
