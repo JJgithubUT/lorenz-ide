@@ -17,6 +17,40 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Simulacion por ciclos, cache y bancos
+
+Nace el crate `lorenz-cic` y las ordenes `ciclos`, `comparar-ciclos` e `historial-ciclos`. Las
+maquinas pueden declarar pipeline, cache y latencias en el mismo TOML sin que cambie el modo
+funcional. Tambien quedan hechos los bancos de registros y de memoria. Detalle en `docs/CICLOS.md`.
+
+**Decisiones:**
+
+- **D-075** — El pipeline se simula guiado por la traza: el emulador funcional ejecuta cada
+  instruccion y un planificador en orden calcula en que ciclo entra a cada etapa
+  (`entra[s+1] = max(fin, libre[s+1], datos)`). Motivo: el resultado es determinista, el modo
+  funcional no se toca y retroceder un ciclo es leer un horario ya calculado.
+- **D-076** — Un riesgo de datos es una puerta de entrada a una etapa: con adelantamiento, entrar a
+  la etapa de calculo, con el dato listo cuando el productor termina su etapa de resultado (memoria
+  para las cargas); sin el, entrar a la lectura, con el dato listo al escribirse.
+- **D-077** — Sin `[pipeline]` hay una sola etapa con los ciclos declarados mas la latencia
+  extra, de modo que el total coincide exactamente con el del modo funcional (RF-CIC-002).
+- **D-078** — Un salto directo incondicional cuenta como bien predicho; uno indirecto, nunca.
+  El predictor de 2 bits empieza en «debilmente no tomado».
+- **D-079** — Una carga de linea de cache cuesta la suma de las latencias de las regiones de sus
+  palabras. La sustitucion aleatoria usa un xorshift con semilla fija para ser reproducible.
+- **D-080** — La version de una arquitectura es la huella FNV-1a del TOML ya mezclado con su
+  herencia, para que comentarios y espaciado no cambien la version del historico.
+- **D-081** — Un banco de registros guarda la copia visible en `valores` y las demas aparte; al
+  escribir el selector se intercambian. Un banco de memoria se cambia con `out[puerto]` y
+  `in[puerto]` devuelve el banco visible.
+
+**Pendiente:** fase 6 (contencion de bus, DMA, varios nucleos, coherencia, restricciones).
+
+**Requisitos:** RF-CIC-001..020, RF-CIC-025..032, RF-ARQ-012, RF-ARQ-033, RF-ECO-028.
+**Commits:** ramas `feat/ciclos`, `feat/bancos` y `docs/ciclos`.
+
+---
+
 ## 2026-10-16 — Lorenz OS y la orden `nuevo`
 
 Se cierra el ejemplo de sistema operativo en varios modulos (pantalla, teclado por interrupcion,

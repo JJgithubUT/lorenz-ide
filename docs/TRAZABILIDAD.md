@@ -73,7 +73,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-009 | Exactamente un contador de programa | Hecho | validacion de roles unicos |
 | RF-ARQ-010 | Pares de registros como un registro ancho | Hecho | `[[par]]`, `ParRegistros`, regla `E-PAR`, `Estado::registro` |
 | RF-ARQ-011 | Banderas con nombre, posicion y descripcion | Hecho | seccion `[flags]` |
-| RF-ARQ-012 | Bancos de registros conmutables | Pendiente | fase 5 de la ERS |
+| RF-ARQ-012 | Bancos de registros conmutables | Hecho | `[[banco]]`, `Estado::conmutar_bancos`, `E-BANCO` |
 | RF-ARQ-013 | Instrucciones con mnemonico, sintaxis, codificacion, semantica y ciclos | Hecho | `Instruccion`; la sintaxis se valida (`E-SINTAXIS`) |
 | RF-ARQ-014 | Lenguaje de campos de bits | Hecho | `bits.rs` |
 | RF-ARQ-015 | Instrucciones de varias palabras | Hecho | codificacion con `|` |
@@ -94,7 +94,7 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-030 | Dispositivos con tipo, puertos y region mapeada | Hecho | `Dispositivo`, `Region::dispositivo` |
 | RF-ARQ-031 | Rechazar una region con dispositivo no declarado | Hecho | `dispositivos_citados` |
 | RF-ARQ-032 | Lineas de interrupcion con vector y prioridad | Hecho | `Interrupciones` |
-| RF-ARQ-033 | Bancos de memoria conmutables por puerto | Pendiente | fase 5 de la ERS |
+| RF-ARQ-033 | Bancos de memoria conmutables por puerto | Hecho | `bancos`/`selector_puerto` de `[[region]]`, `Memoria::seleccionar_banco`, `E-BANCO-MEM` |
 | RF-ARQ-034 | Errores con linea y explicacion en terminos de la maquina | Hecho | `localizar::situar`; todo fallo lleva linea y columna |
 | RF-ARQ-035 | Herencia entre descripciones | Hecho | `herencia::resolver`, clave `hereda`, `eliminar = true`; la ven `Recargable` y `documentar --vigilar` |
 | RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Hecho | los comentarios que preceden a una tabla pasan a `Comentarios`; llegan a la documentacion |
@@ -258,6 +258,47 @@ extensiones) llega con su fase.
 | RF-ECO-042 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `lorenz-cli/src/nuevo.rs` |
 | RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
 | RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
+
+## Requisitos de ciclos y cache (RF-CIC)
+
+La fase 5 completa. El modelo esta en `docs/CICLOS.md`.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-CIC-001 | Modo de simulacion ciclo a ciclo | Hecho | `lorenz ciclos`, `Simulador` |
+| RF-CIC-002 | Alternar entre modo funcional y de ciclos sin cambiar la descripcion | Hecho | secciones de tiempo ignoradas por el cargador funcional; `sin_pipeline_declarado_coincide_con_el_modo_funcional` |
+| RF-CIC-003 | Pipeline con numero de etapas libre | Hecho | `[pipeline]`, `ConfigPipeline` |
+| RF-CIC-004 | Nombrar cada etapa y sus microoperaciones | Hecho | `[[pipeline.etapa]]` con `nombre` y `hace` |
+| RF-CIC-005 | Detectar riesgos de datos | Hecho | `analisis::dependencias`, `Planificador` |
+| RF-CIC-006 | Detenciones cuando no se resuelve el riesgo | Hecho | `Causa::Datos`, esperas por causa |
+| RF-CIC-007 | Activar o desactivar el adelantamiento | Hecho | `adelantamiento` de `[pipeline]` |
+| RF-CIC-008 | Riesgos de control en los saltos | Hecho | `Planificador`: el salto mal predicho bloquea la busqueda |
+| RF-CIC-009 | Elegir la politica de prediccion | Hecho | `Prediccion`: no-tomado, tomado, 1-bit, 2-bits |
+| RF-CIC-010 | Contar aciertos y fallos de prediccion | Hecho | `Metricas::saltos_acertados` |
+| RF-CIC-011 | Descartar las instrucciones especulativas | Hecho | `Planificada::descartadas`, vista `(descartada)` |
+| RF-CIC-012 | Mostrar el contenido de cada etapa | Hecho | `Simulador::vista`, `--vista`, `--diagrama` |
+| RF-CIC-013 | Marcar las detenciones y su causa | Hecho | `Vista::texto`: `espera datos (A)` |
+| RF-CIC-014 | Avanzar y retroceder un ciclo | Hecho | `avanzar_ciclo`, `retroceder_ciclo` |
+| RF-CIC-015 | Declarar una cache | Hecho | `[cache]`, `Cache` |
+| RF-CIC-016 | Politica de reemplazo | Hecho | `Reemplazo`: lru, fifo, aleatorio |
+| RF-CIC-017 | Politica de escritura | Hecho | `Escritura`: post-escritura, escritura-directa |
+| RF-CIC-018 | Contar aciertos y fallos de cache | Hecho | `EstadisticasCache`, separadas en lectura y escritura |
+| RF-CIC-019 | Mostrar el contenido de la cache | Hecho | `Cache::volcar`, `--cache` |
+| RF-CIC-020 | Latencias distintas por region | Hecho | `latencia` de `[[region]]` |
+| RF-CIC-025 | Ciclos por instruccion | Hecho | `Metricas::cpi`, salida de `lorenz ciclos` |
+| RF-CIC-026 | Tamano en bytes del codigo | Hecho | salida de `lorenz ciclos` |
+| RF-CIC-027 | Uso del bus | Hecho | `Metricas::ciclos_de_memoria` |
+| RF-CIC-028 | Recalcular al cambiar la descripcion | Hecho | `--vigilar`, `VigilanteCiclos` |
+| RF-CIC-029 | Comparar dos descripciones | Hecho | `lorenz comparar-ciclos` |
+| RF-CIC-030 | Historico de metricas por version | Hecho | `lorenz ciclos --historial`, `lorenz historial-ciclos` |
+| RF-CIC-031 | Perfilador que atribuye ciclos | Hecho | `Simulador::perfil`, `--perfil` |
+| RF-CIC-032 | Mapa de calor sobre el fuente | Hecho | `--calor`, `--calor-html` |
+| RF-CIC-021 | Contencion del bus entre varios maestros | Pendiente | fase 6 de la ERS |
+| RF-CIC-022 | Controlador de acceso directo a memoria | Pendiente | fase 6 de la ERS |
+| RF-CIC-023 | Maquinas de varios nucleos | Pendiente | fase 6 de la ERS |
+| RF-CIC-024 | Coherencia de cache entre nucleos | Pendiente | fase 6 de la ERS |
+| RF-CIC-033 | Restricciones de diseno | Pendiente | fase 6 de la ERS |
+| RF-CIC-034 | Sugerencias a partir de los programas | Pendiente | fase 6 de la ERS |
 
 ## Requisitos del lenguaje SGT (RF-SGT)
 
