@@ -17,6 +17,21 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Disposicion fijada de estructuras
+
+Se prueba la generacion del campo `@ n` (RF-SGT-007) y se corrige un fallo que salio al hacerlo.
+
+**Decisiones:**
+
+- **D-082** — Las constantes se definen antes de disponer las estructuras. Antes, `@ BASE + 1` o un
+  arreglo con longitud `const` dentro de una estructura daba "no existe". Las globales siguen
+  despues, porque necesitan el tamano de las estructuras.
+
+**Requisitos:** RF-SGT-007.
+**Commits:** rama `test/sgt-disposicion`.
+
+---
+
 ## 2026-10-16 — Simulacion por ciclos, cache y bancos
 
 Nace el crate `lorenz-cic` y las ordenes `ciclos`, `comparar-ciclos` e `historial-ciclos`. Las
