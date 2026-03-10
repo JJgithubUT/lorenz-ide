@@ -11,6 +11,7 @@ pub mod depurador;
 pub mod error;
 pub mod explicar;
 pub mod exportar;
+pub mod inyeccion;
 pub mod numero;
 pub mod reproducir;
 pub mod traza;

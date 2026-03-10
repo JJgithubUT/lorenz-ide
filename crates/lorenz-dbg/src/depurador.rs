@@ -130,6 +130,8 @@ pub struct Depurador {
     pub(crate) vigilancia: Option<crate::avisos::Vigilancia>,
     /// Las instrucciones ejecutadas desde que se pidio recogerlas; `None` si no se recogen.
     pasos_recogidos: Option<Vec<Paso>>,
+    /// Fallos que se inyectan al llegar a su instante (RF-DEP-042).
+    inyecciones: Vec<crate::inyeccion::Programada>,
 }
 
 /// Lo que las condiciones ven de la maquina.
@@ -192,6 +194,7 @@ impl Depurador {
             avisos: Vec::new(),
             vigilancia: None,
             pasos_recogidos: None,
+            inyecciones: Vec::new(),
         }
     }
 
@@ -448,6 +451,7 @@ impl Depurador {
                     instrucciones: hechas,
                 };
             }
+            self.inyectar_pendientes();
             let pc = self.emu.estado().pc();
             let antes = self
                 .traza
@@ -821,6 +825,104 @@ impl Depurador {
             }
         }
         m.registrar_escrituras(self.traza.is_some());
+    }
+
+    // --- inyeccion de fallos ---------------------------------------------------------------
+
+    /// Programa un fallo para cuando se hayan ejecutado `instante` instrucciones (RF-DEP-042).
+    pub fn programar_inyeccion(
+        &mut self,
+        instante: u64,
+        inyeccion: crate::inyeccion::Inyeccion,
+    ) -> Result<u32, ErrorDepurador> {
+        use crate::inyeccion::Inyeccion as I;
+        match &inyeccion {
+            I::BitRegistro { nombre, bit } => {
+                let r = self
+                    .maquina
+                    .registros
+                    .iter()
+                    .find(|r| r.nombre.eq_ignore_ascii_case(nombre))
+                    .ok_or_else(|| ErrorDepurador::NombreDesconocido(nombre.clone()))?;
+                if *bit >= r.bits {
+                    return Err(ErrorDepurador::BitFueraDeRango {
+                        bit: *bit,
+                        ancho: r.bits,
+                    });
+                }
+            }
+            I::BitMemoria { bit, .. } if *bit >= self.maquina.bits_palabra => {
+                return Err(ErrorDepurador::BitFueraDeRango {
+                    bit: *bit,
+                    ancho: self.maquina.bits_palabra,
+                });
+            }
+            _ => {}
+        }
+        let id = self.siguiente_id;
+        self.siguiente_id += 1;
+        self.inyecciones.push(crate::inyeccion::Programada {
+            id,
+            instante,
+            inyeccion,
+            aplicada: false,
+        });
+        Ok(id)
+    }
+
+    /// Los fallos programados, con su estado.
+    pub fn inyecciones(&self) -> &[crate::inyeccion::Programada] {
+        &self.inyecciones
+    }
+
+    /// Quita un fallo programado.
+    pub fn quitar_inyeccion(&mut self, id: u32) -> Result<(), ErrorDepurador> {
+        let n = self.inyecciones.len();
+        self.inyecciones.retain(|i| i.id != id);
+        if self.inyecciones.len() == n {
+            return Err(ErrorDepurador::PuntoInexistente(id));
+        }
+        Ok(())
+    }
+
+    /// Aplica los fallos cuyo instante ya llego. Cada resultado queda como aviso.
+    fn inyectar_pendientes(&mut self) {
+        if self.inyecciones.iter().all(|i| i.aplicada) {
+            return;
+        }
+        let ahora = self.emu.estado().instrucciones();
+        for k in 0..self.inyecciones.len() {
+            let (aplicada, instante) = (self.inyecciones[k].aplicada, self.inyecciones[k].instante);
+            if aplicada || instante > ahora {
+                continue;
+            }
+            self.inyecciones[k].aplicada = true;
+            let (id, inyeccion) = (
+                self.inyecciones[k].id,
+                self.inyecciones[k].inyeccion.clone(),
+            );
+            let r = self.aplicar_inyeccion(&inyeccion);
+            self.avisos.push(match r {
+                Ok(()) => format!("fallo {id} inyectado en el instante {ahora}: {inyeccion}"),
+                Err(e) => format!("fallo {id} no se pudo inyectar ({inyeccion}): {e}"),
+            });
+        }
+    }
+
+    fn aplicar_inyeccion(&mut self, i: &crate::inyeccion::Inyeccion) -> Result<(), ErrorDepurador> {
+        use crate::inyeccion::Inyeccion as I;
+        match i {
+            I::BitRegistro { nombre, bit } => {
+                let actual = self.emu.estado().registro(nombre)?;
+                self.fijar_registro(nombre, actual ^ (1u64 << bit))
+            }
+            I::BitMemoria { direccion, bit } => {
+                let actual = self.emu.memoria().leer_privilegiado(*direccion)?;
+                self.escribir_memoria(*direccion, actual ^ (1u64 << bit))
+            }
+            I::PerderEntrada { puerto } => self.leer_puerto(*puerto).map(|_| ()),
+            I::Interrupcion { linea } => self.levantar_interrupcion(*linea),
+        }
     }
 
     // --- cambios hechos a mano, anotados en la traza -------------------------------------

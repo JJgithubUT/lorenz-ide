@@ -40,6 +40,9 @@ pub enum ErrorDepurador {
     #[error("condicion invalida: {0}")]
     Condicion(String),
 
+    #[error("el bit {bit} no existe: el ancho es de {ancho} bits")]
+    BitFueraDeRango { bit: u32, ancho: u32 },
+
     #[error("la orden `{0}` no existe; escribe `ayuda` para ver las ordenes")]
     OrdenDesconocida(String),
 
