@@ -309,7 +309,7 @@ conocida, escrita en la columna de evidencia.
 | --- | --- | --- | --- |
 | RF-SGT-001, 002 | Enteros con y sin signo derivados de la palabra | Hecho | `tipos`; los de varias palabras (u32/u64 en 16 bits, u16/u32 en 8) se bajan en `multipalabra`; `tests/multipalabra.rs` en risc-16, sgt-16 y sgt-8. Fuera quedan `segun`, `salida` y punteros de varias palabras |
 | RF-SGT-003 a 006 | Booleano, punteros, arreglos, estructuras | Hecho | `analisis`, `interprete`, `tests/compilado.rs` |
-| RF-SGT-007 | Disposicion fijada de una estructura | Parcial | campo `@ n` en la sintaxis; sin pruebas de generacion propias |
+| RF-SGT-007 | Disposicion fijada de una estructura | Hecho | campo `@ n` con constantes; `tests/disposicion.rs` |
 | RF-SGT-008 a 010 | Constantes, funciones, control de flujo | Hecho | `tests/analisis.rs`, `tests/compilado.rs` |
 | RF-SGT-011 | Seleccion multiple (`segun`) | Hecho | `tests/compilado.rs` |
 | RF-SGT-012 | Ensamblador en linea | Hecho | `generador`, `tests/dispositivos.rs` |
