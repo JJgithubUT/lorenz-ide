@@ -17,6 +17,26 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Inyeccion de fallos
+
+El depurador puede estropear la maquina en un instante elegido (RF-DEP-042): invertir un bit de un
+registro o de una celda, descartar una entrada en cola o levantar una interrupcion, con la orden
+`inyectar INSTANTE bit|memoria|entrada|interrupcion ...`.
+
+**Decisiones:**
+
+- **D-083** — El instante de una inyeccion es el numero de instrucciones ejecutadas, y actua antes
+  de la siguiente. Cada fallo se aplica una sola vez, con las operaciones de los cambios a mano,
+  asi queda en la traza y se puede retroceder y volver a verlo. Si no se puede aplicar (una linea
+  de interrupcion inexistente) queda un aviso y la ejecucion sigue.
+
+**Pendiente:** RF-DEP-043 (explorar ordenes de eventos).
+
+**Requisitos:** RF-DEP-042.
+**Commits:** rama `feat/inyeccion`.
+
+---
+
 ## 2026-10-16 — Disposicion fijada de estructuras
 
 Se prueba la generacion del campo `@ n` (RF-SGT-007) y se corrige un fallo que salio al hacerlo.

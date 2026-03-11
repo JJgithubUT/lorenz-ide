@@ -190,7 +190,7 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031), explicac
 | RF-DEP-039 | Avisar del desbordamiento de la pila | Hecho | `Depurador::avisar`, orden `avisar`; compara SP con la region donde empezo y con su base |
 | RF-DEP-040 | Avisar de leer un registro sin inicializar | Hecho | `Estado::activar_seguimiento`, `avisar` y `ejecutar --vigilar`; `XOR A, A` cuenta como lectura |
 | RF-DEP-041 | Avisar de leer memoria sin escribir | Hecho | `Memoria::activar_seguimiento`, `avisar` y `ejecutar --vigilar` |
-| RF-DEP-042 | Inyectar fallos | Pendiente | opcional |
+| RF-DEP-042 | Inyectar fallos | Hecho | `Depurador::programar_inyeccion`, orden `inyectar`, `tests/inyeccion.rs` |
 | RF-DEP-043 | Explorar ordenes de eventos | Pendiente | opcional |
 | RF-DEP-044 | Mismas operaciones en el depurador grafico | Pendiente | fase del IDE |
 
