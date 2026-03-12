@@ -149,3 +149,32 @@ fn puertos_a_mano() {
     assert!(di(&mut s, "puerto 0x01").contains("-> 0x0"));
     assert!(di(&mut s, "puerto 0x77").starts_with("error:"));
 }
+
+#[test]
+fn inyectar_programa_un_fallo_que_cambia_el_resultado() {
+    let mut s = sesion();
+    let t = di(&mut s, "inyectar 2 bit A 2");
+    assert!(t.contains("fallo 1: bit 2 de A en el instante 2"), "{t}");
+    di(&mut s, "continuar");
+    assert!(di(&mut s, "imprimir mem[0x2000]").contains('7'));
+    let l = di(&mut s, "inyectar lista");
+    assert!(l.contains("(aplicado)"), "{l}");
+}
+
+#[test]
+fn inyectar_sin_fallos_lo_dice_y_borrar_los_quita() {
+    let mut s = sesion();
+    assert!(di(&mut s, "inyectar").contains("no hay fallos"));
+    di(&mut s, "inyectar 1 memoria 0x2000 0");
+    assert!(di(&mut s, "inyectar lista").contains("bit 0 de [0x2000]"));
+    assert!(di(&mut s, "inyectar borrar 1").contains("quitado"));
+    assert!(di(&mut s, "inyectar").contains("no hay fallos"));
+}
+
+#[test]
+fn inyectar_rechaza_lo_que_no_entiende() {
+    let mut s = sesion();
+    assert!(di(&mut s, "inyectar 1 bit A 99").contains("no existe"));
+    assert!(di(&mut s, "inyectar 1 rayo").contains("no existe"));
+    assert!(di(&mut s, "inyectar 1 bit A").contains("le falta"));
+}

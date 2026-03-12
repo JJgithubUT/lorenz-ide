@@ -50,6 +50,11 @@ Ordenes (entre parentesis, la forma corta):
   escribir DIR VALOR      cambia una celda de memoria
   puerto N [VALOR]        lee el puerto N, o le escribe VALOR
   entrada N VALOR         deja VALOR en la cola de entrada del puerto N
+  inyectar I bit NOMBRE B   invierte el bit B de un registro al llegar al instante I
+  inyectar I memoria DIR B  invierte el bit B de una celda
+  inyectar I entrada N      descarta el siguiente valor de la cola del puerto N
+  inyectar I interrupcion L levanta la linea L
+  inyectar [lista] / inyectar borrar N   lista o quita los fallos programados
   imprimir EXPR (p)       evalua una expresion con registros, simbolos y mem[...]
   ruptura UBIC [si COND] (b)  pone un punto de ruptura
   observar DIR [lectura|escritura|acceso]  detiene al acceder a una celda
@@ -289,6 +294,7 @@ impl Sesion {
                 d.encolar_entrada(n, v)?;
                 Ok(Respuesta::texto(format!("puerto {n:#x}: {v:#x} en cola")))
             }
+            "inyectar" => self.inyectar(&partes),
             "imprimir" | "p" => {
                 let expr = cabeza[nombre.len()..].trim();
                 if expr.is_empty() {
@@ -532,6 +538,66 @@ impl Sesion {
             }
             Some(otro) => Err(ErrorDepurador::OrdenDesconocida(format!("traza {otro}"))),
         }
+    }
+
+    fn inyectar(&mut self, partes: &[&str]) -> Result<Respuesta, ErrorDepurador> {
+        use crate::inyeccion::Inyeccion;
+        let d = &mut self.depurador;
+        if matches!(partes.get(1).copied(), None | Some("lista")) {
+            sin_mas(partes, 2, "inyectar")?;
+            let mut s = String::new();
+            for i in d.inyecciones() {
+                s.push_str(&format!(
+                    "{:>3}  instante {:<6} {}{}\n",
+                    i.id,
+                    i.instante,
+                    i.inyeccion,
+                    if i.aplicada { "  (aplicado)" } else { "" }
+                ));
+            }
+            if s.is_empty() {
+                s.push_str("no hay fallos programados\n");
+            }
+            return Ok(Respuesta::texto(s.trim_end().to_string()));
+        }
+        if partes[1] == "borrar" {
+            sin_mas(partes, 3, "inyectar")?;
+            let id = numero::analizar(pedir(partes, 2, "inyectar borrar", "el numero")?)? as u32;
+            d.quitar_inyeccion(id)?;
+            return Ok(Respuesta::texto(format!("fallo {id} quitado")));
+        }
+        let instante = numero::analizar(partes[1])?;
+        let tipo = pedir(partes, 2, "inyectar", "el tipo de fallo")?;
+        let (inyeccion, fin) = match tipo {
+            "bit" => {
+                let nombre = pedir(partes, 3, "inyectar bit", "el registro")?.to_string();
+                let bit = numero::analizar(pedir(partes, 4, "inyectar bit", "el bit")?)? as u32;
+                (Inyeccion::BitRegistro { nombre, bit }, 5)
+            }
+            "memoria" => {
+                let direccion =
+                    d.resolver(pedir(partes, 3, "inyectar memoria", "la direccion")?)?;
+                let bit = numero::analizar(pedir(partes, 4, "inyectar memoria", "el bit")?)? as u32;
+                (Inyeccion::BitMemoria { direccion, bit }, 5)
+            }
+            "entrada" => {
+                let puerto = numero::analizar(pedir(partes, 3, "inyectar entrada", "el puerto")?)?;
+                (Inyeccion::PerderEntrada { puerto }, 4)
+            }
+            "interrupcion" => {
+                let linea =
+                    numero::analizar(pedir(partes, 3, "inyectar interrupcion", "la linea")?)?
+                        as u32;
+                (Inyeccion::Interrupcion { linea }, 4)
+            }
+            otro => return Err(ErrorDepurador::OrdenDesconocida(format!("inyectar {otro}"))),
+        };
+        sin_mas(partes, fin, "inyectar")?;
+        let texto = inyeccion.to_string();
+        let id = d.programar_inyeccion(instante, inyeccion)?;
+        Ok(Respuesta::texto(format!(
+            "fallo {id}: {texto} en el instante {instante}"
+        )))
     }
 
     fn fallo(&mut self, partes: &[&str]) -> Result<Respuesta, ErrorDepurador> {
