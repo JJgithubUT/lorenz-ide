@@ -43,6 +43,9 @@ pub enum ErrorDepurador {
     #[error("el bit {bit} no existe: el ancho es de {ancho} bits")]
     BitFueraDeRango { bit: u32, ancho: u32 },
 
+    #[error("son demasiados eventos: el maximo es {maximo}")]
+    DemasiadosEventos { maximo: usize },
+
     #[error("la orden `{0}` no existe; escribe `ayuda` para ver las ordenes")]
     OrdenDesconocida(String),
 
