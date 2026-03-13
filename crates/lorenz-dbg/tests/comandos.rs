@@ -178,3 +178,20 @@ fn inyectar_rechaza_lo_que_no_entiende() {
     assert!(di(&mut s, "inyectar 1 rayo").contains("no existe"));
     assert!(di(&mut s, "inyectar 1 bit A").contains("le falta"));
 }
+
+#[test]
+fn explorar_sin_eventos_pide_al_menos_uno() {
+    let mut s = sesion();
+    assert!(di(&mut s, "explorar 5").contains("al menos un evento"));
+    assert!(di(&mut s, "explorar").contains("le falta"));
+    assert!(di(&mut s, "explorar 5 rayo").contains("no existe"));
+}
+
+#[test]
+fn explorar_dice_si_el_resultado_depende_del_orden() {
+    let mut s = sesion();
+    // Un programa sin manejador: la interrupcion 0 no tiene efecto en ningun orden.
+    let t = di(&mut s, "explorar 3 interrupcion 0 ver 0x2000");
+    assert!(t.contains("4 casos"), "{t}");
+    assert!(t.contains("no depende del orden"), "{t}");
+}

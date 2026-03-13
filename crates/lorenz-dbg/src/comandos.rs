@@ -55,6 +55,9 @@ Ordenes (entre parentesis, la forma corta):
   inyectar I entrada N      descarta el siguiente valor de la cola del puerto N
   inyectar I interrupcion L levanta la linea L
   inyectar [lista] / inyectar borrar N   lista o quita los fallos programados
+  explorar VENTANA EVENTO...  prueba todos los ordenes de los eventos en los primeros VENTANA
+                          instantes; EVENTO: interrupcion L | entrada N V | tecla DISP COD;
+                          ademas: ver DIR (celda del resultado), casos N (maximo de casos)
   imprimir EXPR (p)       evalua una expresion con registros, simbolos y mem[...]
   ruptura UBIC [si COND] (b)  pone un punto de ruptura
   observar DIR [lectura|escritura|acceso]  detiene al acceder a una celda
@@ -295,6 +298,7 @@ impl Sesion {
                 Ok(Respuesta::texto(format!("puerto {n:#x}: {v:#x} en cola")))
             }
             "inyectar" => self.inyectar(&partes),
+            "explorar" => self.explorar(&partes),
             "imprimir" | "p" => {
                 let expr = cabeza[nombre.len()..].trim();
                 if expr.is_empty() {
@@ -538,6 +542,87 @@ impl Sesion {
             }
             Some(otro) => Err(ErrorDepurador::OrdenDesconocida(format!("traza {otro}"))),
         }
+    }
+
+    fn explorar(&mut self, partes: &[&str]) -> Result<Respuesta, ErrorDepurador> {
+        use crate::explorar::{explorar, Opciones};
+        use crate::traza::Intervencion;
+        let d = &self.depurador;
+        let mut op = Opciones {
+            ventana: numero::analizar(pedir(partes, 1, "explorar", "la ventana")?)?,
+            ..Opciones::default()
+        };
+        let mut eventos = Vec::new();
+        let mut i = 2;
+        while i < partes.len() {
+            let n = |k: usize, falta: &'static str| -> Result<u64, ErrorDepurador> {
+                numero::analizar(pedir(partes, i + k, "explorar", falta)?)
+            };
+            match partes[i] {
+                "interrupcion" => {
+                    eventos.push(Intervencion::Interrupcion {
+                        linea: n(1, "la linea")? as u32,
+                    });
+                    i += 2;
+                }
+                "entrada" => {
+                    eventos.push(Intervencion::Entrada {
+                        numero: n(1, "el puerto")?,
+                        valor: n(2, "el valor")?,
+                    });
+                    i += 3;
+                }
+                "tecla" => {
+                    let dispositivo = pedir(partes, i + 1, "explorar", "el teclado")?.to_string();
+                    eventos.push(Intervencion::Tecla {
+                        dispositivo,
+                        codigo: n(2, "el codigo")?,
+                    });
+                    i += 3;
+                }
+                "ver" => {
+                    op.celdas.push(d.resolver(pedir(
+                        partes,
+                        i + 1,
+                        "explorar ver",
+                        "la direccion",
+                    )?)?);
+                    i += 2;
+                }
+                "casos" => {
+                    op.max_casos = n(1, "el numero")?;
+                    i += 2;
+                }
+                otro => return Err(ErrorDepurador::OrdenDesconocida(format!("explorar {otro}"))),
+            }
+        }
+        let r = explorar(d, &eventos, &op)?;
+        let mut s = format!(
+            "{} casos{}, {} resultado{}",
+            r.casos,
+            if r.completa { "" } else { " (muestra)" },
+            r.grupos.len(),
+            if r.grupos.len() == 1 { "" } else { "s" }
+        );
+        for g in &r.grupos {
+            let orden: Vec<String> = g
+                .ejemplo
+                .iter()
+                .map(|(t, e)| format!("evento {} en {t}", e + 1))
+                .collect();
+            s.push_str(&format!(
+                "\n  {:>5} x  {}\n          p. ej. {}",
+                g.casos,
+                g.resultado.trim_end(),
+                orden.join(", ")
+            ));
+        }
+        s.push_str(if r.hay_carrera() {
+            "\nel resultado depende del orden: posible condicion de carrera"
+        } else {
+            "\nel resultado no depende del orden"
+        });
+        Ok(Respuesta::texto(s))
     }
 
     fn inyectar(&mut self, partes: &[&str]) -> Result<Respuesta, ErrorDepurador> {
