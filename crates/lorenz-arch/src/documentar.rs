@@ -298,6 +298,7 @@ fn dispositivos(s: &mut String, m: &Maquina, c: &Comentarios) {
             } => format!("pantalla {ancho}x{alto} ({formato})"),
             TipoDispositivo::Teclado => "teclado".into(),
             TipoDispositivo::Uart => "UART".into(),
+            TipoDispositivo::Dma => "DMA".into(),
             TipoDispositivo::Temporizador { periodo } => {
                 format!("temporizador (cada {periodo} ciclos)")
             }

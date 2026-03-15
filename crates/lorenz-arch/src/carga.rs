@@ -464,6 +464,7 @@ fn convertir(
                 },
                 "teclado" => TipoDispositivo::Teclado,
                 "uart" => TipoDispositivo::Uart,
+                "dma" => TipoDispositivo::Dma,
                 "temporizador" => TipoDispositivo::Temporizador {
                     periodo: d.periodo.unwrap_or(1000),
                 },

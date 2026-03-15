@@ -216,6 +216,10 @@ pub enum TipoDispositivo {
         tamano_bloque: u32,
         cantidad_bloques: u32,
     },
+    /// Controlador de acceso directo a memoria (RF-CIC-022): copia `cuenta` palabras de `origen` a
+    /// `destino` sin que las mueva el procesador. Puertos: `origen`, `destino`, `cuenta`, `control`
+    /// y, si se quiere, `estado`.
+    Dma,
     /// Dispositivo propio. El `script` (en el lenguaje de semantica) se ejecuta cada vez que el
     /// programa escribe en uno de sus puertos (RF-EMU-035); `programa` es su arbol ya analizado.
     Generico {
