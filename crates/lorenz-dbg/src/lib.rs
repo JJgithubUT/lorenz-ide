@@ -10,6 +10,7 @@ pub mod condicion;
 pub mod depurador;
 pub mod error;
 pub mod explicar;
+pub mod explorar;
 pub mod exportar;
 pub mod inyeccion;
 pub mod numero;

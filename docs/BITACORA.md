@@ -17,6 +17,26 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Exploracion de ordenes de eventos
+
+`explorar VENTANA EVENTO...` ejecuta el programa una vez por cada manera de intercalar unos eventos
+externos con sus instrucciones y agrupa los casos por resultado (RF-DEP-043). Si hay mas de un
+resultado, el orden importa y se avisa de una posible condicion de carrera, con un orden de ejemplo
+por grupo.
+
+**Decisiones:**
+
+- **D-084** — La exploracion parte del estado actual, trabaja en una copia de la maquina y no toca la
+  que se depura. Con instantes iguales se prueban todos los ordenes de los eventos empatados. El
+  resultado que se compara es registros, banderas, `pc`, las celdas pedidas con `ver` y como
+  termino. Hasta 5 eventos; con mas casos que el maximo se toma una muestra repetible (xorshift con
+  semilla fija).
+
+**Requisitos:** RF-DEP-043.
+**Commits:** rama `feat/explorar`.
+
+---
+
 ## 2026-10-16 — Inyeccion de fallos
 
 El depurador puede estropear la maquina en un instante elegido (RF-DEP-042): invertir un bit de un
