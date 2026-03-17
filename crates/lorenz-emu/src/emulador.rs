@@ -11,7 +11,7 @@ use crate::estado::Estado;
 use crate::interprete::{Entorno, Interprete};
 use crate::memoria::Memoria;
 use crate::pantalla::{leer_imagen, Imagen};
-use crate::puertos::Puertos;
+use crate::puertos::{Puertos, SolicitudDma};
 
 /// Que hizo una instruccion al ejecutarse.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,6 +95,17 @@ struct Temporizador {
     puerto_cuenta: Option<u64>,
 }
 
+/// Una transferencia hecha por un controlador DMA (RF-CIC-022).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransferenciaDma {
+    pub dispositivo: String,
+    pub origen: u64,
+    pub destino: u64,
+    /// Palabras copiadas; 0 si la transferencia fallo.
+    pub palabras: u64,
+    pub error: bool,
+}
+
 /// Una maquina emulada lista para ejecutar.
 #[derive(Debug, Clone)]
 pub struct Emulador {
@@ -110,6 +121,8 @@ pub struct Emulador {
     atendidas_sin_registrar: u64,
     en_pausa: bool,
     frecuencia_hz: Option<u64>,
+    /// Transferencias DMA hechas desde la ultima vez que se pidieron.
+    transferencias: Vec<TransferenciaDma>,
     /// Credito de tiempo en nanosegundos por hercio; un ciclo cuesta 1 000 000 000. Puede quedar
     /// negativo si la ultima instruccion se paso del tiempo dado.
     credito: i128,
@@ -138,6 +151,7 @@ impl Emulador {
             atendidas_sin_registrar: 0,
             en_pausa: false,
             frecuencia_hz: None,
+            transferencias: Vec::new(),
             credito: 0,
             decodificador: Decodificador::nuevo(&maquina),
             interprete: Interprete::nuevo(&maquina),
@@ -569,6 +583,51 @@ impl Emulador {
         Ok(true)
     }
 
+    /// Copia las palabras de una transferencia DMA. Si algo falla (una direccion fuera de las
+    /// regiones, un destino de solo lectura o de un dispositivo) no se copia nada y el puerto de
+    /// estado marca el error.
+    fn realizar_dma(&mut self, s: &SolicitudDma) -> Result<(), ErrorEjecucion> {
+        let copia = (0..s.cuenta)
+            .map(|k| self.memoria.leer_privilegiado(s.origen.wrapping_add(k)))
+            .collect::<Result<Vec<u64>, _>>();
+        let destino_valido = (0..s.cuenta).all(|k| {
+            let d = s.destino.wrapping_add(k);
+            self.memoria.dispositivo_de(d).is_none()
+                && self
+                    .memoria
+                    .region_de(d)
+                    .and_then(|n| self.maquina.regiones.iter().find(|r| r.nombre == n))
+                    .is_some_and(|r| r.acceso.escritura)
+        });
+        let error = match copia {
+            Ok(palabras) if destino_valido => {
+                for (k, v) in palabras.iter().enumerate() {
+                    self.memoria
+                        .escribir_privilegiado(s.destino.wrapping_add(k as u64), *v)?;
+                }
+                false
+            }
+            _ => true,
+        };
+        self.puertos.terminar_dma(&s.dispositivo, error);
+        self.transferencias.push(TransferenciaDma {
+            dispositivo: s.dispositivo.clone(),
+            origen: s.origen,
+            destino: s.destino,
+            palabras: if error { 0 } else { s.cuenta },
+            error,
+        });
+        if let Some(linea) = s.linea {
+            self.levantar_interrupcion(linea)?;
+        }
+        Ok(())
+    }
+
+    /// Las transferencias DMA hechas desde la ultima vez, en orden (RF-CIC-022).
+    pub fn tomar_transferencias_dma(&mut self) -> Vec<TransferenciaDma> {
+        std::mem::take(&mut self.transferencias)
+    }
+
     /// Ejecuta una instruccion. Devuelve `None` si la maquina ya estaba detenida.
     ///
     /// Si la instruccion falla, el contador de programa vuelve a apuntar a ella para que el
@@ -611,6 +670,9 @@ impl Emulador {
         self.avanzar_temporizadores(ciclos)?;
         for linea in self.puertos.tomar_interrupciones() {
             self.levantar_interrupcion(linea)?;
+        }
+        for s in self.puertos.tomar_solicitudes_dma() {
+            self.realizar_dma(&s)?;
         }
         Ok(Some(Paso {
             direccion,

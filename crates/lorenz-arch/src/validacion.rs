@@ -543,6 +543,22 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     }
 
     for dispositivo in &m.dispositivos {
+        if dispositivo.tipo == TipoDispositivo::Dma {
+            for p in ["origen", "destino", "cuenta", "control"] {
+                if !dispositivo.puertos.contains_key(p) {
+                    fallos.push(fallo(
+                        Regla::ValorFueraDeRango,
+                        format!(
+                            "el controlador DMA '{}' necesita el puerto '{p}'",
+                            dispositivo.nombre
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
+    for dispositivo in &m.dispositivos {
         if let TipoDispositivo::Bloques {
             tamano_bloque,
             cantidad_bloques,
