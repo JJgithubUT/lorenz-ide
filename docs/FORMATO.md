@@ -217,7 +217,7 @@ comparten puerto y la región no es de un dispositivo.
 | Clave | Tipo | Significado |
 | --- | --- | --- |
 | `nombre` | texto | Nombre único |
-| `tipo` | texto | `pantalla`, `teclado`, `uart`, `temporizador`, `bloques` o `generico` |
+| `tipo` | texto | `pantalla`, `teclado`, `uart`, `temporizador`, `bloques`, `dma` o `generico` |
 | `puertos` | tabla `nombre = número` | Puertos de entrada y salida que atiende |
 | `interrupcion` | entero | Línea que levanta, si levanta alguna |
 
@@ -228,9 +228,31 @@ Claves propias de cada tipo:
 | `pantalla` | `ancho`, `alto`, `formato` | 64, 32, `"indice1"` |
 | `temporizador` | `periodo` (en ciclos) | 1000 |
 | `bloques` | `tamano_bloque`, `cantidad_bloques` | 512, 64 |
+| `dma` | puertos `origen`, `destino`, `cuenta` y `control` (y `estado` si se quiere) | — |
 | `generico` | `script` en el lenguaje de semántica, que se ejecuta al escribir en el dispositivo | vacío |
 
 Una región que nombra un dispositivo exige que esté declarado (`E-DISPOSITIVO`).
+
+### Controlador DMA
+
+Un dispositivo `dma` copia memoria sin que la mueva el procesador (RF-CIC-022). El programa escribe
+la dirección de `origen`, la de `destino` y la `cuenta` de palabras, y arranca la copia escribiendo
+un valor con el bit 0 encendido en `control`. La copia se hace entera en ese momento: el
+emulador funcional no distingue "en curso" de "terminada", y `estado` vale siempre 1 (bit 0, listo),
+más 2 (bit 1) si la última transferencia falló. Falla, sin copiar nada, si una dirección cae fuera
+de las regiones, el destino es de solo lectura o de un dispositivo. Si declara `interrupcion`, la
+línea se levanta al terminar. Leer `origen`, `destino` y `cuenta` devuelve lo escrito; leer `control`
+da 0. A un `dma` al que le falte un puerto obligatorio se le rechaza al cargar.
+
+El tiempo que la copia ocupa el bus lo cuenta `lorenz ciclos` (ver `docs/CICLOS.md`).
+
+```toml
+[[dispositivo]]
+nombre = "dma0"
+tipo   = "dma"
+puertos = { origen = 0x20, destino = 0x21, cuenta = 0x22, control = 0x23, estado = 0x24 }
+interrupcion = 0
+```
 
 ## Comentarios y documentación
 
