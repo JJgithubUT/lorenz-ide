@@ -24,6 +24,7 @@ fn cinco(adelantamiento: bool, prediccion: Prediccion) -> ConfigPipeline {
         salto: 2,
         ciclos_declarados: false,
         ciclos_objetivo: 0,
+        bus_compartido: false,
     }
 }
 
