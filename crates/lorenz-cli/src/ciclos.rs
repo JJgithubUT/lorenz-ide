@@ -186,6 +186,12 @@ pub fn texto_de_metricas(m: &Metricas, bytes_de_codigo: Option<u64>) -> String {
         "esperas: {} por datos, {} estructurales, {} por saltos\n",
         m.esperas_datos, m.esperas_estructurales, m.esperas_control
     ));
+    if m.esperas_bus > 0 {
+        s.push_str(&format!(
+            "esperas por el bus compartido: {}\n",
+            m.esperas_bus
+        ));
+    }
     if m.saltos > 0 {
         s.push_str(&format!(
             "saltos: {} ({} acertados, {} fallados, {} instrucciones descartadas)\n",
@@ -503,7 +509,7 @@ pub fn comparar_ciclos_cli(
 /// Dos corridas lado a lado, con la diferencia de cada cifra.
 pub fn tabla_de_comparacion(a: &Corrida, b: &Corrida) -> String {
     let (ma, mb) = (a.sim.metricas(), b.sim.metricas());
-    let filas: Vec<(&str, f64, f64)> = vec![
+    let mut filas: Vec<(&str, f64, f64)> = vec![
         ("ciclos", ma.ciclos as f64, mb.ciclos as f64),
         (
             "instrucciones",
@@ -541,6 +547,16 @@ pub fn tabla_de_comparacion(a: &Corrida, b: &Corrida) -> String {
             b.bytes_de_codigo as f64,
         ),
     ];
+    if ma.esperas_bus > 0 || mb.esperas_bus > 0 {
+        filas.insert(
+            6,
+            (
+                "esperas por el bus",
+                ma.esperas_bus as f64,
+                mb.esperas_bus as f64,
+            ),
+        );
+    }
     let mut s = format!(
         "{:<28} {:>16} {:>16} {:>12}\n",
         "metrica", a.nombre_maquina, b.nombre_maquina, "diferencia"
