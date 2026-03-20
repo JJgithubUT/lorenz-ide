@@ -77,6 +77,32 @@ un fallo de escritura no trae la línea. Se cuentan aciertos y fallos separados 
 escritura (RF-CIC-018) y `--cache` muestra cada línea con su etiqueta y sus bits de validez y
 suciedad (RF-CIC-019).
 
+## `[bus]`
+
+```toml
+[bus]
+compartido = true   # RF-CIC-021; necesita un [pipeline]
+```
+
+Por omisión se supone que la busqueda de instrucciones, los accesos a datos y el DMA no se
+estorban. Con un bus compartido se turnan: cada uno toma el primer hueco libre a partir del ciclo
+en que lo pide, los ya reservados no se mueven (la instruccion mas antigua tiene prioridad) y lo que
+espera se anota como causa `bus`. Solo cuentan como tiempo de bus los ciclos de la memoria
+principal; un acierto de cache no lo usa. Las esperas salen en `lorenz ciclos` (`esperas por el bus
+compartido`), en la vista (`espera bus`) y en `comparar-ciclos`.
+
+## DMA
+
+Un dispositivo `dma` (ver `docs/FORMATO.md`) copia memoria sin el procesador (RF-CIC-022). Cada
+palabra cuesta leer el origen mas escribir el destino, con la latencia de su region, y suma al uso
+del bus. Con `[bus] compartido` la copia ocupa el bus desde que la instruccion que la arranca sale de
+la etapa de memoria y retrasa los accesos que lleguen despues; sin el, corre en paralelo y no frena
+al procesador.
+
+Limites: el emulador funcional copia al instante, asi que un programa que mira `estado` ve la copia
+terminada aunque el modelo de ciclos la tenga en curso; y el DMA no pasa por la cache, de modo que no
+la invalida.
+
 ## Latencias
 
 La clave `latencia` de cada `[[region]]` (RF-CIC-020) es lo que cuesta tocar una palabra de esa

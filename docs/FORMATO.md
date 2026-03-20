@@ -254,6 +254,11 @@ puertos = { origen = 0x20, destino = 0x21, cuenta = 0x22, control = 0x23, estado
 interrupcion = 0
 ```
 
+## `[bus]`
+
+Solo lo lee `lorenz ciclos`. `compartido = true` hace que la búsqueda de instrucciones, los accesos a
+datos y el DMA se turnen en un único bus (RF-CIC-021); exige `[pipeline]`. Ver `docs/CICLOS.md`.
+
 ## Comentarios y documentación
 
 `lorenz documentar maquina.toml -o isa.md` genera la documentación de la arquitectura: resumen,
