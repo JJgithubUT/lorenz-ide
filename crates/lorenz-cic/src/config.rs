@@ -38,6 +38,7 @@ impl Config {
 struct Archivo {
     pipeline: Option<PipelineCrudo>,
     cache: Option<CacheCruda>,
+    bus: Option<BusCrudo>,
     #[serde(default, rename = "region")]
     regiones: Vec<RegionCruda>,
 }
@@ -66,6 +67,12 @@ struct PipelineCrudo {
     ciclos_declarados: bool,
     #[serde(default)]
     ciclos_objetivo: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BusCrudo {
+    #[serde(default)]
+    compartido: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,7 +245,10 @@ fn desde_archivo(a: Archivo) -> Result<Config, String> {
             salto: salto_i,
             ciclos_declarados: p.ciclos_declarados,
             ciclos_objetivo: p.ciclos_objetivo,
+            bus_compartido: a.bus.as_ref().is_some_and(|b| b.compartido),
         });
+    } else if a.bus.is_some_and(|b| b.compartido) {
+        return Err("bus: un bus compartido necesita un [pipeline] declarado".into());
     }
     Ok(cfg)
 }

@@ -17,6 +17,30 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — DMA y contencion del bus
+
+Nuevo dispositivo `dma` (RF-CIC-022) y bus compartido en el modelo de ciclos (RF-CIC-021).
+
+**Decisiones:**
+
+- **D-085** — El DMA copia al instante en el emulador funcional y deja anotada la transferencia
+  (`tomar_transferencias_dma`); el modelo de ciclos es quien le pone tiempo. Una transferencia que
+  se sale de las regiones o cae en una de solo lectura no copia nada y marca el error en `estado`.
+- **D-086** — El bus es una lista de tramos ocupados. Cada peticion toma el primer hueco en que
+  cabe y no mueve las ya reservadas, asi que gana la instruccion mas antigua. Solo la memoria
+  principal usa el bus, no los aciertos de cache.
+- **D-087** — Sin `[bus] compartido` no hay contencion y un DMA corre en paralelo sin frenar al
+  procesador; con el, ocupa el bus desde que la instruccion que lo arranca sale de la etapa de
+  memoria. Un bus compartido sin `[pipeline]` es un error de configuracion.
+
+**Pendiente:** varios nucleos y coherencia de cache (RF-CIC-023, RF-CIC-024), restricciones y
+sugerencias de diseno (RF-CIC-033, RF-CIC-034).
+
+**Requisitos:** RF-CIC-021, RF-CIC-022, RF-CIC-027.
+**Commits:** ramas `feat/dma` y `feat/bus`.
+
+---
+
 ## 2026-10-16 — Exploracion de ordenes de eventos
 
 `explorar VENTANA EVENTO...` ejecuta el programa una vez por cada manera de intercalar unos eventos

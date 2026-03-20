@@ -75,6 +75,8 @@ pub struct Metricas {
     pub esperas_datos: u64,
     pub esperas_estructurales: u64,
     pub esperas_control: u64,
+    /// Ciclos esperando a que el bus compartido quedara libre (RF-CIC-021).
+    pub esperas_bus: u64,
     pub saltos: u64,
     pub saltos_acertados: u64,
     /// Instrucciones de la rama equivocada que se buscaron y se descartaron.
@@ -227,16 +229,29 @@ impl Simulador {
         let instruccion = &self.emu.maquina().instrucciones[dec.indice];
         let dep = dependencias(self.emu.maquina(), instruccion, &dec.operandos);
         let ciclos_declarados = paso.ciclos;
-        let mut coste_busqueda = 0;
+        let (mut coste_busqueda, mut bus_busqueda) = (0, 0);
         for i in 0..paso.longitud as u64 {
+            let antes = self.ciclos_de_memoria;
             coste_busqueda += self.coste_de_acceso(paso.direccion + i, false, true);
+            bus_busqueda += self.ciclos_de_memoria - antes;
         }
-        let mut coste_memoria = 0;
+        let (mut coste_memoria, mut bus_memoria) = (0, 0);
         let mut carga = false;
         for a in &accesos {
             carga |= !a.escritura;
+            let antes = self.ciclos_de_memoria;
             coste_memoria += self.coste_de_acceso(a.direccion, a.escritura, false);
+            bus_memoria += self.ciclos_de_memoria - antes;
         }
+        // Lo que copia un DMA arrancado por esta instruccion: leer y escribir cada palabra.
+        let mut bus_dma = 0;
+        for t in self.emu.tomar_transferencias_dma() {
+            for k in 0..t.palabras {
+                bus_dma += self.cfg.latencia_de(t.origen.wrapping_add(k))
+                    + self.cfg.latencia_de(t.destino.wrapping_add(k));
+            }
+        }
+        self.ciclos_de_memoria += bus_dma;
         // Sin pipeline declarado, la instruccion tarda lo que declara la maquina mas lo que
         // cuestan de mas sus accesos a memoria: el modo ciclo a ciclo coincide con el funcional
         // cuando todas las memorias tienen latencia 1.
@@ -261,6 +276,9 @@ impl Simulador {
             ciclos_declarados,
             coste_busqueda,
             coste_memoria,
+            bus_busqueda,
+            bus_memoria,
+            bus_dma,
         };
         let plan = self.planificador.programar(&entrada);
         self.historial.push(plan);
@@ -296,6 +314,7 @@ impl Simulador {
                     Causa::Datos { .. } => m.esperas_datos += n,
                     Causa::Estructural => m.esperas_estructurales += n,
                     Causa::Control => m.esperas_control += n,
+                    Causa::Bus => m.esperas_bus += n,
                 }
             }
             if let Some((_, acierto)) = h.prediccion {

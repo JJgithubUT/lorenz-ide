@@ -261,7 +261,7 @@ extensiones) llega con su fase.
 
 ## Requisitos de ciclos y cache (RF-CIC)
 
-La fase 5 completa. El modelo esta en `docs/CICLOS.md`.
+La fase 5 completa y, de la 6, el bus y el DMA. El modelo esta en `docs/CICLOS.md`.
 
 | Requisito | Resumen | Estado | Donde |
 | --- | --- | --- | --- |
@@ -293,8 +293,8 @@ La fase 5 completa. El modelo esta en `docs/CICLOS.md`.
 | RF-CIC-030 | Historico de metricas por version | Hecho | `lorenz ciclos --historial`, `lorenz historial-ciclos` |
 | RF-CIC-031 | Perfilador que atribuye ciclos | Hecho | `Simulador::perfil`, `--perfil` |
 | RF-CIC-032 | Mapa de calor sobre el fuente | Hecho | `--calor`, `--calor-html` |
-| RF-CIC-021 | Contencion del bus entre varios maestros | Pendiente | fase 6 de la ERS |
-| RF-CIC-022 | Controlador de acceso directo a memoria | Pendiente | fase 6 de la ERS |
+| RF-CIC-021 | Contencion del bus entre varios maestros | Hecho | `[bus] compartido`, `pipeline::Bus`, causa `bus` |
+| RF-CIC-022 | Controlador de acceso directo a memoria | Hecho | dispositivo `dma`, `Emulador::tomar_transferencias_dma`, `tests/dma.rs`, `tests/bus.rs` |
 | RF-CIC-023 | Maquinas de varios nucleos | Pendiente | fase 6 de la ERS |
 | RF-CIC-024 | Coherencia de cache entre nucleos | Pendiente | fase 6 de la ERS |
 | RF-CIC-033 | Restricciones de diseno | Pendiente | fase 6 de la ERS |

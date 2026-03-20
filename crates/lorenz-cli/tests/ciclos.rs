@@ -265,3 +265,25 @@ fn el_vigilante_recalcula_solo_cuando_algo_cambia() {
     );
     assert_ne!(primera.version, segunda.version);
 }
+
+#[test]
+fn un_bus_compartido_muestra_sus_esperas_y_solo_entonces() {
+    let programa = temporal("cargas.s");
+    std::fs::write(
+        &programa,
+        "LD A, [0x2000]\nLD B, [0x2010]\nLD C, [0x2020]\nLD D, [0x2030]\nHLT\n",
+    )
+    .unwrap();
+    let programa = programa.to_string_lossy().into_owned();
+    let (_, sin, _) = correr(&["ciclos", &maquina(), &programa]);
+    assert!(!sin.contains("bus compartido"), "{sin}");
+    let base = std::fs::read_to_string(maquina()).unwrap();
+    let con = temporal("con-bus.toml");
+    std::fs::write(&con, format!("{base}\n[bus]\ncompartido = true\n")).unwrap();
+    let con = con.to_string_lossy().into_owned();
+    let (c, s, e) = correr(&["ciclos", &con, &programa]);
+    assert_eq!(c, SALIDA_OK, "{e}");
+    assert!(s.contains("esperas por el bus compartido: "), "{s}");
+    let (_, tabla, _) = correr(&["comparar-ciclos", &maquina(), &con, &programa]);
+    assert!(tabla.contains("esperas por el bus"), "{tabla}");
+}

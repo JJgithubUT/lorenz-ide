@@ -69,6 +69,9 @@ pub struct ConfigPipeline {
     pub ciclos_declarados: bool,
     /// Ciclos extra al saltar cuando se acierta que se salta (calcular el destino).
     pub ciclos_objetivo: u64,
+    /// Si la busqueda de instrucciones, los accesos a datos y el DMA comparten un solo bus: dos
+    /// que lo piden a la vez se turnan (RF-CIC-021).
+    pub bus_compartido: bool,
 }
 
 impl ConfigPipeline {
@@ -89,6 +92,7 @@ impl ConfigPipeline {
             salto: 0,
             ciclos_declarados: true,
             ciclos_objetivo: 0,
+            bus_compartido: false,
         }
     }
 }
@@ -100,6 +104,8 @@ pub enum Causa {
     Datos { registro: String },
     /// La etapa siguiente estaba ocupada.
     Estructural,
+    /// Esperaba a que el bus quedara libre (RF-CIC-021).
+    Bus,
     /// Esperaba a saber adonde va un salto.
     Control,
 }
@@ -109,6 +115,7 @@ impl Causa {
         match self {
             Causa::Datos { registro } => format!("datos ({registro})"),
             Causa::Estructural => "estructural".into(),
+            Causa::Bus => "bus".into(),
             Causa::Control => "control".into(),
         }
     }
@@ -180,6 +187,11 @@ pub struct Entrada {
     pub coste_busqueda: u64,
     /// Ciclos de sus accesos a datos, ya con cache y latencias.
     pub coste_memoria: u64,
+    /// De los costes anteriores, los ciclos que ocupan el bus de la memoria principal.
+    pub bus_busqueda: u64,
+    pub bus_memoria: u64,
+    /// Ciclos de bus de las transferencias DMA que esta instruccion arranca.
+    pub bus_dma: u64,
 }
 
 /// El horario de una instruccion.
@@ -225,6 +237,43 @@ impl Planificada {
     }
 }
 
+/// El bus de la memoria: los tramos de tiempo en que alguien lo usa (RF-CIC-021).
+///
+/// Cada peticion toma el primer hueco que le cabe a partir del ciclo pedido; los accesos que ya
+/// estan reservados no se mueven, de modo que la instruccion mas antigua tiene prioridad.
+#[derive(Debug, Clone, Default)]
+pub struct Bus {
+    ocupado: Vec<(u64, u64)>,
+}
+
+impl Bus {
+    /// Reserva `duracion` ciclos desde `desde` o lo antes posible; devuelve cuando empieza.
+    pub fn reservar(&mut self, desde: u64, duracion: u64) -> u64 {
+        if duracion == 0 {
+            return desde;
+        }
+        let mut inicio = desde;
+        let mut posicion = self.ocupado.len();
+        for (k, &(a, b)) in self.ocupado.iter().enumerate() {
+            if b <= inicio {
+                continue;
+            }
+            if inicio + duracion <= a {
+                posicion = k;
+                break;
+            }
+            inicio = b;
+        }
+        self.ocupado.insert(posicion, (inicio, inicio + duracion));
+        inicio
+    }
+
+    /// Ciclos en total que el bus estuvo ocupado.
+    pub fn ciclos_ocupado(&self) -> u64 {
+        self.ocupado.iter().map(|(a, b)| b - a).sum()
+    }
+}
+
 /// Calcula el horario de cada instruccion, en el orden en que se ejecutan.
 #[derive(Debug, Clone)]
 pub struct Planificador {
@@ -236,6 +285,7 @@ pub struct Planificador {
     bloqueo: u64,
     /// Para cada registro: quien lo escribio por ultima vez y cuando esta listo.
     productores: BTreeMap<String, Productor>,
+    bus: Bus,
     siguiente_id: u64,
 }
 
@@ -257,6 +307,7 @@ impl Planificador {
             libre: vec![0; n],
             bloqueo: 0,
             productores: BTreeMap::new(),
+            bus: Bus::default(),
             siguiente_id: 0,
         }
     }
@@ -314,12 +365,26 @@ impl Planificador {
         }
         entra[0] = t0;
         for s in 0..n {
-            let fin = entra[s] + trabajo[s];
+            // Con un bus compartido, la etapa que lo usa empieza cuando el bus esta libre.
+            let usa_bus = if !c.bus_compartido {
+                0
+            } else if s == 0 {
+                i.bus_busqueda
+            } else if s == c.memoria {
+                i.bus_memoria
+            } else {
+                0
+            };
+            let inicio = self.bus.reservar(entra[s], usa_bus);
+            let espera_bus = inicio - entra[s];
+            let fin = inicio + trabajo[s];
             let libre = if s + 1 < n { self.libre[s + 1] } else { fin };
             let datos = if s + 1 == etapa_operandos { listo } else { 0 };
             let sale = fin.max(libre).max(datos);
-            if sale > fin {
-                espera[s] = Some(if datos >= libre && datos > fin {
+            if sale > entra[s] + trabajo[s] {
+                espera[s] = Some(if espera_bus > 0 && fin >= libre && fin >= datos {
+                    Causa::Bus
+                } else if datos >= libre && datos > fin {
                     Causa::Datos {
                         registro: por.clone().unwrap_or_default(),
                     }
@@ -328,6 +393,11 @@ impl Planificador {
                 });
             }
             entra[s + 1] = sale;
+        }
+        // Una transferencia DMA arrancada por esta instruccion usa el bus desde que sale de la
+        // etapa de memoria (RF-CIC-022).
+        if c.bus_compartido {
+            self.bus.reservar(entra[c.memoria + 1], i.bus_dma);
         }
         // Registros que escribe: cuando se pueden adelantar y cuando se escriben.
         let etapa_resultado = if i.carga { c.memoria } else { c.ejecucion };
