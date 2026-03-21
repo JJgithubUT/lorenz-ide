@@ -11,6 +11,7 @@ pub mod cache;
 pub mod config;
 pub mod pipeline;
 pub mod sim;
+pub mod sugerir;
 
 pub use analisis::{dependencias, Dependencias};
 pub use cache::{
