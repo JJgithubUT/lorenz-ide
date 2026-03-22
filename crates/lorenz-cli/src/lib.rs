@@ -43,6 +43,9 @@ pub mod nuevo;
 /// Simulacion ciclo a ciclo.
 pub mod ciclos;
 
+/// Instrucciones nuevas que acortarian los programas.
+pub mod sugerir;
+
 /// Historico de metricas por version de la arquitectura.
 pub mod historial_ciclos;
 

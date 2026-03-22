@@ -36,6 +36,8 @@ Uso:
                [--calor] [--calor-html ARCHIVO] [--historial ARCHIVO [--etiqueta TEXTO]] [--vigilar]
   lorenz comparar-ciclos <maquina-a.toml> <maquina-b.toml> <programa> [--limite N] [--direccion A]
   lorenz historial-ciclos <historial.toml>
+  lorenz sugerir <maquina.toml> <programa>... [--limite N] [--direccion A] [--minima N] [--maxima N]
+               [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
   lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
@@ -226,6 +228,11 @@ pub fn ejecutar_cli_con_entrada(
         } => crate::ciclos::comparar_ciclos_cli(
             &maquina_a, &maquina_b, &programa, &opciones, salida, errores,
         ),
+        Orden::Sugerir {
+            maquina,
+            programas,
+            opciones,
+        } => crate::sugerir::sugerir_cli(&maquina, &programas, &opciones, salida, errores),
         Orden::HistorialCiclos { archivo } => {
             crate::historial_ciclos::historial_cli(&archivo, salida, errores)
         }
