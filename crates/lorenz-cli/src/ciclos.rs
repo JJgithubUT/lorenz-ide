@@ -122,12 +122,12 @@ pub fn simular(
     })
 }
 
-type Segmentos = Vec<(u64, Vec<u64>)>;
-type Lineas = Vec<(u64, u64, usize)>;
+pub(crate) type Segmentos = Vec<(u64, Vec<u64>)>;
+pub(crate) type Lineas = Vec<(u64, u64, usize)>;
 
 /// Como `cargar_segmentos`, pero dice tambien a que linea del fuente corresponde cada tramo y
 /// devuelve el texto del fuente, si lo hay.
-fn cargar_con_lineas(
+pub(crate) fn cargar_con_lineas(
     maquina: &lorenz_arch::modelo::Maquina,
     ruta: &str,
     inicio: u64,

@@ -137,6 +137,19 @@ comentarios y el espaciado no la cambian, una latencia sí.
 Desde Rust, `lorenz_cic::Simulador` ofrece lo mismo: `ejecutar`, `metricas`, `vista(ciclo)`,
 `avanzar_ciclo` y `retroceder_ciclo` (RF-CIC-014), `diagrama` y `perfil`.
 
+## Sugerencias de instrucciones nuevas
+
+```
+lorenz sugerir maquina.toml programa... [--minima 2] [--maxima 4] [--cuantas 5] [--limite N]
+```
+
+Ejecuta los programas y busca las secuencias de instrucciones contiguas que se repiten (RF-CIC-034).
+Una secuencia no puede cruzar un destino de salto ni seguir a una instruccion que salta. Por cada una
+dice cuantas veces aparece en el codigo, cuantas se ejecuta y cuanto se ahorraria si fuera una sola
+instruccion que ocupara lo que la mas larga de ellas y tardara lo que la mas lenta: palabras de codigo
+y ciclos. Es una estimacion para orientar el repertorio, no mira los operandos y no comprueba que la
+instruccion nueva se pueda codificar. Desde Rust: `lorenz_cic::sugerir::sugerir`.
+
 ## Cómo se calcula
 
 El emulador funcional ejecuta cada instrucción y el planificador calcula en qué ciclo pasa por cada

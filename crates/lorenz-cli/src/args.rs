@@ -70,6 +70,12 @@ pub enum Orden {
         programa: String,
         opciones: crate::ciclos::OpcionesCiclos,
     },
+    /// Proponer instrucciones nuevas a partir de lo que ejecutan los programas.
+    Sugerir {
+        maquina: String,
+        programas: Vec<String>,
+        opciones: crate::sugerir::OpcionesSugerir,
+    },
     /// Listar el historico de mediciones de ciclos.
     HistorialCiclos {
         archivo: String,
@@ -265,6 +271,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "nuevo" => interpretar_nuevo(resto),
         "ciclos" => interpretar_ciclos(resto),
         "comparar-ciclos" => interpretar_comparar_ciclos(resto),
+        "sugerir" => interpretar_sugerir(resto),
         "historial-ciclos" => match resto {
             [archivo] => Ok(Orden::HistorialCiclos {
                 archivo: archivo.clone(),
@@ -517,6 +524,35 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Cotejar {
         fuente,
         maquinas,
+        opciones,
+    })
+}
+
+fn interpretar_sugerir(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::sugerir::OpcionesSugerir::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--minima" => opciones.minima = numero(a, valor_de(resto, &mut i, a)?)? as usize,
+            "--maxima" => opciones.maxima = numero(a, valor_de(resto, &mut i, a)?)? as usize,
+            "--cuantas" => opciones.cuantas = numero(a, valor_de(resto, &mut i, a)?)? as usize,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programas: Vec<String> = it.collect();
+    if programas.is_empty() {
+        return Err(ErrorUso::Falta("programa"));
+    }
+    Ok(Orden::Sugerir {
+        maquina,
+        programas,
         opciones,
     })
 }

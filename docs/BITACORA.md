@@ -17,6 +17,26 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Sugerencias de instrucciones nuevas
+
+`lorenz sugerir` propone secuencias de instrucciones que valdria la pena convertir en una sola
+(RF-CIC-034).
+
+**Decisiones:**
+
+- **D-088** — La sugerencia sale de lo que los programas *ejecutan*, no de lo que contienen: asi solo
+  cuenta codigo alcanzable y se pesa por las veces que corre. Una secuencia es contigua en memoria,
+  no cruza un destino de salto y termina en la primera instruccion que salta. El ahorro supone una
+  instruccion tan larga y tan lenta como la peor de la secuencia; no se miran operandos.
+
+**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024), restricciones de diseno
+(RF-CIC-033) y los genericos de SGT (RF-SGT-021).
+
+**Requisitos:** RF-CIC-034.
+**Commits:** rama `feat/sugerir`.
+
+---
+
 ## 2026-10-16 — DMA y contencion del bus
 
 Nuevo dispositivo `dma` (RF-CIC-022) y bus compartido en el modelo de ciclos (RF-CIC-021).
