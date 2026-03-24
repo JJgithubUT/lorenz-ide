@@ -62,7 +62,6 @@ acceso = "rw"
 "#;
 
 const LDI_R1: u64 = 0x20;
-const LDI_R2: u64 = 0x24;
 const LDI_SEL: u64 = 0x28;
 const HLT: u64 = 0xF0;
 
