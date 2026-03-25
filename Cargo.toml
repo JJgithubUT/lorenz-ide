@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-cli"]
+members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-ens", "crates/lorenz-dbg", "crates/lorenz-tst", "crates/lorenz-cli", "crates/lorenz-sgt", "crates/lorenz-cic"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,4 +12,13 @@ repository = "https://github.com/juanjcbreton/lorenz"
 [workspace.dependencies]
 toml = "0.8"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 thiserror = "1"
+
+# Las pruebas ejecutan programas completos en el emulador; con optimizacion ligera tardan una
+# fraccion del tiempo sin perder la informacion de depuracion.
+[profile.dev]
+opt-level = 1
+
+[profile.test]
+opt-level = 1

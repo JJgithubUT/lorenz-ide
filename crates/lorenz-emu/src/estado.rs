@@ -16,6 +16,17 @@ pub fn mascara_de(bits: u32) -> u64 {
     }
 }
 
+/// Cuantas lecturas de registros sin inicializar se recuerdan como maximo.
+pub const MAX_LECTURAS_DE_REGISTROS: usize = 4096;
+
+/// Una instruccion leyo un registro que nadie habia escrito (RF-DEP-040).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LecturaDeRegistro {
+    pub registro: String,
+    /// Direccion de la instruccion que lo leyo.
+    pub pc: u64,
+}
+
 /// Valores de todos los registros de una maquina.
 #[derive(Debug, Clone)]
 pub struct Estado {
@@ -35,6 +46,37 @@ pub struct Estado {
     /// Nombre y posicion de cada bandera dentro del registro de banderas.
     banderas: Vec<(String, u32)>,
     arranque: u64,
+    /// Si el registro es de un rol que la maquina ya inicializa (pc, sp, banderas...).
+    declarados: Vec<bool>,
+    /// Seguimiento de registros sin inicializar; apagado por omision.
+    seguimiento: bool,
+    inicializados: Vec<bool>,
+    sin_inicializar: Vec<LecturaDeRegistro>,
+    /// Pares de registros usados como uno ancho (RF-ARQ-010).
+    pares: Vec<ParIndexado>,
+    /// Registros conmutables (RF-ARQ-012).
+    bancos: Vec<BancoActivo>,
+}
+
+/// Un banco de registros resuelto a posiciones (RF-ARQ-012).
+///
+/// Los registros del banco muestran en `valores` la copia activa; las demas copias esperan en
+/// `almacen`, una fila por copia.
+#[derive(Debug, Clone)]
+struct BancoActivo {
+    selector: usize,
+    registros: Vec<usize>,
+    copias: usize,
+    activo: usize,
+    almacen: Vec<Vec<u64>>,
+}
+
+/// Un par de registros resuelto a posiciones.
+#[derive(Debug, Clone)]
+struct ParIndexado {
+    nombre: String,
+    alto: usize,
+    bajo: usize,
 }
 
 impl Estado {
@@ -71,7 +113,47 @@ impl Estado {
             .map(|b| (b.nombre.clone(), b.bit))
             .collect();
 
+        let declarados: Vec<bool> = maquina
+            .registros
+            .iter()
+            .map(|r| r.rol != RolRegistro::General)
+            .collect();
+        let pares: Vec<ParIndexado> = maquina
+            .pares
+            .iter()
+            .filter_map(|p| {
+                let pos = |n: &str| maquina.registros.iter().position(|r| r.nombre == n);
+                Some(ParIndexado {
+                    nombre: p.nombre.clone(),
+                    alto: pos(&p.alto)?,
+                    bajo: pos(&p.bajo)?,
+                })
+            })
+            .collect();
+        let bancos: Vec<BancoActivo> = maquina
+            .bancos_registros
+            .iter()
+            .filter_map(|b| {
+                let pos = |n: &str| maquina.registros.iter().position(|r| r.nombre == n);
+                let registros: Vec<usize> = b.registros.iter().filter_map(|n| pos(n)).collect();
+                let copias = b.copias.max(1) as usize;
+                let fila: Vec<u64> = registros.iter().map(|i| iniciales[*i]).collect();
+                Some(BancoActivo {
+                    selector: pos(&b.selector)?,
+                    registros,
+                    copias,
+                    activo: 0,
+                    almacen: vec![fila; copias],
+                })
+            })
+            .collect();
         let mut estado = Self {
+            bancos,
+            pares,
+            declarados,
+            seguimiento: false,
+            inicializados: Vec::new(),
+            sin_inicializar: Vec::new(),
             nombres,
             roles,
             mascaras,
@@ -113,13 +195,32 @@ impl Estado {
 
     /// Valor de un registro por su nombre.
     pub fn registro(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        if let Some(p) = self.par(nombre) {
+            return Ok((self.valores[p.alto] << self.bits_de(p.bajo)) | self.valores[p.bajo]);
+        }
         Ok(self.valores[self.indice(nombre)?])
+    }
+
+    fn par(&self, nombre: &str) -> Option<&ParIndexado> {
+        self.pares.iter().find(|p| p.nombre == nombre)
+    }
+
+    /// Ancho en bits de un registro, a partir de su mascara.
+    fn bits_de(&self, i: usize) -> u32 {
+        self.mascaras[i].count_ones()
     }
 
     /// Asigna un registro por su nombre, truncando el valor a su ancho.
     ///
     /// Un registro de rol `fijo` no se puede modificar (RF-ARQ-008).
     pub fn fijar_registro(&mut self, nombre: &str, valor: u64) -> Result<(), ErrorEjecucion> {
+        if let Some(p) = self.par(nombre).cloned() {
+            let bajo = self.bits_de(p.bajo);
+            let (alto_n, bajo_n) = (self.nombres[p.alto].clone(), self.nombres[p.bajo].clone());
+            self.fijar_registro(&bajo_n, valor)?;
+            let alto = if bajo >= 64 { 0 } else { valor >> bajo };
+            return self.fijar_registro(&alto_n, alto);
+        }
         let i = self.indice(nombre)?;
         if self.roles[i] == RolRegistro::Fijo {
             return Err(ErrorEjecucion::RegistroDeSoloLectura {
@@ -127,7 +228,98 @@ impl Estado {
             });
         }
         self.valores[i] = valor & self.mascaras[i];
+        if self.seguimiento {
+            self.inicializados[i] = true;
+        }
+        self.conmutar_bancos(i);
         Ok(())
+    }
+
+    /// Si el registro recien escrito es el selector de un banco, cambia la copia que se ve.
+    fn conmutar_bancos(&mut self, selector: usize) {
+        for g in 0..self.bancos.len() {
+            if self.bancos[g].selector != selector {
+                continue;
+            }
+            let nueva = (self.valores[selector] % self.bancos[g].copias as u64) as usize;
+            let b = &mut self.bancos[g];
+            if nueva == b.activo {
+                continue;
+            }
+            let guardar: Vec<u64> = b.registros.iter().map(|i| self.valores[*i]).collect();
+            b.almacen[b.activo] = guardar;
+            b.activo = nueva;
+            for (k, i) in b.registros.iter().enumerate() {
+                self.valores[*i] = b.almacen[nueva][k];
+            }
+        }
+    }
+
+    /// Copia activa de cada banco, en el orden en que se declararon (RF-ARQ-012).
+    pub fn bancos_activos(&self) -> Vec<usize> {
+        self.bancos.iter().map(|b| b.activo).collect()
+    }
+
+    /// Valor de un registro en una copia concreta del banco, la activa o no.
+    pub fn registro_en_banco(&self, nombre: &str, copia: usize) -> Result<u64, ErrorEjecucion> {
+        let i = self.indice(nombre)?;
+        for b in &self.bancos {
+            if let Some(k) = b.registros.iter().position(|r| *r == i) {
+                return match copia {
+                    c if c >= b.copias => Err(ErrorEjecucion::RegistroInexistente {
+                        nombre: format!("{nombre} (copia {c})"),
+                    }),
+                    c if c == b.activo => Ok(self.valores[i]),
+                    c => Ok(b.almacen[c][k]),
+                };
+            }
+        }
+        Ok(self.valores[i])
+    }
+
+    /// Empieza a anotar las lecturas de registros que nadie ha escrito (RF-DEP-040). Un registro de
+    /// uso general cuenta como inicializado solo cuando el programa (o el usuario) lo escribe, aunque
+    /// la arquitectura le de un valor al arrancar; los de otro rol (contador de programa, puntero
+    /// de pila, banderas...) lo estan desde el principio.
+    pub fn activar_seguimiento(&mut self) {
+        self.seguimiento = true;
+        self.inicializados = self.declarados.clone();
+        self.sin_inicializar.clear();
+    }
+
+    pub fn seguimiento_activo(&self) -> bool {
+        self.seguimiento
+    }
+
+    /// Anota que la instruccion en `pc` leyo el registro `nombre`; no hace nada si el seguimiento
+    /// esta apagado o el registro ya esta inicializado.
+    pub fn registrar_lectura(&mut self, nombre: &str, pc: u64) {
+        if !self.seguimiento || self.sin_inicializar.len() >= MAX_LECTURAS_DE_REGISTROS {
+            return;
+        }
+        if let Some(p) = self.par(nombre).cloned() {
+            let (alto, bajo) = (self.nombres[p.alto].clone(), self.nombres[p.bajo].clone());
+            self.registrar_lectura(&alto, pc);
+            self.registrar_lectura(&bajo, pc);
+            return;
+        }
+        let Some(i) = self.nombres.iter().position(|n| n == nombre) else {
+            return;
+        };
+        if !self.inicializados[i] {
+            let lectura = LecturaDeRegistro {
+                registro: nombre.to_string(),
+                pc,
+            };
+            if !self.sin_inicializar.contains(&lectura) {
+                self.sin_inicializar.push(lectura);
+            }
+        }
+    }
+
+    /// Entrega y olvida las lecturas anotadas desde la ultima llamada.
+    pub fn tomar_lecturas_sin_inicializar(&mut self) -> Vec<LecturaDeRegistro> {
+        std::mem::take(&mut self.sin_inicializar)
     }
 
     /// Contador de programa.
@@ -193,6 +385,15 @@ impl Estado {
     /// (RF-EMU-014).
     pub fn reiniciar(&mut self) {
         self.valores.clone_from(&self.iniciales);
+        for b in &mut self.bancos {
+            b.activo = 0;
+            let fila: Vec<u64> = b.registros.iter().map(|i| self.iniciales[*i]).collect();
+            b.almacen = vec![fila; b.copias];
+        }
+        if self.seguimiento {
+            self.inicializados = self.declarados.clone();
+            self.sin_inicializar.clear();
+        }
         self.valores[self.indice_pc] = self.arranque & self.mascaras[self.indice_pc];
         self.instrucciones = 0;
         self.ciclos = 0;
@@ -235,6 +436,10 @@ impl Estado {
 
     /// Mascara con un 1 en cada bit del registro (su ancho), por nombre.
     pub fn mascara_de_registro(&self, nombre: &str) -> Result<u64, ErrorEjecucion> {
+        if let Some(p) = self.par(nombre) {
+            let bits = self.bits_de(p.alto) + self.bits_de(p.bajo);
+            return Ok(mascara_de(bits));
+        }
         Ok(self.mascaras[self.indice(nombre)?])
     }
 

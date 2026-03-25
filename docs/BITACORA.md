@@ -17,6 +17,468 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Sugerencias de instrucciones nuevas
+
+`lorenz sugerir` propone secuencias de instrucciones que valdria la pena convertir en una sola
+(RF-CIC-034).
+
+**Decisiones:**
+
+- **D-088** — La sugerencia sale de lo que los programas *ejecutan*, no de lo que contienen: asi solo
+  cuenta codigo alcanzable y se pesa por las veces que corre. Una secuencia es contigua en memoria,
+  no cruza un destino de salto y termina en la primera instruccion que salta. El ahorro supone una
+  instruccion tan larga y tan lenta como la peor de la secuencia; no se miran operandos.
+
+**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024), restricciones de diseno
+(RF-CIC-033) y los genericos de SGT (RF-SGT-021).
+
+**Requisitos:** RF-CIC-034.
+**Commits:** rama `feat/sugerir`.
+
+---
+
+## 2026-10-16 — DMA y contencion del bus
+
+Nuevo dispositivo `dma` (RF-CIC-022) y bus compartido en el modelo de ciclos (RF-CIC-021).
+
+**Decisiones:**
+
+- **D-085** — El DMA copia al instante en el emulador funcional y deja anotada la transferencia
+  (`tomar_transferencias_dma`); el modelo de ciclos es quien le pone tiempo. Una transferencia que
+  se sale de las regiones o cae en una de solo lectura no copia nada y marca el error en `estado`.
+- **D-086** — El bus es una lista de tramos ocupados. Cada peticion toma el primer hueco en que
+  cabe y no mueve las ya reservadas, asi que gana la instruccion mas antigua. Solo la memoria
+  principal usa el bus, no los aciertos de cache.
+- **D-087** — Sin `[bus] compartido` no hay contencion y un DMA corre en paralelo sin frenar al
+  procesador; con el, ocupa el bus desde que la instruccion que lo arranca sale de la etapa de
+  memoria. Un bus compartido sin `[pipeline]` es un error de configuracion.
+
+**Pendiente:** varios nucleos y coherencia de cache (RF-CIC-023, RF-CIC-024), restricciones y
+sugerencias de diseno (RF-CIC-033, RF-CIC-034).
+
+**Requisitos:** RF-CIC-021, RF-CIC-022, RF-CIC-027.
+**Commits:** ramas `feat/dma` y `feat/bus`.
+
+---
+
+## 2026-10-16 — Exploracion de ordenes de eventos
+
+`explorar VENTANA EVENTO...` ejecuta el programa una vez por cada manera de intercalar unos eventos
+externos con sus instrucciones y agrupa los casos por resultado (RF-DEP-043). Si hay mas de un
+resultado, el orden importa y se avisa de una posible condicion de carrera, con un orden de ejemplo
+por grupo.
+
+**Decisiones:**
+
+- **D-084** — La exploracion parte del estado actual, trabaja en una copia de la maquina y no toca la
+  que se depura. Con instantes iguales se prueban todos los ordenes de los eventos empatados. El
+  resultado que se compara es registros, banderas, `pc`, las celdas pedidas con `ver` y como
+  termino. Hasta 5 eventos; con mas casos que el maximo se toma una muestra repetible (xorshift con
+  semilla fija).
+
+**Requisitos:** RF-DEP-043.
+**Commits:** rama `feat/explorar`.
+
+---
+
+## 2026-10-16 — Inyeccion de fallos
+
+El depurador puede estropear la maquina en un instante elegido (RF-DEP-042): invertir un bit de un
+registro o de una celda, descartar una entrada en cola o levantar una interrupcion, con la orden
+`inyectar INSTANTE bit|memoria|entrada|interrupcion ...`.
+
+**Decisiones:**
+
+- **D-083** — El instante de una inyeccion es el numero de instrucciones ejecutadas, y actua antes
+  de la siguiente. Cada fallo se aplica una sola vez, con las operaciones de los cambios a mano,
+  asi queda en la traza y se puede retroceder y volver a verlo. Si no se puede aplicar (una linea
+  de interrupcion inexistente) queda un aviso y la ejecucion sigue.
+
+**Pendiente:** RF-DEP-043 (explorar ordenes de eventos).
+
+**Requisitos:** RF-DEP-042.
+**Commits:** rama `feat/inyeccion`.
+
+---
+
+## 2026-10-16 — Disposicion fijada de estructuras
+
+Se prueba la generacion del campo `@ n` (RF-SGT-007) y se corrige un fallo que salio al hacerlo.
+
+**Decisiones:**
+
+- **D-082** — Las constantes se definen antes de disponer las estructuras. Antes, `@ BASE + 1` o un
+  arreglo con longitud `const` dentro de una estructura daba "no existe". Las globales siguen
+  despues, porque necesitan el tamano de las estructuras.
+
+**Requisitos:** RF-SGT-007.
+**Commits:** rama `test/sgt-disposicion`.
+
+---
+
+## 2026-10-16 — Simulacion por ciclos, cache y bancos
+
+Nace el crate `lorenz-cic` y las ordenes `ciclos`, `comparar-ciclos` e `historial-ciclos`. Las
+maquinas pueden declarar pipeline, cache y latencias en el mismo TOML sin que cambie el modo
+funcional. Tambien quedan hechos los bancos de registros y de memoria. Detalle en `docs/CICLOS.md`.
+
+**Decisiones:**
+
+- **D-075** — El pipeline se simula guiado por la traza: el emulador funcional ejecuta cada
+  instruccion y un planificador en orden calcula en que ciclo entra a cada etapa
+  (`entra[s+1] = max(fin, libre[s+1], datos)`). Motivo: el resultado es determinista, el modo
+  funcional no se toca y retroceder un ciclo es leer un horario ya calculado.
+- **D-076** — Un riesgo de datos es una puerta de entrada a una etapa: con adelantamiento, entrar a
+  la etapa de calculo, con el dato listo cuando el productor termina su etapa de resultado (memoria
+  para las cargas); sin el, entrar a la lectura, con el dato listo al escribirse.
+- **D-077** — Sin `[pipeline]` hay una sola etapa con los ciclos declarados mas la latencia
+  extra, de modo que el total coincide exactamente con el del modo funcional (RF-CIC-002).
+- **D-078** — Un salto directo incondicional cuenta como bien predicho; uno indirecto, nunca.
+  El predictor de 2 bits empieza en «debilmente no tomado».
+- **D-079** — Una carga de linea de cache cuesta la suma de las latencias de las regiones de sus
+  palabras. La sustitucion aleatoria usa un xorshift con semilla fija para ser reproducible.
+- **D-080** — La version de una arquitectura es la huella FNV-1a del TOML ya mezclado con su
+  herencia, para que comentarios y espaciado no cambien la version del historico.
+- **D-081** — Un banco de registros guarda la copia visible en `valores` y las demas aparte; al
+  escribir el selector se intercambian. Un banco de memoria se cambia con `out[puerto]` y
+  `in[puerto]` devuelve el banco visible.
+
+**Pendiente:** fase 6 (contencion de bus, DMA, varios nucleos, coherencia, restricciones).
+
+**Requisitos:** RF-CIC-001..020, RF-CIC-025..032, RF-ARQ-012, RF-ARQ-033, RF-ECO-028.
+**Commits:** ramas `feat/ciclos`, `feat/bancos` y `docs/ciclos`.
+
+---
+
+## 2026-10-16 — Lorenz OS y la orden `nuevo`
+
+Se cierra el ejemplo de sistema operativo en varios modulos (pantalla, teclado por interrupcion,
+reloj, arranque y nucleo), con pruebas en el emulador. La orden `lorenz nuevo PLANTILLA DESTINO
+[--nombre N]` copia una carpeta plantilla, renombra la maquina y se niega a pisar una carpeta con
+contenido.
+
+**Decisiones:**
+
+- **D-074** — El aviso de banderas indeterminadas (RF-ENS-028) recorre el programa en el orden
+  escrito. Una bandera esta *sin fijar* hasta que una instruccion la lista en `afecta` o la asigna,
+  y *alterada* tras una instruccion que escribe `pc` y `sp` (una llamada). Una etiqueta puede
+  alcanzarse desde cualquier sitio, asi que ahi el analisis se calla. Los avisos van en
+  `Objeto::avisos` y no impiden ensamblar.
+
+**Requisitos:** RF-ECO-027, RF-ECO-039, RF-ECO-040, RF-ECO-042, RF-ENS-028.
+
+**Commits:** 475 a 481 en `develop`.
+
+## 2026-10-16 — Compilador SGT: optimizacion, costes, biblioteca, 8 bits y enteros anchos
+
+**Hecho:**
+- Optimizador `-O0` a `-O3` sobre la HIR; costes en ciclos por funcion y `@presupuesto`.
+- Biblioteca de apoyo en SGT (multiplicar, dividir, desplazar, saturar) y publica (`mem_*`, `cad_*`),
+  podada por alcance; textos como valor inicial de arreglos.
+- Convencion de llamada documentada por arquitectura; `lorenz cotejar`; sugerencias en errores.
+- Maquinas sin salto por registro, sin escritura indirecta y con ALU de dos direcciones
+  (`ejemplos/sgt-8`): comparacion y saltos por banderas.
+- Enteros de varias palabras (pasada `multipalabra`): u32/u64 en 16 bits y u16/u32 en 8.
+- Lectura de banderas (`bandera.Z`) en condiciones y modulos con `importar`.
+
+**Decidido:**
+- **D-064** — El optimizador nunca elimina una division que pueda detener la maquina, una llamada ni
+  una lectura de puerto. `-O1` pliega y quita ramas muertas, `-O2` aplica identidades, `-O3`
+  reduce potencias de dos a desplazamientos.
+- **D-065** — El coste de una funcion se estima en ciclos con el modelo de la descripcion de la
+  maquina; `@presupuesto(n)` es un error de compilacion si el peor camino lo supera.
+- **D-066** — Un texto inicializa un arreglo de enteros con un caracter por elemento; las funciones
+  `mem_*` y `cad_*` son reservadas y las que empiezan por `__` son del compilador.
+- **D-067** — Una comparacion se resuelve por mascaras de resultado de banderas con dos planes
+  (directo y complementario); las banderas siguen D-013 (Z resultado cero, C prestamo o acarreo).
+- **D-068** — Sin salto por registro, o con direcciones mas anchas que la palabra, una funcion
+  vuelve por el numero de sitio de llamada que dejo quien la llamo.
+- **D-069** — En `sgt-16` el desplazamiento de los saltos condicionales cabe en 12 bits; la prueba de
+  conformidad de la maquina lo exige.
+- **D-070** — Un entero ancho es una lista de palabras, de la menos a la mas significativa, y cada
+  palabra va en memoria segun el orden de bytes. La suma y la resta propagan el acarreo, comparar
+  mira desde la palabra alta, multiplicar, dividir y desplazar por variable llaman a rutinas SGT
+  de la biblioteca de cada ancho. Un parametro ancho llega partido en palabras; un resultado ancho
+  vuelve con su palabra baja como valor y las demas en `__rv1`, `__rv2`... Quedan fuera `segun`,
+  `salida` y los punteros de varias palabras.
+- **D-071** — Los argumentos posteriores al ultimo que puede ejecutar una funcion se guardan en su
+  parametro al calcularlos; los anteriores se retienen en registros porque una llamada anidada a la
+  misma funcion pisaria los parametros ya escritos.
+- **D-072** — Al leer una direccion lejana, el propio registro destino sirve de registro de
+  direccion; antes se usaba el primero del compilador, que lleva el valor devuelto, y se perdia.
+- **D-073** — Un modulo es un archivo `nombre.sgt` en la carpeta del que importa. Sus simbolos se
+  llaman `nombre__simbolo` en el programa; `importar m { a, b };` hace visibles solo esos. Un nombre
+  se busca primero en el propio modulo, luego entre los importados y, desde un modulo, en la
+  biblioteca de SGT; el programa no ve lo privado de un modulo y los ciclos son un error.
+
+**Pendiente:** genericos (RF-SGT-021, opcional), punteros de varias palabras, y la fase 5 (CIC,
+segmentacion y cache).
+
+**Requisitos:** RF-SGT-001, 002, 015, 018, 020, 024, 027, 030, 031, 033, 034, 037, 039, 040, 041.
+
+**Commits:** 418 a 471 (`feat/sgt-optimizacion`, `feat/sgt-ocho-bits`, `feat/sgt-multipalabra`,
+`feat/sgt-banderas`, `feat/sgt-modulos`).
+
+---
+
+## 2026-10-16 — Compilador SGT: dispositivos, interrupciones y registros
+
+**Hecho:**
+- Backend de `lorenz-sgt` sobre `lorenz-ens`: puertos, `@interrupcion`, ensamblador en linea, registros
+  accesibles y vectores de interrupcion; maquina de prueba `ejemplos/sgt-16`.
+- Pruebas diferenciales: cada programa se compila, se ejecuta en el emulador y se compara con el
+  interprete de la HIR.
+
+**Decidido:**
+- **D-059** — Sin recursion; las locales se reservan en memoria estatica, sin marcos de pila.
+- **D-060** — Una local sin valor inicial vale 0.
+- **D-061** — `p + n` avanza `n` palabras crudas.
+- **D-062** — Dividir entre cero detiene la maquina (`HLT`) y el interprete lo reporta igual.
+- **D-063** — Cada raiz de ejecucion (principal y cada manejador) recibe su propia copia de las
+  funciones y globales de biblioteca que alcanza, para que un manejador no pise el estado de otro.
+
+**Pendiente:** enteros de varias palabras, saltos por banderas y ALU de dos direcciones (necesita un
+ejemplo de 8 bits), modulos, optimizacion, biblioteca de memoria y cadenas, documentacion de la
+convencion de llamada por arquitectura.
+
+**Requisitos:** RF-SGT-012, 013, 014, 016, 025, 026, 028, 029.
+
+**Commits:** 413 a 417 (`feat/sgt-dispositivos`).
+
+---
+
+## 2026-10-16 — Fase 2: cierre de pendientes y ejemplos de arquitectura
+
+**Hecho:**
+- Precarga de regiones (`contenido`), `explicar` y `avisar` en el depurador, con aviso de pila,
+  registros sin escribir y celdas sin escribir.
+- Cuatro arquitecturas de ejemplo con programas y pruebas: `ejemplo-8`, `ejemplo-8-serie`,
+  `risc-16` y `pila-8`.
+- Pares de registros (`[[par]]`), herencia entre descripciones (`hereda`), fallos de validacion con
+  linea y columna, recarga del ensamblador (`Recargable`), pulsos de reloj en las pruebas.
+- Documentacion generada: `lorenz documentar` (con `--vigilar`), `docs/FORMATO.md` con la gramatica
+  completa y una prueba que vigila que no entren dependencias de red ni de IA.
+- Informe de avance en tabla por requisito, con estados en verde, amarillo, rojo y gris.
+
+**Decidido:**
+- **D-053** — Los fallos de validacion se sitúan buscando en el texto la declaracion del nombre que
+  citan (la segunda declaracion si el nombre esta repetido); asi no hubo que cambiar las 40 reglas.
+- **D-054** — Un par de registros se resuelve en `Estado`, no en el interprete: leer junta, escribir
+  reparte, y todo lo que ya usaba nombres de registro lo admite sin cambios.
+- **D-055** — La herencia mezcla el TOML antes de construir la maquina, por nombre de elemento; un
+  elemento se sustituye entero y `eliminar = true` lo quita. Solo se hereda desde archivo.
+- **D-056** — La recarga y el vigilante comparan una huella de todo el arbol de herencia, no solo
+  del archivo principal, y un error no se repite mientras el texto no cambie.
+- **D-057** — Un pulso de reloj en una prueba es una interrupcion periodica expandida a eventos en
+  ciclos concretos, con tope de 100000.
+- **D-058** — La documentacion es Markdown determinista, sin fechas, para que se pueda versionar.
+  Los comentarios del TOML pegados a una tabla se incorporan; una linea en blanco los desconecta.
+
+**Pendiente:**
+- RF-ENS-028 (aviso de banderas indeterminadas) y los requisitos de interfaz grafica (fase del IDE).
+- Externos en datos y `.dir`; listado del programa enlazado; guardar puertos y dispositivos en el
+  archivo de fallo; que `validar` compruebe que existen los archivos de `contenido`.
+- Lenguaje SGT (fase 4).
+
+**Requisitos:** RF-ARQ-010, 034, 035, 036, 042; RF-ENS-030; RF-TST-008; RF-ECO-017 a 023, 026, 028
+y 043; RF-DEP-040 a 042.
+
+**Commits:** ramas `feat/*` y `docs/*` fusionadas a `develop`; 382 commits al cierre de este bloque.
+
+## 2026-10-16 — Fase 2: enlazador
+
+**Hecho:** `.externo`, reubicaciones en el objeto, `enlazador::enlazar` y la orden `lorenz enlazar`
+(acepta objetos TOML o fuentes). Reporta duplicados, no resueltos y solapes juntos.
+**Decidido:**
+- **D-048** — No hay reubicacion de codigo: los objetos ya vienen ubicados con `.org`. El
+  enlazador resuelve simbolos y comprueba solapes; el "mapa de memoria" es el de la maquina.
+- **D-049** — Una instruccion con un externo no se codifica: deja un hueco del tamano exacto
+  (el tamano no depende de los valores) y una reubicacion con su texto fuente; el enlazador la
+  ensambla otra vez en su direccion (`ensamblar_instruccion_en`).
+- **D-050** — Los externos solo valen en operandos de instrucciones; en `.db`, `.dir` o `.espacio`
+  es un error explicito.
+- **D-051** — Una constante repetida con el mismo valor no choca; una etiqueta repetida o una
+  constante con otro valor, si.
+- **D-052** — `ensamblar` sin `--objeto`, `ejecutar` y `depurar` rechazan los fuentes con externos
+  para no ejecutar huecos en ceros.
+**Pendiente:** externos en datos y tablas de direcciones; listado del programa enlazado.
+**Requisitos:** RF-ENS-019, RF-ENS-020.
+**Commits:** feat/enlazador; contador real 308.
+
+---
+
+## 2026-10-16 — Fase 2: pruebas, conformidad, aleatorio, regresion y compatibilidad
+
+**Hecho:** `lorenz-tst` completo: archivo de pruebas, ejecucion paralela, cobertura de instrucciones
+y ramas, suite de conformidad, generador de programas aleatorios con reduccion, comparacion con una
+referencia independiente, regresion contra la ultima ejecucion y compatibilidad de binarios al
+cambiar la ISA. Ordenes nuevas: `conformidad`, `aleatorio`, `compatibilidad`, y `probar` con
+`--cobertura`, `--comparar`, `--historial`, `--umbral`. Ejemplo de CI en `docs/CI.md`.
+**Decidido:**
+- **D-038** — La referencia (`Referencia`) se escribe aparte del emulador y no comparte su evaluador;
+  asi un error comun no pasa inadvertido. No modela puertos ni dispositivos.
+- **D-039** — El acceso a memoria de la referencia es el trait `AccesoMemoria`; cualquier closure
+  `Fn(u64)->u64` sirve sin permisos. `ejecutar_en` conserva el estado parcial tras un error.
+- **D-040** — La suma de verificacion de la memoria es incremental (`aporte(dir, valor)`), porque
+  recalcularla en cada paso hacia inviable la generacion aleatoria.
+- **D-041** — El programa k de una tanda usa la semilla `semilla + k`; se reproduce con
+  `--semilla S+k --programas 1`. Los programas son lineales y acaban en HLT.
+- **D-042** — La reduccion es ddmin sobre instrucciones y despues pone registros a cero.
+- **D-043** — El historial vive en `<carpeta del proyecto>/.lorenz/ultimo.json`.
+- **D-044** — Codigo de salida 6 para "mas lenta que el umbral"; 1 para "rompe"; 4 para `comparar`.
+- **D-045** — `Ejecutor::no_comparable()` (false por omision) deja fuera de `comparar` a
+  implementaciones que no modelan puertos.
+- **D-046** — Una rama condicional cuenta como cubierta si se vio tomada y no tomada; la no tomada
+  incluye saltar a la instruccion siguiente.
+- **D-047** — Compatibilidad: se desensambla con la ISA anterior y se relee con la nueva; distinto
+  ancho de palabra o endianness es incompatibilidad global.
+**Pendiente:** enlazador (RF-ENS-019/020), `salir` probado con CALL/RET, `ejecutar --cobertura`,
+guardar puertos y dispositivos en los fallos, respaldo del repositorio (solo existe en el
+contenedor), liberar develop a deploy y main con etiqueta.
+**Requisitos:** RF-TST-001 a RF-TST-036 (006 y 008 con limitaciones: sin pulso de reloj).
+**Commits:** ramas feat/tst-*, feat/cli-*; contador real 300 (incluye fusiones).
+
+---
+
+## 2026-10-16 — Fase 2: traza, retroceso y fallos reproducibles
+
+**Hecho:**
+
+- `Memoria::registrar_escrituras` anota cada escritura de una instruccion con el valor anterior.
+- `Traza`: un `PasoTraza` por instruccion (registros, banderas y escrituras que cambian) mas
+  instantaneas periodicas con tope de 64; al pasar el tope se adelgazan y se duplica el intervalo.
+- `Depurador`: `grabar`, `ir_a`, `atras`, `adelante`, `quien_escribio`, `quien_cambio` y `buscar`.
+  Ir a un instante restaura la instantanea mas cercana y reejecuta; el estado de ese instante se
+  ve con las ordenes de siempre (`registros`, `volcar`, `pantalla`).
+- Lo que el usuario cambia a mano durante la grabacion (registros, banderas, memoria, puertos) se
+  anota como intervencion y se repite al reejecutar. Ejecutar desde un instante pasado descarta el
+  futuro grabado.
+- Exportacion en CSV y JSON; fallos reproducibles en `lorenz-fallo-0.1` (TOML con estado inicial,
+  intervenciones, numero de pasos, fallo esperado y estado final).
+- Ordenes: `traza`, `atras`, `adelante`, `instante`, `quien-escribio`, `quien-cambio`, `buscar`,
+  `pantalla`, `fallo guardar|reproducir`.
+
+**Decidido:**
+
+- **D-036** — El estado en el instante k no incluye lo hecho a mano en k (se aplica al salir de k);
+  en el extremo vivo si. Asi lo que se ve al volver coincide con lo que se vio entonces.
+- **D-037** — Un fallo guardado solo lleva registros y memoria. Colas de puertos, temporizadores y
+  dispositivos de bloques deben partir del estado inicial; queda como limite documentado.
+
+**Pendiente:**
+
+- RF-DEP-022: el control deslizante necesita el IDE; la orden `instante N` cubre la funcion.
+- Guardar tambien puertos y dispositivos en el archivo de fallo.
+- RF-TST: pruebas de proyecto, conformidad, cobertura y salida JSON.
+
+**Requisitos:** RF-DEP-019 a 031.
+
+**Estado del contador:** 263 de 1000 commits.
+
+## 2026-10-16 — Fase 2: depurador de linea de comandos
+
+**Hecho:**
+
+- Nuevo crate `lorenz-dbg`. `Depurador` no imprime nada: ejecuta, detiene y devuelve datos; las
+  vistas y el interprete (`Sesion`) los convierten en texto en español.
+- Paradas: paso, detenida, ruptura, observacion, llegada, retorno, limite, fallo y condicion
+  invalida. Un fallo indica la instruccion que lo causo.
+- Rupturas por direccion, etiqueta o `archivo:linea` (una linea sin codigo usa la siguiente que
+  tenga), con condicion opcional (`ruptura suma si A == 1 && B > 0`).
+- Observaciones de lectura, escritura o ambas sobre la vigilancia de `Memoria`; las lecturas y
+  escrituras del propio depurador no cuentan.
+- `lorenz depurar maquina programa [--guion ARCHIVO]`: sesion interactiva o guion. Una linea
+  vacia repite la ultima orden. `ejecutar_cli_con_entrada` permite probar la entrada sin procesos.
+
+**Decidido:**
+
+- **D-034** — El depurador es una biblioteca sin E/S; la terminal es solo una de sus caras.
+  Asi lo podran usar un guion o un depurador grafico (RF-DEP-044).
+- **D-035** — `salir` usa el puntero de pila (sube por encima del que tenia al empezar), no busca
+  la instruccion de retorno, porque la arquitectura no obliga a tener CALL/RET.
+
+**Pendiente:**
+
+- Probar `salir` con una maquina que tenga CALL/RET.
+- RF-DEP-019 a 031: traza, retroceso, busqueda hacia atras y reproduccion de fallos.
+- Los commits 243 a 247 citan algunos RF-DEP mal; la correccion esta en `TRAZABILIDAD.md`.
+- El commit 243 se rehizo con `reset --soft` porque no compilaba solo.
+
+**Requisitos:** RF-DEP-001 a 018.
+
+**Estado del contador:** 252 de 1000 commits (el numero 236 de la entrada anterior estaba
+desfasado: el real al cerrarla era 237 o mas).
+
+## 2026-10-16 — Fase 2: ensamblador y desensamblador
+
+**Hecho:**
+
+- Nuevo crate `lorenz-ens`. El ensamblador y el desensamblador se generan de la descripcion de la
+  maquina; una instruccion nueva en el TOML aparece en ambos sin tocar el codigo (hay una prueba
+  que lo demuestra).
+- Ensamblador en dos pasadas con etiquetas, constantes, expresiones, literales, directivas de datos
+  y origen, inclusion de archivos, macros con parametros y etiquetas locales, y secciones.
+- Errores con archivo, linea y columna; se acumulan para informar de varios a la vez.
+- Salidas: hexadecimal, mapa, listado, tabla de simbolos (TOML) y archivo objeto (TOML).
+- Desensamblador con datos, etiquetas y salida que el ensamblador vuelve a aceptar.
+- CLI: `lorenz ensamblar`, `lorenz desensamblar`, y `ejecutar` acepta fuentes `.s` directamente.
+- `lorenz-arch` valida la sintaxis de cada instruccion (regla `E-SINTAXIS`, RF-ARQ-013). Al
+  activarla aparecio un fixture de la UART cuyo mnemonico y sintaxis no coincidian; se corrigio.
+- `docs/TRAZABILIDAD.md` tiene la tabla de los 30 RF-ENS: 26 hechos, 4 pendientes.
+
+**Decidido:**
+
+- D-029 — el codigo puede caer en una region de solo lectura (es donde vive una ROM), pero no en
+  una region sin lectura, en un dispositivo ni fuera de toda region. Un elemento no puede cruzar el
+  limite entre dos regiones.
+- D-030 — el desensamblador y el emulador decodifican con codigo propio cada uno; la prueba
+  `coherencia_emu` los obliga a coincidir palabra por palabra en tres maquinas.
+- D-031 — una linea que viene de una macro se atribuye a la que la invoca.
+- D-032 — una seccion se llama como una region y conserva su propio contador.
+- D-033 — el desensamblador es fiel a la maquina: una palabra con bits de relleno distintos de cero
+  se muestra como la instruccion que el emulador ejecutaria, aunque al ensamblar el relleno sea cero.
+
+**Pendiente:** enlazador (RF-ENS-019, 020), aviso de banderas indeterminadas (RF-ENS-028) y recarga
+al cambiar la arquitectura (RF-ENS-030). Siguen el depurador de linea de comandos y las pruebas.
+**Requisitos:** RF-ENS-001 a RF-ENS-018, RF-ENS-021 a RF-ENS-027, RF-ENS-029, RF-ARQ-013.
+**Commits:** feat/ens-nucleo (199 a 236).
+**Estado del contador:** 236 de 1000 commits.
+
+---
+
+## 2026-10-16 — Trazabilidad de Arquitectura
+
+**Hecho:** `docs/TRAZABILIDAD.md` incluye la tabla de los 42 RF-ARQ comprobada contra el codigo:
+30 hechos, 3 parciales (029 precarga de regiones, 034 linea en los errores, 042 arquitecturas de
+ejemplo) y 9 pendientes (pares de registros, bancos, herencia, comentarios a documentacion y
+editor visual). Corrige la estimacion anterior de 20 de 42.
+**Pendiente:** formato publicado en Claude Docs por actualizar.
+**Requisitos:** RF-ARQ-001 a RF-ARQ-042.
+**Commits:** docs/trazabilidad-arq.
+
+---
+
+## 2026-10-16 — Cierre de la fase 1 (version 0.1.0)
+
+**Hecho:**
+
+- Los 46 requisitos RF-EMU estan en "Hecho" en `docs/TRAZABILIDAD.md`, cada uno con pruebas.
+- Suite completa: 746 pruebas en verde, `cargo fmt --check` y `cargo clippy` sin avisos.
+- Flujo de version: `develop` -> `deploy` (version 0.1.0, `CHANGELOG.md`) -> `main`, con la
+  etiqueta `v0.1.0`.
+- Ejemplos de punta a punta: `suma` termina con A=0x2c en 7 ciclos; `bucle` y `comparar`
+  funcionan desde la linea de comandos.
+
+**Decidido:** la fase 1 se da por cerrada; la fase 2 (ensamblador y desensamblador generados desde
+la arquitectura) empieza desde `develop`.
+**Pendiente:** tabla de trazabilidad de RF-ARQ (hoy solo se estima por las citas en el codigo);
+formato de arquitectura publicado en Claude Docs por corregir (`dir:16` a dos campos de 8 bits y
+secciones de interrupciones, prioridades, periodo y UART).
+**Requisitos:** RF-EMU-001 a RF-EMU-046.
+**Commits:** 194 al cierre. Meta del dia 1: 160.
+
+---
+
 ## 2026-10-16 — Orden lorenz comparar
 
 **Hecho:** `lorenz comparar <a.toml> <b.toml> <programa.hex>` carga el mismo programa en las dos

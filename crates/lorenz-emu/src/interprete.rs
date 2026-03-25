@@ -115,15 +115,19 @@ impl Interprete {
         &self,
         nombre: &str,
         dec: &Decodificada,
-        entorno: &Entorno<'_>,
+        entorno: &mut Entorno<'_>,
     ) -> Result<i128, ErrorEjecucion> {
         if let Some(o) = dec.operandos.iter().find(|o| o.nombre == nombre) {
             return match &o.registro {
-                Some(registro) => Ok(entorno.estado.registro(registro)? as i128),
+                Some(registro) => {
+                    entorno.estado.registrar_lectura(registro, dec.direccion);
+                    Ok(entorno.estado.registro(registro)? as i128)
+                }
                 None => Ok(o.valor),
             };
         }
         if let Ok(v) = entorno.estado.registro(nombre) {
+            entorno.estado.registrar_lectura(nombre, dec.direccion);
             return Ok(v as i128);
         }
         if entorno.estado.tiene_bandera(nombre) {
@@ -162,6 +166,9 @@ impl Interprete {
             }
             Expr::Entrada(puerto) => {
                 let p = self.evaluar(puerto, instruccion, dec, entorno)?;
+                if let Some(banco) = entorno.memoria.banco_de_puerto(p as u64) {
+                    return Ok(i128::from(banco));
+                }
                 Ok(i128::from(entorno.puertos.leer(p as u64)?))
             }
             Expr::Unario(op, e) => {
@@ -271,6 +278,11 @@ impl Interprete {
             Destino::Salida(puerto) => {
                 let p = self.evaluar(puerto, instruccion, dec, entorno)?;
                 let truncado = (valor as u64) & self.mascara_palabra;
+                if entorno.memoria.es_selector_de_banco(p as u64) {
+                    entorno.memoria.seleccionar_banco(p as u64, truncado);
+                    registrar(truncado, self.mascara_palabra, seg);
+                    return Ok(());
+                }
                 entorno.puertos.escribir(p as u64, truncado)?;
                 registrar(truncado, self.mascara_palabra, seg);
                 Ok(())

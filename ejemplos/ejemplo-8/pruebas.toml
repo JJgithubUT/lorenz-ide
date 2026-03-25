@@ -1,0 +1,54 @@
+# Pruebas de proyecto del ejemplo de 8 bits. Se ejecutan con:
+#
+#   lorenz probar ejemplos/ejemplo-8/pruebas.toml
+#
+# Cada prueba declara un programa, el estado de partida y lo que se espera al terminar.
+
+formato = "lorenz-pruebas-0.1"
+maquina = "maquina.toml"
+semilla = 8
+
+[[prueba]]
+nombre    = "suma con acarreo"
+etiquetas = ["aritmetica", "rapida"]
+programa  = "programas/suma.s"
+limite    = 100
+[prueba.espera]
+registros = { A = 44, B = 100 }
+banderas  = { C = true, Z = false }
+# LDI, LDI, ADD y HLT cuestan 2 + 2 + 2 + 1 ciclos.
+ciclos    = { valor = 7, tolerancia = 0 }
+
+[[prueba]]
+nombre    = "el estado inicial cambia el dato"
+etiquetas = ["memoria"]
+programa  = "programas/datos.s"
+# El programa lee la direccion 0x0100: aqui se le pone otro valor antes de ejecutar.
+[prueba.inicial]
+memoria   = [ { direccion = 0x0100, palabras = [7] } ]
+[prueba.espera]
+registros = { A = 7 }
+memoria   = [ { direccion = 0x2000, palabras = [7] } ]
+
+[[prueba]]
+nombre    = "copia un dato a la RAM"
+etiquetas = ["memoria"]
+programa  = "programas/datos.s"
+[prueba.espera]
+registros = { A = 0x5A }
+memoria   = [ { direccion = 0x2000, palabras = [0x5A] } ]
+
+[[prueba]]
+nombre    = "macros e inclusion"
+etiquetas = ["ensamblador"]
+programa  = "programas/macros.s"
+[prueba.espera]
+registros = { A = 14, B = 7 }
+
+[[prueba]]
+nombre    = "un bucle infinito no se detiene"
+etiquetas = ["limite"]
+programa  = "programas/bucle.s"
+limite    = 500
+[prueba.espera]
+detenida = false

@@ -1,7 +1,7 @@
 # Trazabilidad: requisitos del emulador
 
 Estado de cada requisito funcional del emulador (`RF-EMU`) de la ERS frente a lo que hay en el
-repositorio. Se actualiza al cerrar cada bloque de trabajo. Los requisitos de otras areas se iran
+repositorio. Se actualiza al cerrar cada bloque de trabajo. Las tablas de otras areas se iran
 agregando cuando empiece su desarrollo.
 
 Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, se dice cual),
@@ -56,6 +56,282 @@ Estados: **Hecho** (implementado y con pruebas), **Parcial** (existe una parte, 
 | RF-EMU-045 | Traza legible | Hecho | `--traza` para personas, `--traza-maquina` en `clave=valor` |
 | RF-EMU-046 | Comparar dos implementaciones | Hecho | `comparar` y `Ejecutor`; orden `lorenz comparar` (salida 4 si difieren) |
 
+## Requisitos de arquitectura (RF-ARQ)
+
+Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se comprobo contra el codigo de `lorenz-arch`.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-ARQ-001 | Cargar la descripcion desde un archivo TOML | Hecho | `cargar`, `cargar_archivo` |
+| RF-ARQ-002 | Rechazar una version mayor de formato desconocida | Hecho | `comprobar_version` |
+| RF-ARQ-003 | Ancho de palabra entre 4 y 64 bits | Hecho | validacion de rangos (E-RANGO) |
+| RF-ARQ-004 | Ancho de direccion entre 8 y 64 bits | Hecho | validacion de rangos |
+| RF-ARQ-005 | Orden de bytes little o big endian | Hecho | `endianness` en `Maquina` |
+| RF-ARQ-006 | Direccion de arranque | Hecho | `arranque` |
+| RF-ARQ-007 | Registros con nombre, ancho y valor inicial | Hecho | `Registro` |
+| RF-ARQ-008 | Roles de registro | Hecho | `RolRegistro` (pc, sp, banderas, general, indirecto, fijo) |
+| RF-ARQ-009 | Exactamente un contador de programa | Hecho | validacion de roles unicos |
+| RF-ARQ-010 | Pares de registros como un registro ancho | Hecho | `[[par]]`, `ParRegistros`, regla `E-PAR`, `Estado::registro` |
+| RF-ARQ-011 | Banderas con nombre, posicion y descripcion | Hecho | seccion `[flags]` |
+| RF-ARQ-012 | Bancos de registros conmutables | Hecho | `[[banco]]`, `Estado::conmutar_bancos`, `E-BANCO` |
+| RF-ARQ-013 | Instrucciones con mnemonico, sintaxis, codificacion, semantica y ciclos | Hecho | `Instruccion`; la sintaxis se valida (`E-SINTAXIS`) |
+| RF-ARQ-014 | Lenguaje de campos de bits | Hecho | `bits.rs` |
+| RF-ARQ-015 | Instrucciones de varias palabras | Hecho | codificacion con `|` |
+| RF-ARQ-016 | Los bits de cada palabra suman el ancho de palabra | Hecho | E-BITS |
+| RF-ARQ-017 | Rechazar dos instrucciones con la misma codificacion | Hecho | E-AMBIG |
+| RF-ARQ-018 | Cada campo tiene operando y viceversa | Hecho | E-CAMPO |
+| RF-ARQ-019 | Operandos registro, inmediato, direccion, desplazamiento y puerto | Hecho | `TipoOperando` |
+| RF-ARQ-020 | Rango y signo de los inmediatos | Hecho | `TipoOperando::Inmediato` |
+| RF-ARQ-021 | Restringir los registros de un operando | Hecho | `de = [...]` |
+| RF-ARQ-022 | Expresiones de semantica con asignacion, aritmetica, memoria, condicionales y E/S | Hecho | `semantica/`, E-SEMANT |
+| RF-ARQ-023 | Banderas que modifica cada instruccion | Hecho | `afecta` |
+| RF-ARQ-024 | Rechazar una bandera citada no declarada | Hecho | validacion de `afecta` |
+| RF-ARQ-025 | Ciclos fijos o segun el resultado | Hecho | `Ciclos::Fijo`, `Ciclos::SegunSalto` |
+| RF-ARQ-026 | Regiones de memoria con rango, nombre y permisos | Hecho | `Region` |
+| RF-ARQ-027 | Rechazar regiones solapadas | Hecho | validacion de regiones |
+| RF-ARQ-028 | Rechazar un arranque fuera de toda region | Hecho | validacion de regiones |
+| RF-ARQ-029 | Precargar una region desde un binario | Hecho | `programa::precargar_regiones`; ruta relativa a la descripcion, mismo formato que un programa |
+| RF-ARQ-030 | Dispositivos con tipo, puertos y region mapeada | Hecho | `Dispositivo`, `Region::dispositivo` |
+| RF-ARQ-031 | Rechazar una region con dispositivo no declarado | Hecho | `dispositivos_citados` |
+| RF-ARQ-032 | Lineas de interrupcion con vector y prioridad | Hecho | `Interrupciones` |
+| RF-ARQ-033 | Bancos de memoria conmutables por puerto | Hecho | `bancos`/`selector_puerto` de `[[region]]`, `Memoria::seleccionar_banco`, `E-BANCO-MEM` |
+| RF-ARQ-034 | Errores con linea y explicacion en terminos de la maquina | Hecho | `localizar::situar`; todo fallo lleva linea y columna |
+| RF-ARQ-035 | Herencia entre descripciones | Hecho | `herencia::resolver`, clave `hereda`, `eliminar = true`; la ven `Recargable` y `documentar --vigilar` |
+| RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Hecho | los comentarios que preceden a una tabla pasan a `Comentarios`; llegan a la documentacion |
+| RF-ARQ-037 | Descripcion cargada como estructura consultable | Hecho | `Maquina` |
+| RF-ARQ-038 | Editor visual de arquitectura | Pendiente | fase del IDE |
+| RF-ARQ-039 | Editor visual: texto a diagrama | Pendiente | fase del IDE |
+| RF-ARQ-040 | Editor visual: diagrama a texto | Pendiente | fase del IDE |
+| RF-ARQ-041 | Editor visual: errores de validacion en el diagrama | Pendiente | fase del IDE |
+| RF-ARQ-042 | Al menos cuatro arquitecturas de ejemplo | Hecho | `ejemplos/`: `ejemplo-8`, `ejemplo-8-serie`, `risc-16` y `pila-8`, cada uno con programas y pruebas |
+
+## Requisitos del ensamblador (RF-ENS)
+
+Estado a 2026-10-16: 26 hechos y 4 pendientes de 30. El ensamblador y el desensamblador viven en
+`lorenz-ens`; no conocen ninguna ISA, todo lo leen de la descripcion de la maquina.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-ENS-001 | Ensamblador generado de la descripcion, sin configuracion | Hecho | `Ensamblador::nuevo` |
+| RF-ENS-002 | Mnemonicos y sintaxis declarados | Hecho | `Plantilla` en `lorenz-arch` |
+| RF-ENS-003 | Etiquetas en dos pasadas | Hecho | `primera_pasada`, `segunda_pasada` |
+| RF-ENS-004 | Constantes con nombre | Hecho | `nombre = expr`, `.equ` |
+| RF-ENS-005 | Expresiones aritmeticas constantes | Hecho | `expr.rs` |
+| RF-ENS-006 | Literales decimal, hexadecimal, binario y caracter | Hecho | `expr.rs` |
+| RF-ENS-007 | Directivas de espacio, datos y origen | Hecho | `.org`, `.db`, `.dw`, `.espacio` |
+| RF-ENS-008 | Inclusion de archivos | Hecho | `.incluir`, `preprocesar.rs` |
+| RF-ENS-009 | Macros con parametros | Hecho | `.macro`, `.endm` |
+| RF-ENS-010 | Secciones ubicadas en regiones | Hecho | `.seccion` |
+| RF-ENS-011 | Rechazar un inmediato fuera de rango | Hecho | `Causa::InmediatoFueraDeRango` |
+| RF-ENS-012 | Rechazar un salto relativo fuera de alcance | Hecho | `Causa::SaltoFueraDeAlcance` |
+| RF-ENS-013 | Rechazar codigo en una region que no corresponde | Hecho | `comprobar_region` (D-029) |
+| RF-ENS-014 | Errores con archivo, linea, columna y causa en terminos de la ISA | Hecho | `ErrorEns` |
+| RF-ENS-015 | Seguir tras un error recuperable | Hecho | acumula errores por pasada |
+| RF-ENS-016 | Archivo objeto con codigo, simbolos y ubicacion | Hecho | `objeto.rs` |
+| RF-ENS-017 | Mapa de direccion a archivo y linea | Hecho | `salidas::mapa` |
+| RF-ENS-018 | Listado con direccion, bytes y fuente | Hecho | `salidas::listado` |
+| RF-ENS-019 | Enlazador | Hecho | `enlazador::enlazar`, `lorenz enlazar`; objetos ya ubicados (con `.org`), sin reubicar codigo; externos solo en operandos de instrucciones |
+| RF-ENS-020 | Simbolos no resueltos y duplicados al enlazar | Hecho | `ErrorEnlace::{NoResuelto, Duplicado, Solape}` |
+| RF-ENS-021 | Desensamblador generado de la misma descripcion | Hecho | `Desensamblador` |
+| RF-ENS-022 | Reconstruir el texto desde la codificacion | Hecho | `Plantilla::componer` |
+| RF-ENS-023 | Marcar como datos lo que no es instruccion | Hecho | `Linea::Dato` |
+| RF-ENS-024 | Etiquetas en lugar de direcciones con tabla de simbolos | Hecho | `--simbolos` |
+| RF-ENS-025 | Ensamblar y desensamblar da texto equivalente | Hecho | prueba de ida y vuelta |
+| RF-ENS-026 | Ensamblar desde la linea de comandos | Hecho | `lorenz ensamblar`, `desensamblar` |
+| RF-ENS-027 | Palabras binarias literales | Hecho | `.db` |
+| RF-ENS-028 | Aviso de banderas indeterminadas antes de un salto | Hecho | `Objeto::avisos`, `lorenz ensamblar` los muestra |
+| RF-ENS-029 | Exportar la tabla de simbolos | Hecho | `salidas::tabla_de_simbolos` (TOML) |
+| RF-ENS-030 | Recargar sin reiniciar al cambiar la arquitectura | Hecho | `recarga::Recargable`; la consume el IDE o un modo vigilante, ya probada sin ellos |
+
+## Requisitos del depurador (RF-DEP)
+
+Linea de comandos (001-018), traza, retroceso y reproduccion (019-031), explicacion y avisos (032, 039-041). Los requisitos de interfaz grafica quedan para la fase del IDE.
+
+| Requisito | Descripcion | Estado | Donde |
+|---|---|---|---|
+| RF-DEP-001 | Depurador de linea de comandos | Hecho | `lorenz depurar` |
+| RF-DEP-002 | Ejecutar una instruccion | Hecho | `Depurador::paso` |
+| RF-DEP-003 | Ejecutar hasta el retorno de la subrutina | Hecho | `Depurador::salir` (por el SP); probado con CALL/RET anidados en `tests/salir.rs` |
+| RF-DEP-004 | Ejecutar hasta una direccion | Hecho | `Depurador::hasta` |
+| RF-DEP-005 | Mostrar todos los registros por nombre | Hecho | `vistas::registros` |
+| RF-DEP-006 | Mostrar cada bandera por nombre y valor | Hecho | `vistas::registros` |
+| RF-DEP-007 | Volcar memoria en hexadecimal y caracteres | Hecho | `vistas::volcar` |
+| RF-DEP-008 | Modificar un registro en pausa | Hecho | orden `fijar` |
+| RF-DEP-009 | Modificar una posicion de memoria en pausa | Hecho | orden `escribir` |
+| RF-DEP-010 | Leer y escribir puertos a mano | Hecho | ordenes `puerto`, `entrada` |
+| RF-DEP-011 | Ruptura por direccion | Hecho | `Depurador::poner_ruptura` |
+| RF-DEP-012 | Ruptura por etiqueta o linea de fuente | Hecho | `Depurador::resolver` |
+| RF-DEP-013 | Ruptura condicional | Hecho | `Condicion` |
+| RF-DEP-014 | Observacion por escritura | Hecho | `Depurador::observar` |
+| RF-DEP-015 | Observacion por lectura | Hecho | `Vigilar::Lectura` |
+| RF-DEP-016 | Detenerse ante un acceso invalido e indicar la instruccion | Hecho | `Parada::Fallo` |
+| RF-DEP-017 | Desensamblado junto al fuente | Hecho | `vistas::listar` |
+| RF-DEP-018 | Pila cuando hay puntero de pila | Hecho | `vistas::pila` |
+| RF-DEP-019 | Registrar una traza completa mientras la grabacion esta activa | Hecho | `Traza`, `PasoTraza` |
+| RF-DEP-020 | Activar y desactivar la grabacion | Hecho | `Depurador::grabar`, `traza on/off` |
+| RF-DEP-021 | Retroceder un paso | Hecho | `Depurador::atras` |
+| RF-DEP-022 | Situarse en cualquier instante con un control deslizante | Parcial | `instante N` y `Depurador::ir_a`; el control grafico espera al IDE |
+| RF-DEP-023 | Mostrar registros, memoria y pantalla de ese instante | Hecho | `ir_a` restaura la maquina; `registros`, `volcar`, `pantalla` |
+| RF-DEP-024 | Quien escribio por ultima vez una direccion, y saltar | Hecho | `quien_escribio`, `Memoria::registrar_escrituras` |
+| RF-DEP-025 | Quien modifico por ultima vez un registro o bandera | Hecho | `quien_cambio` |
+| RF-DEP-026 | Buscar el primer instante en que se cumple una condicion | Hecho | `Depurador::buscar` |
+| RF-DEP-027 | Limitar la memoria de la traza con instantaneas y reejecucion | Hecho | `Traza::adelgazar` (tope de 64 instantaneas) |
+| RF-DEP-028 | Avisar al llegar al limite configurado | Hecho | `Depurador::tomar_avisos` |
+| RF-DEP-029 | Exportar la traza | Hecho | `exportar` (CSV y JSON) |
+| RF-DEP-030 | Guardar un fallo como archivo reproducible | Hecho | `reproducir::Fallo` (`lorenz-fallo-0.1`) |
+| RF-DEP-031 | Reproducirlo identico en otra instalacion | Hecho | `Fallo::reproducir`; limite: puertos y dispositivos parten vacios |
+| RF-DEP-032 | Explicar una instruccion | Hecho | `Depurador::explicar`, orden `explicar`; la ejecuta en una copia de la maquina |
+| RF-DEP-033 | Animar el recorrido de un dato | Pendiente | fase del IDE |
+| RF-DEP-034 | Ejecucion lenta con animacion | Pendiente | fase del IDE |
+| RF-DEP-035 | Desactivar animaciones | Hecho | la linea de comandos nunca anima |
+| RF-DEP-036 | Mapa de memoria grafico | Pendiente | fase del IDE |
+| RF-DEP-037 | Editor hexadecimal en vivo | Pendiente | fase del IDE; `volcar` y `escribir` hacen lo mismo en texto |
+| RF-DEP-038 | Linea de tiempo de eventos | Pendiente | fase del IDE; `ejecutar` ya lista las interrupciones atendidas |
+| RF-DEP-039 | Avisar del desbordamiento de la pila | Hecho | `Depurador::avisar`, orden `avisar`; compara SP con la region donde empezo y con su base |
+| RF-DEP-040 | Avisar de leer un registro sin inicializar | Hecho | `Estado::activar_seguimiento`, `avisar` y `ejecutar --vigilar`; `XOR A, A` cuenta como lectura |
+| RF-DEP-041 | Avisar de leer memoria sin escribir | Hecho | `Memoria::activar_seguimiento`, `avisar` y `ejecutar --vigilar` |
+| RF-DEP-042 | Inyectar fallos | Hecho | `Depurador::programar_inyeccion`, orden `inyectar`, `tests/inyeccion.rs` |
+| RF-DEP-043 | Explorar ordenes de eventos | Hecho | `explorar::explorar`, orden `explorar`, `tests/explorar.rs` |
+| RF-DEP-044 | Mismas operaciones en el depurador grafico | Pendiente | fase del IDE |
+
+## Requisitos de pruebas (RF-TST)
+
+Pruebas declarativas (001-015), conformidad y cobertura (016-023), generacion aleatoria (024-026), regresion y compatibilidad (027-029), linea de comandos e integracion (030-036).
+
+| Requisito | Descripcion | Estado | Donde |
+|---|---|---|---|
+| RF-TST-001 | Declarar pruebas en un proyecto | Hecho | `formato::Proyecto`, `lorenz-pruebas-0.1` |
+| RF-TST-002 | Afirmar registros al terminar | Hecho | `EsperaDef.registros` |
+| RF-TST-003 | Afirmar un rango de memoria | Hecho | `EsperaDef.memoria` |
+| RF-TST-004 | Afirmar banderas | Hecho | `EsperaDef.banderas` |
+| RF-TST-005 | Afirmar la salida de un dispositivo | Hecho | `EsperaDef.salida` |
+| RF-TST-006 | Afirmar ciclos con tolerancia | Hecho | `CiclosDef` |
+| RF-TST-007 | Entradas simuladas como pulsaciones | Hecho | `EntradaDef` |
+| RF-TST-008 | Interrupciones en instantes dados | Hecho | `InterrupcionDef` (un instante) y `PulsoDef` (`[[prueba.pulso]]`: linea, `desde_ciclo`, `periodo`, `veces`) |
+| RF-TST-009 | Estado inicial de registros y memoria | Hecho | `InicialDef` |
+| RF-TST-010 | Limite de instrucciones | Hecho | `Prueba::limite` |
+| RF-TST-011 | Ejecutar todas las pruebas | Hecho | `suite::ejecutar_suite`, `lorenz probar` |
+| RF-TST-012 | Seleccionar por nombre o etiqueta | Hecho | `Opciones.nombre/etiqueta` |
+| RF-TST-013 | Fallo con esperado, obtenido y lugar | Hecho | `Resultado.fallos` |
+| RF-TST-014 | Abrir el depurador en el estado del fallo | Hecho | `lorenz probar --depurar` |
+| RF-TST-015 | Pruebas en paralelo | Hecho | `Opciones.hilos` |
+| RF-TST-016 | Suite de conformidad generada | Hecho | `conformidad::ejecutar_conformidad`, `lorenz conformidad` |
+| RF-TST-017 | Efecto declarado de cada instruccion | Hecho | `Referencia` independiente |
+| RF-TST-018 | Solo las banderas declaradas | Hecho | verificacion `BanderasAjenas` |
+| RF-TST-019 | Codificar y decodificar son inversas | Hecho | verificacion `IdaYVuelta` |
+| RF-TST-020 | Valores limite de operandos | Hecho | verificacion `Limites` |
+| RF-TST-021 | Cobertura de instrucciones | Hecho | `cobertura::Cobertura`, `--cobertura` |
+| RF-TST-022 | Cobertura de ramas | Hecho | `Cobertura` por (programa, direccion) |
+| RF-TST-023 | Instrucciones sin ejercitar | Hecho | `InformeCobertura` |
+| RF-TST-024 | Programas aleatorios validos | Hecho | `aleatorio::generar_programa`, `lorenz aleatorio` |
+| RF-TST-025 | Comparar dos implementaciones | Hecho | `EjecutorReferencia` + `comparar` |
+| RF-TST-026 | Reducir casos de fallo | Hecho | `aleatorio::reducir` (ddmin) |
+| RF-TST-027 | Detectar programas mas lentos | Hecho | `regresion::Cambio::MasLenta`, codigo 6 |
+| RF-TST-028 | Detectar programas rotos | Hecho | `regresion::Cambio::Rompe`, codigo 1 |
+| RF-TST-029 | Avisar de binarios inutilizados por la ISA | Hecho | `compatibilidad`, `lorenz compatibilidad` |
+| RF-TST-030 | CLI que compile, ejecute y pruebe | Hecho | `lorenz-cli` |
+| RF-TST-031 | Codigos de salida distinguibles | Hecho | `suite::SALIDA_*` |
+| RF-TST-032 | Resultados legibles por maquina | Hecho | `--json`, `lorenz-resultados-0.1` |
+| RF-TST-033 | Sin entorno grafico | Hecho | `lorenz-cli` sin dependencias graficas |
+| RF-TST-034 | Ejemplo de integracion continua | Hecho | `docs/CI.md`, `ejemplos/ci/` |
+| RF-TST-035 | Semilla fijable | Hecho | `semilla` del proyecto, `--semilla` |
+| RF-TST-036 | Conservar la ultima ejecucion | Hecho | `.lorenz/ultimo.json`, `--historial` |
+
+## Requisitos del ecosistema (RF-ECO)
+
+Solo se listan los de las fases ya trabajadas. El resto del ecosistema (paquetes, comunidad,
+extensiones) llega con su fase.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
+| RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |
+| RF-ECO-019 | Diagrama de codificacion por instruccion | Hecho | `diagrama`: una caja por palabra, con numeracion de bits |
+| RF-ECO-020 | Mapa de memoria con rangos y permisos | Hecho | seccion "Mapa de memoria" |
+| RF-ECO-021 | Tabla de registros y banderas | Hecho | seccion "Registros y banderas", con pares |
+| RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
+| RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
+| RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
+| RF-ECO-027 | Ejemplo de sistema operativo completo | Hecho | `ejemplos/so-ejemplo`, `tests/so_ejemplo.rs` |
+| RF-ECO-039 | Ejemplo en varios modulos con pantalla y teclado | Hecho | `ejemplos/so-ejemplo/*.sgt` |
+| RF-ECO-040 | Ejemplo con interrupciones | Hecho | teclado por interrupcion 1 en Lorenz OS |
+| RF-ECO-042 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `lorenz-cli/src/nuevo.rs` |
+| RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
+| RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
+
+## Requisitos de ciclos y cache (RF-CIC)
+
+La fase 5 completa y, de la 6, el bus y el DMA. El modelo esta en `docs/CICLOS.md`.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-CIC-001 | Modo de simulacion ciclo a ciclo | Hecho | `lorenz ciclos`, `Simulador` |
+| RF-CIC-002 | Alternar entre modo funcional y de ciclos sin cambiar la descripcion | Hecho | secciones de tiempo ignoradas por el cargador funcional; `sin_pipeline_declarado_coincide_con_el_modo_funcional` |
+| RF-CIC-003 | Pipeline con numero de etapas libre | Hecho | `[pipeline]`, `ConfigPipeline` |
+| RF-CIC-004 | Nombrar cada etapa y sus microoperaciones | Hecho | `[[pipeline.etapa]]` con `nombre` y `hace` |
+| RF-CIC-005 | Detectar riesgos de datos | Hecho | `analisis::dependencias`, `Planificador` |
+| RF-CIC-006 | Detenciones cuando no se resuelve el riesgo | Hecho | `Causa::Datos`, esperas por causa |
+| RF-CIC-007 | Activar o desactivar el adelantamiento | Hecho | `adelantamiento` de `[pipeline]` |
+| RF-CIC-008 | Riesgos de control en los saltos | Hecho | `Planificador`: el salto mal predicho bloquea la busqueda |
+| RF-CIC-009 | Elegir la politica de prediccion | Hecho | `Prediccion`: no-tomado, tomado, 1-bit, 2-bits |
+| RF-CIC-010 | Contar aciertos y fallos de prediccion | Hecho | `Metricas::saltos_acertados` |
+| RF-CIC-011 | Descartar las instrucciones especulativas | Hecho | `Planificada::descartadas`, vista `(descartada)` |
+| RF-CIC-012 | Mostrar el contenido de cada etapa | Hecho | `Simulador::vista`, `--vista`, `--diagrama` |
+| RF-CIC-013 | Marcar las detenciones y su causa | Hecho | `Vista::texto`: `espera datos (A)` |
+| RF-CIC-014 | Avanzar y retroceder un ciclo | Hecho | `avanzar_ciclo`, `retroceder_ciclo` |
+| RF-CIC-015 | Declarar una cache | Hecho | `[cache]`, `Cache` |
+| RF-CIC-016 | Politica de reemplazo | Hecho | `Reemplazo`: lru, fifo, aleatorio |
+| RF-CIC-017 | Politica de escritura | Hecho | `Escritura`: post-escritura, escritura-directa |
+| RF-CIC-018 | Contar aciertos y fallos de cache | Hecho | `EstadisticasCache`, separadas en lectura y escritura |
+| RF-CIC-019 | Mostrar el contenido de la cache | Hecho | `Cache::volcar`, `--cache` |
+| RF-CIC-020 | Latencias distintas por region | Hecho | `latencia` de `[[region]]` |
+| RF-CIC-025 | Ciclos por instruccion | Hecho | `Metricas::cpi`, salida de `lorenz ciclos` |
+| RF-CIC-026 | Tamano en bytes del codigo | Hecho | salida de `lorenz ciclos` |
+| RF-CIC-027 | Uso del bus | Hecho | `Metricas::ciclos_de_memoria` |
+| RF-CIC-028 | Recalcular al cambiar la descripcion | Hecho | `--vigilar`, `VigilanteCiclos` |
+| RF-CIC-029 | Comparar dos descripciones | Hecho | `lorenz comparar-ciclos` |
+| RF-CIC-030 | Historico de metricas por version | Hecho | `lorenz ciclos --historial`, `lorenz historial-ciclos` |
+| RF-CIC-031 | Perfilador que atribuye ciclos | Hecho | `Simulador::perfil`, `--perfil` |
+| RF-CIC-032 | Mapa de calor sobre el fuente | Hecho | `--calor`, `--calor-html` |
+| RF-CIC-021 | Contencion del bus entre varios maestros | Hecho | `[bus] compartido`, `pipeline::Bus`, causa `bus` |
+| RF-CIC-022 | Controlador de acceso directo a memoria | Hecho | dispositivo `dma`, `Emulador::tomar_transferencias_dma`, `tests/dma.rs`, `tests/bus.rs` |
+| RF-CIC-023 | Maquinas de varios nucleos | Pendiente | fase 6 de la ERS |
+| RF-CIC-024 | Coherencia de cache entre nucleos | Pendiente | fase 6 de la ERS |
+| RF-CIC-033 | Restricciones de diseno | Pendiente | fase 6 de la ERS |
+| RF-CIC-034 | Sugerencias a partir de los programas | Hecho | `sugerir::sugerir`, `lorenz sugerir`, `tests/sugerir.rs` |
+
+## Requisitos del lenguaje SGT (RF-SGT)
+
+Estado del compilador `lorenz-sgt` (fase 4). "Parcial" indica que existe pero con una limitacion
+conocida, escrita en la columna de evidencia.
+
+| Requisito | Descripcion | Estado | Evidencia |
+| --- | --- | --- | --- |
+| RF-SGT-001, 002 | Enteros con y sin signo derivados de la palabra | Hecho | `tipos`; los de varias palabras (u32/u64 en 16 bits, u16/u32 en 8) se bajan en `multipalabra`; `tests/multipalabra.rs` en risc-16, sgt-16 y sgt-8. Fuera quedan `segun`, `salida` y punteros de varias palabras |
+| RF-SGT-003 a 006 | Booleano, punteros, arreglos, estructuras | Hecho | `analisis`, `interprete`, `tests/compilado.rs` |
+| RF-SGT-007 | Disposicion fijada de una estructura | Hecho | campo `@ n` con constantes; `tests/disposicion.rs` |
+| RF-SGT-008 a 010 | Constantes, funciones, control de flujo | Hecho | `tests/analisis.rs`, `tests/compilado.rs` |
+| RF-SGT-011 | Seleccion multiple (`segun`) | Hecho | `tests/compilado.rs` |
+| RF-SGT-012 | Ensamblador en linea | Hecho | `generador`, `tests/dispositivos.rs` |
+| RF-SGT-013, 014 | Registros y puertos como entidades | Hecho | `tests/dispositivos.rs` en `sgt-16` |
+| RF-SGT-016 | Manejador de interrupcion | Hecho | `@interrupcion(n)`, `tests/dispositivos.rs` |
+| RF-SGT-017 | Variable en direccion concreta | Hecho | `layout::disponer` |
+| RF-SGT-019, 020 | Bits y desbordamiento explicito | Hecho | `valores`, oraculo diferencial |
+| RF-SGT-022 a 026 | HIR, generacion, seleccion, registros, pila | Hecho | `hir`, `seleccion`, `emisor`, `generador` |
+| RF-SGT-028, 029 | Rechazo de ROM y de puertos no declarados | Hecho | `tests/analisis.rs`, `tests/dispositivos.rs` |
+| RF-SGT-032, 038 | Ensamblador por linea y depuracion | Hecho | `Compilado::lineas`, `lorenz compilar --lineas` |
+| RF-SGT-035, 036 | Errores en terminos de la maquina, con posicion | Hecho | `Falta`, `diagnostico` |
+| RF-SGT-042 | Compilar desde la linea de comandos | Hecho | `lorenz compilar`, `crates/lorenz-cli/tests/compilar.rs` |
+| RF-SGT-015 | Banderas en condiciones | Hecho | `bandera.NOMBRE` (`emisor::saltar_si_bandera`, `tests/ocho_bits.rs`); la comparacion tambien usa banderas (`seleccion::Forma::Comparar`) |
+| RF-SGT-027 | Convencion de llamada documentada por arquitectura | Hecho | `convencion`, `lorenz compilar convencion`, `docs/sgt/convencion-*.md` |
+| RF-SGT-030, 031 | Coste en ciclos y presupuesto | Hecho | `costes`, `@presupuesto`, `lorenz compilar --costes`, `tests/costes.rs` |
+| RF-SGT-033, 034 | Niveles de optimizacion `-O0` a `-O3` | Hecho | `optimizar`, `tests/optimizar.rs` |
+| RF-SGT-037 | Sugerencias en los errores | Hecho | `analisis::conversion_sugerida`, `tests/sugerencias.rs` |
+| RF-SGT-039, 040 | El mismo programa en varias maquinas y comparacion | Hecho | `lorenz cotejar`, `tests/ocho_bits.rs`, `ejemplos/sgt-8`, `ejemplos/sgt-16` |
+| RF-SGT-041 | Biblioteca de apoyo en SGT | Hecho | `biblioteca` (`__mul`, `__divmod`, `mem_*`, `cad_*`, rutinas por ancho), `podar` |
+| RF-SGT-018 | Modulos con importacion explicita de simbolos | Hecho | `analisis` (nombres por modulo), `compilar::compilar_con`, `tests/modulos.rs`, `crates/lorenz-cli/tests/compilar.rs` |
+| RF-SGT-021 | Genericos sencillos sobre enteros | Pendiente | opcional (fase 6) |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,
@@ -69,3 +345,8 @@ identificadores provisionales. Equivalencias para leer ese historial:
 | `RF-EMU-039` en la UART | `RF-EMU-032` |
 | `RF-EMU-016`, `017`, `026` en el bucle de ejecucion | `RF-EMU-001`, `044` |
 | `RF-CLI-*` | `RF-EMU-042` a `045` |
+
+Los commits 243 a 251 (depurador de linea de comandos) citaron identificadores RF-DEP equivocados en varios casos: por
+ejemplo el 247 cita RF-DEP-007, 010, 017 y 018 para el interprete de ordenes. Los correctos son los
+de la tabla de arriba: volcar es 007, fijar 008, escribir 009, puertos 010 (commit 251),
+desensamblado con fuente 017 y pila 018.

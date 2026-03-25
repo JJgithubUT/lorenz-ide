@@ -4,6 +4,8 @@
 //! lectura y escritura que el programa debe respetar; el depurador y el cargador de programas los
 //! saltan con las operaciones `*_privilegiado` (RF-EMU-019, RF-EMU-022, RF-EMU-023).
 
+use std::collections::BTreeSet;
+
 use lorenz_arch::modelo::{Acceso, Maquina};
 
 use crate::error::ErrorEjecucion;
@@ -23,6 +25,17 @@ struct RegionMem {
     celdas: Vec<u64>,
     /// Quien escribio cada celda por ultima vez; vacio mientras el seguimiento esta apagado.
     origen: Vec<u64>,
+    /// Bancos conmutables (RF-ARQ-033). `celdas` y `origen` son los del banco visible; los demas
+    /// esperan aqui, y la posicion del banco visible queda vacia hasta que se cambie.
+    banco: Option<Bancos>,
+}
+
+#[derive(Debug, Clone)]
+struct Bancos {
+    puerto: u64,
+    activo: usize,
+    celdas: Vec<Vec<u64>>,
+    origen: Vec<Vec<u64>>,
 }
 
 const SIN_ESCRIBIR: u64 = 0;
@@ -41,12 +54,45 @@ pub enum Escritura {
     Instruccion { pc: u64 },
 }
 
+/// Tipo de acceso a una celda vigilada.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TipoAcceso {
+    Lectura,
+    Escritura,
+}
+
+/// Un acceso de una instruccion a una celda que el depurador vigila (RF-DEP-014, RF-DEP-015).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccesoVigilado {
+    pub direccion: u64,
+    pub tipo: TipoAcceso,
+    /// Direccion de la instruccion que accedio.
+    pub pc: u64,
+}
+
+/// Una escritura hecha por una instruccion, con el valor que habia antes (RF-DEP-024).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EscrituraRegistrada {
+    pub direccion: u64,
+    pub antes: u64,
+    pub despues: u64,
+    /// Direccion de la instruccion que escribio.
+    pub pc: u64,
+}
+
 /// Una lectura de una celda que nadie habia escrito (RF-EMU-026).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LecturaSinInicializar {
     pub direccion: u64,
     /// Direccion de la instruccion que la leyo.
     pub pc: u64,
+}
+
+/// Un acceso a datos hecho por una instruccion (RF-CIC-018, RF-CIC-020).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Trafico {
+    pub direccion: u64,
+    pub escritura: bool,
 }
 
 /// El espacio de memoria completo de una maquina.
@@ -58,6 +104,24 @@ pub struct Memoria {
     seguimiento: bool,
     instruccion_actual: u64,
     sin_inicializar: Vec<LecturaSinInicializar>,
+    vigiladas_lectura: BTreeSet<u64>,
+    vigiladas_escritura: BTreeSet<u64>,
+    accesos: Vec<AccesoVigilado>,
+    registrando: bool,
+    /// Accesos a datos desde la ultima vez que se tomaron; `None` si no se anotan.
+    trafico: Option<Vec<Trafico>>,
+    escrituras: Vec<EscrituraRegistrada>,
+    /// Resumen del contenido, puesto al dia en cada escritura (ver `suma_de_verificacion`).
+    suma: u64,
+}
+
+/// Aporte de una celda al resumen: depende de la direccion y del valor, de modo que dos memorias
+/// distintas casi nunca dan lo mismo y un cambio se puede restar y sumar sin recorrer todo.
+fn aporte(direccion: u64, valor: u64) -> u64 {
+    let mut z = valor.wrapping_add(direccion.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 impl Memoria {
@@ -81,16 +145,111 @@ impl Memoria {
                 dispositivo: r.dispositivo.clone(),
                 celdas: vec![0; celdas as usize],
                 origen: Vec::new(),
+                banco: match (r.bancos > 1, r.selector_puerto) {
+                    (true, Some(puerto)) => Some(Bancos {
+                        puerto,
+                        activo: 0,
+                        celdas: (0..r.bancos).map(|_| vec![0; celdas as usize]).collect(),
+                        origen: vec![Vec::new(); r.bancos as usize],
+                    }),
+                    _ => None,
+                },
             });
         }
         regiones.sort_by_key(|r| r.desde);
+        let suma = regiones
+            .iter()
+            .flat_map(|r| (0..r.celdas.len() as u64).map(move |i| aporte(r.desde + i, 0)))
+            .fold(0u64, u64::wrapping_add);
         Ok(Self {
             regiones,
             mascara_palabra: maquina.palabra_maxima(),
             seguimiento: false,
             instruccion_actual: 0,
             sin_inicializar: Vec::new(),
+            vigiladas_lectura: BTreeSet::new(),
+            vigiladas_escritura: BTreeSet::new(),
+            accesos: Vec::new(),
+            registrando: false,
+            trafico: None,
+            escrituras: Vec::new(),
+            suma,
         })
+    }
+
+    // --- Bancos de memoria conmutables por puerto (RF-ARQ-033) ---
+
+    /// `true` si el puerto elige el banco visible de alguna region.
+    pub fn es_selector_de_banco(&self, puerto: u64) -> bool {
+        self.regiones
+            .iter()
+            .any(|r| r.banco.as_ref().is_some_and(|b| b.puerto == puerto))
+    }
+
+    /// Banco visible de la region que se elige con ese puerto.
+    pub fn banco_de_puerto(&self, puerto: u64) -> Option<u64> {
+        self.regiones
+            .iter()
+            .find_map(|r| r.banco.as_ref().filter(|b| b.puerto == puerto))
+            .map(|b| b.activo as u64)
+    }
+
+    /// Banco visible de una region por su nombre, si es conmutable.
+    pub fn banco_activo(&self, region: &str) -> Option<usize> {
+        self.regiones
+            .iter()
+            .find(|r| r.nombre == region)
+            .and_then(|r| r.banco.as_ref())
+            .map(|b| b.activo)
+    }
+
+    /// Escribir `valor` en el puerto selector: se ve el banco `valor` (en vueltas si hay menos).
+    /// No hace nada si el puerto no elige ningun banco.
+    pub fn seleccionar_banco(&mut self, puerto: u64, valor: u64) {
+        let mut suma = self.suma;
+        for r in &mut self.regiones {
+            let Some(b) = r.banco.as_mut().filter(|b| b.puerto == puerto) else {
+                continue;
+            };
+            let nuevo = (valor % b.celdas.len() as u64) as usize;
+            if nuevo == b.activo {
+                continue;
+            }
+            for (i, v) in r.celdas.iter().enumerate() {
+                suma = suma.wrapping_sub(aporte(r.desde + i as u64, *v));
+            }
+            std::mem::swap(&mut r.celdas, &mut b.celdas[nuevo]);
+            std::mem::swap(&mut r.origen, &mut b.origen[nuevo]);
+            // El banco que se oculta pasa a su posicion; el que se ve sale de la suya.
+            b.celdas.swap(b.activo, nuevo);
+            b.origen.swap(b.activo, nuevo);
+            b.activo = nuevo;
+            for (i, v) in r.celdas.iter().enumerate() {
+                suma = suma.wrapping_add(aporte(r.desde + i as u64, *v));
+            }
+        }
+        self.suma = suma;
+    }
+
+    /// Contenido de una celda de un banco concreto de una region, visible o no.
+    pub fn leer_en_banco(
+        &self,
+        region: &str,
+        banco: usize,
+        direccion: u64,
+    ) -> Result<u64, ErrorEjecucion> {
+        let r = self
+            .regiones
+            .iter()
+            .find(|r| r.nombre == region && (r.desde..=r.hasta).contains(&direccion))
+            .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
+        let celda = (direccion - r.desde) as usize;
+        match &r.banco {
+            None if banco == 0 => Ok(r.celdas[celda]),
+            Some(b) if banco == b.activo => Ok(r.celdas[celda]),
+            Some(b) if banco < b.celdas.len() => Ok(b.celdas[banco][celda]),
+            _ => Err(ErrorEjecucion::FueraDeRegion { direccion }),
+        }
     }
 
     /// Indice de la region que contiene la direccion, si hay alguna.
@@ -131,19 +290,11 @@ impl Memoria {
             .map(|i| direccion - self.regiones[i].desde)
     }
 
-    /// Resumen de todo el contenido (FNV-1a sobre las celdas en orden de direccion). Dos memorias
-    /// con el mismo contenido dan el mismo valor; sirve para comparar sin recorrerlas a mano.
+    /// Resumen de todo el contenido. Dos memorias con el mismo contenido dan el mismo valor; sirve
+    /// para comparar sin recorrerlas a mano. Se mantiene al dia en cada escritura, asi que consultarlo
+    /// cuesta lo mismo con una memoria pequena que con una de 64 KiB.
     pub fn suma_de_verificacion(&self) -> u64 {
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for r in &self.regiones {
-            for celda in &r.celdas {
-                for b in celda.to_le_bytes() {
-                    h ^= u64::from(b);
-                    h = h.wrapping_mul(0x0000_0100_0000_01b3);
-                }
-            }
-        }
-        h
+        self.suma
     }
 
     /// Si la direccion cae en alguna region.
@@ -187,9 +338,35 @@ impl Memoria {
             });
         }
         let celda = (direccion - r.desde) as usize;
+        if let Some(t) = &mut self.trafico {
+            t.push(Trafico {
+                direccion,
+                escritura: true,
+            });
+        }
+        let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
+        self.suma = self
+            .suma
+            .wrapping_sub(aporte(direccion, antes))
+            .wrapping_add(aporte(direccion, valor & mascara));
+        if self.registrando {
+            self.escrituras.push(EscrituraRegistrada {
+                direccion,
+                antes,
+                despues: valor & mascara,
+                pc: self.instruccion_actual,
+            });
+        }
         if self.seguimiento {
             r.origen[celda] = DESDE_INSTRUCCION + self.instruccion_actual;
+        }
+        if self.vigiladas_escritura.contains(&direccion) {
+            self.accesos.push(AccesoVigilado {
+                direccion,
+                tipo: TipoAcceso::Escritura,
+                pc: self.instruccion_actual,
+            });
         }
         Ok(())
     }
@@ -216,7 +393,12 @@ impl Memoria {
             .ok_or(ErrorEjecucion::FueraDeRegion { direccion })?;
         let r = &mut self.regiones[i];
         let celda = (direccion - r.desde) as usize;
+        let antes = r.celdas[celda];
         r.celdas[celda] = valor & mascara;
+        self.suma = self
+            .suma
+            .wrapping_sub(aporte(direccion, antes))
+            .wrapping_add(aporte(direccion, valor & mascara));
         if self.seguimiento {
             r.origen[celda] = CARGADA;
         }
@@ -279,8 +461,33 @@ impl Memoria {
                 .iter()
                 .map(|c| if *c == 0 { SIN_ESCRIBIR } else { CARGADA })
                 .collect();
+            if let Some(b) = &mut r.banco {
+                b.origen = b
+                    .celdas
+                    .iter()
+                    .map(|banco| {
+                        banco
+                            .iter()
+                            .map(|c| if *c == 0 { SIN_ESCRIBIR } else { CARGADA })
+                            .collect()
+                    })
+                    .collect();
+            }
         }
         self.seguimiento = true;
+    }
+
+    /// Empieza o deja de anotar los accesos a datos de las instrucciones.
+    pub fn anotar_trafico(&mut self, activo: bool) {
+        self.trafico = activo.then(Vec::new);
+    }
+
+    /// Los accesos a datos anotados desde la ultima llamada, en orden.
+    pub fn tomar_trafico(&mut self) -> Vec<Trafico> {
+        self.trafico
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     pub fn seguimiento_activo(&self) -> bool {
@@ -295,6 +502,19 @@ impl Memoria {
     /// Como `leer`, pero anota si la celda nunca se habia escrito.
     pub fn leer_vigilada(&mut self, direccion: u64) -> Result<u64, ErrorEjecucion> {
         let valor = self.leer(direccion)?;
+        if let Some(t) = &mut self.trafico {
+            t.push(Trafico {
+                direccion,
+                escritura: false,
+            });
+        }
+        if self.vigiladas_lectura.contains(&direccion) {
+            self.accesos.push(AccesoVigilado {
+                direccion,
+                tipo: TipoAcceso::Lectura,
+                pc: self.instruccion_actual,
+            });
+        }
         if self.seguimiento
             && self.origen_de(direccion) == Some(SIN_ESCRIBIR)
             && self.sin_inicializar.len() < MAX_LECTURAS_SIN_INICIALIZAR
@@ -338,6 +558,50 @@ impl Memoria {
     /// Lecturas de celdas sin inicializar desde que se activo el seguimiento.
     pub fn lecturas_sin_inicializar(&self) -> &[LecturaSinInicializar] {
         &self.sin_inicializar
+    }
+
+    /// Empieza a anotar los accesos de las instrucciones a `direccion`. Lo que escribe o carga el
+    /// depurador no cuenta: solo lo que hace el programa.
+    pub fn vigilar(&mut self, direccion: u64, tipo: TipoAcceso) {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.insert(direccion),
+            TipoAcceso::Escritura => self.vigiladas_escritura.insert(direccion),
+        };
+    }
+
+    /// Deja de vigilar. Devuelve `true` si se vigilaba.
+    pub fn dejar_de_vigilar(&mut self, direccion: u64, tipo: TipoAcceso) -> bool {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.remove(&direccion),
+            TipoAcceso::Escritura => self.vigiladas_escritura.remove(&direccion),
+        }
+    }
+
+    /// Direcciones vigiladas para un tipo de acceso, en orden.
+    pub fn vigiladas(&self, tipo: TipoAcceso) -> Vec<u64> {
+        match tipo {
+            TipoAcceso::Lectura => self.vigiladas_lectura.iter().copied().collect(),
+            TipoAcceso::Escritura => self.vigiladas_escritura.iter().copied().collect(),
+        }
+    }
+
+    /// Entrega y olvida los accesos vigilados anotados desde la ultima llamada.
+    pub fn tomar_accesos(&mut self) -> Vec<AccesoVigilado> {
+        std::mem::take(&mut self.accesos)
+    }
+
+    /// Empieza o deja de anotar cada escritura de las instrucciones, con el valor anterior. Lo que
+    /// escribe el depurador no cuenta.
+    pub fn registrar_escrituras(&mut self, activo: bool) {
+        self.registrando = activo;
+        if !activo {
+            self.escrituras.clear();
+        }
+    }
+
+    /// Entrega y olvida las escrituras anotadas desde la ultima llamada.
+    pub fn tomar_escrituras(&mut self) -> Vec<EscrituraRegistrada> {
+        std::mem::take(&mut self.escrituras)
     }
 
     /// Olvida las lecturas sin inicializar anotadas.

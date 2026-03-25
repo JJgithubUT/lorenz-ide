@@ -17,15 +17,131 @@ pub fn validar(m: &Maquina) -> Vec<FalloValidacion> {
     anchos_de_palabra(m, &mut fallos);
     codificaciones_ambiguas(m, &mut fallos);
     campos_y_operandos(m, &mut fallos);
+    sintaxis_de_instrucciones(m, &mut fallos);
     roles_de_registro(m, &mut fallos);
+    pares_de_registros(m, &mut fallos);
+    bancos_de_registros(m, &mut fallos);
     nombres_duplicados(m, &mut fallos);
     regiones(m, &mut fallos);
+    bancos_de_memoria(m, &mut fallos);
     arranque(m, &mut fallos);
     dispositivos_citados(m, &mut fallos);
     banderas_citadas(m, &mut fallos);
     nombres_de_semantica(m, &mut fallos);
     rangos(m, &mut fallos);
     fallos
+}
+
+/// RF-ARQ-012: un banco de registros tiene un selector que existe, al menos dos copias y registros
+/// que existen, son de uso general y no estan en otro banco ni son el propio selector.
+fn bancos_de_registros(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    let mut en_banco: BTreeSet<&str> = BTreeSet::new();
+    for (i, b) in m.bancos_registros.iter().enumerate() {
+        let mut mal = |detalle: String| fallos.push(fallo(Regla::BancoInvalido, detalle));
+        if b.copias < 2 {
+            mal(format!(
+                "el banco {} declara {} copia(s): necesita al menos 2",
+                i + 1,
+                b.copias
+            ));
+        }
+        match m.registro(&b.selector) {
+            None => mal(format!(
+                "el banco {} usa el selector '{}', que no es un registro",
+                i + 1,
+                b.selector
+            )),
+            Some(r) if r.rol == RolRegistro::Fijo => mal(format!(
+                "el selector '{}' es un registro fijo: no se puede cambiar de banco",
+                b.selector
+            )),
+            Some(_) => {}
+        }
+        if b.registros.is_empty() {
+            mal(format!("el banco {} no lista ningun registro", i + 1));
+        }
+        for n in &b.registros {
+            match m.registro(n) {
+                None => mal(format!(
+                    "el banco {} lista '{n}', que no es un registro",
+                    i + 1
+                )),
+                Some(r) if r.rol != RolRegistro::General => mal(format!(
+                    "el registro '{n}' tiene un rol especial y no puede ir en un banco"
+                )),
+                Some(_) => {}
+            }
+            if *n == b.selector {
+                mal(format!(
+                    "el selector '{n}' no puede estar en su propio banco"
+                ));
+            }
+            if !en_banco.insert(n.as_str()) {
+                mal(format!("el registro '{n}' esta en mas de un banco"));
+            }
+        }
+    }
+}
+
+/// RF-ARQ-013: la sintaxis de cada instruccion empieza por su mnemonico y menciona exactamente
+/// sus operandos, cada uno una vez. Sin esto el ensamblador no podria leerla ni el desensamblador
+/// escribirla.
+fn sintaxis_de_instrucciones(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    for ins in &m.instrucciones {
+        let plantilla = match crate::plantilla::Plantilla::analizar(&ins.sintaxis) {
+            Ok(p) => p,
+            Err(e) => {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!("la sintaxis de '{}' no es valida: {}", ins.mnemonico, e),
+                ));
+                continue;
+            }
+        };
+        if !plantilla.mnemonico().eq_ignore_ascii_case(&ins.mnemonico) {
+            fallos.push(fallo(
+                Regla::SintaxisInvalida,
+                format!(
+                    "la sintaxis de '{}' empieza por '{}': debe empezar por su mnemonico",
+                    ins.mnemonico,
+                    plantilla.mnemonico()
+                ),
+            ));
+        }
+        let huecos = plantilla.huecos();
+        let mut vistos: BTreeSet<&str> = BTreeSet::new();
+        for h in &huecos {
+            if !vistos.insert(h) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "la sintaxis de '{}' repite el operando '{}'",
+                        ins.mnemonico, h
+                    ),
+                ));
+            }
+            if !ins.operandos.iter().any(|o| o.nombre == *h) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "la sintaxis de '{}' cita '{{{}}}', que no es un operando suyo",
+                        ins.mnemonico, h
+                    ),
+                ));
+            }
+        }
+        for o in &ins.operandos {
+            if !vistos.contains(o.nombre.as_str()) {
+                fallos.push(fallo(
+                    Regla::SintaxisInvalida,
+                    format!(
+                        "el operando '{}' de '{}' no aparece en su sintaxis",
+                        o.nombre, ins.mnemonico
+                    ),
+                ));
+            }
+        }
+    }
 }
 
 fn fallo(regla: Regla, detalle: String) -> FalloValidacion {
@@ -104,7 +220,7 @@ fn campos_y_operandos(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
         for operando in &ins.operandos {
             if let TipoOperando::Registro { permitidos } = &operando.tipo {
                 for nombre in permitidos {
-                    if m.registro(nombre).is_none() {
+                    if !m.es_registro_o_par(nombre) {
                         fallos.push(fallo(
                             Regla::CampoSinOperando,
                             format!(
@@ -194,8 +310,12 @@ fn nombres_duplicados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     };
 
     revisar(
-        "registros",
-        m.registros.iter().map(|r| r.nombre.as_str()).collect(),
+        "registros o pares de registros",
+        m.registros
+            .iter()
+            .map(|r| r.nombre.as_str())
+            .chain(m.pares.iter().map(|p| p.nombre.as_str()))
+            .collect(),
     );
     revisar(
         "regiones",
@@ -212,6 +332,51 @@ fn nombres_duplicados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
             .map(|i| i.mnemonico.as_str())
             .collect(),
     );
+}
+
+/// RF-ARQ-010: un par junta dos registros generales distintos y declarados, y su ancho cabe en 64
+/// bits.
+fn pares_de_registros(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    for par in &m.pares {
+        let mut bits = 0;
+        for (parte, nombre) in [("alto", &par.alto), ("bajo", &par.bajo)] {
+            match m.registro(nombre) {
+                None => fallos.push(fallo(
+                    Regla::ParInvalido,
+                    format!(
+                        "el registro {parte} '{nombre}' del par '{}' no esta declarado",
+                        par.nombre
+                    ),
+                )),
+                Some(r) if r.rol != RolRegistro::General => fallos.push(fallo(
+                    Regla::ParInvalido,
+                    format!(
+                        "el registro {parte} '{nombre}' del par '{}' no es de uso general",
+                        par.nombre
+                    ),
+                )),
+                Some(r) => bits += r.bits,
+            }
+        }
+        if par.alto == par.bajo {
+            fallos.push(fallo(
+                Regla::ParInvalido,
+                format!(
+                    "el par '{}' usa dos veces el registro '{}'",
+                    par.nombre, par.alto
+                ),
+            ));
+        }
+        if bits > 64 {
+            fallos.push(fallo(
+                Regla::ParInvalido,
+                format!(
+                    "el par '{}' suma {bits} bits y el maximo admitido es 64",
+                    par.nombre
+                ),
+            ));
+        }
+    }
 }
 
 /// RF-ARQ-027: las regiones de memoria no se solapan.
@@ -246,6 +411,45 @@ fn regiones(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                     ),
                 ));
             }
+        }
+    }
+}
+
+/// RF-ARQ-033: una region con bancos tiene al menos dos, un puerto selector que no usa ninguna otra
+/// region, y no es la de un dispositivo; una region sin bancos no declara selector.
+fn bancos_de_memoria(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
+    let mut puertos: BTreeSet<u64> = BTreeSet::new();
+    for r in &m.regiones {
+        let mut mal = |detalle: String| fallos.push(fallo(Regla::BancoMemoriaInvalido, detalle));
+        if r.bancos == 0 {
+            mal(format!("la region '{}' declara 0 bancos", r.nombre));
+        }
+        if r.bancos > 1 {
+            match r.selector_puerto {
+                None => mal(format!(
+                    "la region '{}' tiene {} bancos pero no dice con que puerto se elige el banco (selector_puerto)",
+                    r.nombre, r.bancos
+                )),
+                Some(p) => {
+                    if !puertos.insert(p) {
+                        mal(format!(
+                            "el puerto {p:#x} elige el banco de mas de una region ('{}' entre ellas)",
+                            r.nombre
+                        ));
+                    }
+                }
+            }
+            if r.dispositivo.is_some() {
+                mal(format!(
+                    "la region '{}' es de un dispositivo y no puede tener bancos",
+                    r.nombre
+                ));
+            }
+        } else if r.selector_puerto.is_some() {
+            mal(format!(
+                "la region '{}' declara selector_puerto pero solo tiene un banco",
+                r.nombre
+            ));
         }
     }
 }
@@ -335,6 +539,22 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
                     dispositivo.nombre
                 ),
             ));
+        }
+    }
+
+    for dispositivo in &m.dispositivos {
+        if dispositivo.tipo == TipoDispositivo::Dma {
+            for p in ["origen", "destino", "cuenta", "control"] {
+                if !dispositivo.puertos.contains_key(p) {
+                    fallos.push(fallo(
+                        Regla::ValorFueraDeRango,
+                        format!(
+                            "el controlador DMA '{}' necesita el puerto '{p}'",
+                            dispositivo.nombre
+                        ),
+                    ));
+                }
+            }
         }
     }
 
@@ -496,7 +716,7 @@ fn nombres_de_semantica(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
             _ => false,
         };
         let existe = |n: &str| {
-            es_operando(n) || m.registro(n).is_some() || m.bandera(n).is_some() || es_alias(n)
+            es_operando(n) || m.es_registro_o_par(n) || m.bandera(n).is_some() || es_alias(n)
         };
 
         for nombre in ins.programa.nombres_leidos() {

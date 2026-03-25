@@ -1,0 +1,16 @@
+[package]
+name = "lorenz-ens"
+description = "Ensamblador y desensamblador generados a partir de una descripcion de arquitectura"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+thiserror.workspace = true
+toml.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+lorenz-emu = { path = "../lorenz-emu" }

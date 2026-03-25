@@ -32,6 +32,39 @@ struct Almacen {
     error: bool,
 }
 
+/// Papel de un puerto dentro de un controlador DMA.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PapelDma {
+    Origen,
+    Destino,
+    Cuenta,
+    /// Escribir con el bit 0 encendido pide la transferencia.
+    Control,
+    /// Bit 0: listo. Bit 1: la ultima transferencia fallo.
+    Estado,
+}
+
+/// Registros de un controlador de acceso directo a memoria (RF-CIC-022).
+#[derive(Debug, Clone)]
+struct Dma {
+    nombre: String,
+    origen: u64,
+    destino: u64,
+    cuenta: u64,
+    error: bool,
+    linea: Option<u32>,
+}
+
+/// Una transferencia pedida y todavia no realizada.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SolicitudDma {
+    pub dispositivo: String,
+    pub origen: u64,
+    pub destino: u64,
+    pub cuenta: u64,
+    pub linea: Option<u32>,
+}
+
 /// Dispositivo generico: su script y los puertos que declara.
 #[derive(Debug, Clone)]
 struct Script {
@@ -47,6 +80,8 @@ struct Puerto {
     script: Option<usize>,
     /// Dispositivo de bloques al que pertenece y que papel juega en el.
     almacen: Option<(usize, Papel)>,
+    /// Controlador DMA al que pertenece y que papel juega en el.
+    dma: Option<(usize, PapelDma)>,
     entrada: VecDeque<u64>,
     salida: Vec<u64>,
     /// Si es el puerto de estado de un teclado o una UART: el puerto de datos del que informa y
@@ -65,6 +100,9 @@ pub struct Puertos {
     puertos: BTreeMap<u64, Puerto>,
     almacenes: Vec<Almacen>,
     scripts: Vec<Script>,
+    dmas: Vec<Dma>,
+    /// Transferencias DMA pedidas que el emulador aun no realizo.
+    solicitudes: Vec<usize>,
     /// Lineas de interrupcion que los scripts pidieron y el emulador aun no recogio.
     pedidas: Vec<u32>,
     mascara: u64,
@@ -75,6 +113,7 @@ impl Puertos {
         let mut puertos = BTreeMap::new();
         let mut almacenes = Vec::new();
         let mut scripts = Vec::new();
+        let mut dmas = Vec::new();
         for d in &maquina.dispositivos {
             for numero in d.puertos.values() {
                 puertos.insert(*numero, Puerto::default());
@@ -102,6 +141,28 @@ impl Puertos {
                 ] {
                     if let Some(p) = d.puertos.get(nombre).and_then(|n| puertos.get_mut(n)) {
                         p.almacen = Some((indice, papel));
+                    }
+                }
+            }
+            if d.tipo == TipoDispositivo::Dma {
+                let indice = dmas.len();
+                dmas.push(Dma {
+                    nombre: d.nombre.clone(),
+                    origen: 0,
+                    destino: 0,
+                    cuenta: 0,
+                    error: false,
+                    linea: d.interrupcion,
+                });
+                for (nombre, papel) in [
+                    ("origen", PapelDma::Origen),
+                    ("destino", PapelDma::Destino),
+                    ("cuenta", PapelDma::Cuenta),
+                    ("control", PapelDma::Control),
+                    ("estado", PapelDma::Estado),
+                ] {
+                    if let Some(p) = d.puertos.get(nombre).and_then(|n| puertos.get_mut(n)) {
+                        p.dma = Some((indice, papel));
                     }
                 }
             }
@@ -139,6 +200,8 @@ impl Puertos {
             puertos,
             almacenes,
             scripts,
+            dmas,
+            solicitudes: Vec::new(),
             pedidas: Vec::new(),
             mascara: mascara_de(maquina.bits_palabra),
         }
@@ -170,6 +233,16 @@ impl Puertos {
         if let Some((i, papel)) = self.puerto(numero)?.almacen {
             return Ok(self.leer_almacen(i, papel));
         }
+        if let Some((i, papel)) = self.puerto(numero)?.dma {
+            let d = &self.dmas[i];
+            return Ok(match papel {
+                PapelDma::Origen => d.origen,
+                PapelDma::Destino => d.destino,
+                PapelDma::Cuenta => d.cuenta,
+                PapelDma::Control => 0,
+                PapelDma::Estado => 1 | (u64::from(d.error) << 1),
+            });
+        }
         if let Some(valor) = self.puerto(numero)?.publicado {
             return Ok(valor);
         }
@@ -193,6 +266,17 @@ impl Puertos {
         let mascara = self.mascara;
         if let Some((i, papel)) = self.puerto(numero)?.almacen {
             self.escribir_almacen(i, papel, valor & mascara);
+            return Ok(());
+        }
+        if let Some((i, papel)) = self.puerto(numero)?.dma {
+            let d = &mut self.dmas[i];
+            match papel {
+                PapelDma::Origen => d.origen = valor & mascara,
+                PapelDma::Destino => d.destino = valor & mascara,
+                PapelDma::Cuenta => d.cuenta = valor & mascara,
+                PapelDma::Control if valor & 1 == 1 => self.solicitudes.push(i),
+                PapelDma::Control | PapelDma::Estado => {}
+            }
             return Ok(());
         }
         if let Some(i) = self.puerto(numero)?.script {
@@ -261,6 +345,30 @@ impl Puertos {
         match self.scripts.iter().position(|s| s.nombre == dispositivo) {
             Some(i) => self.ejecutar_script(i, desplazamiento, valor & self.mascara),
             None => Ok(()),
+        }
+    }
+
+    /// Transferencias DMA pedidas desde la ultima vez, en orden.
+    pub fn tomar_solicitudes_dma(&mut self) -> Vec<SolicitudDma> {
+        std::mem::take(&mut self.solicitudes)
+            .into_iter()
+            .map(|i| {
+                let d = &self.dmas[i];
+                SolicitudDma {
+                    dispositivo: d.nombre.clone(),
+                    origen: d.origen,
+                    destino: d.destino,
+                    cuenta: d.cuenta,
+                    linea: d.linea,
+                }
+            })
+            .collect()
+    }
+
+    /// El controlador anota como termino su ultima transferencia.
+    pub fn terminar_dma(&mut self, dispositivo: &str, error: bool) {
+        if let Some(d) = self.dmas.iter_mut().find(|d| d.nombre == dispositivo) {
+            d.error = error;
         }
     }
 

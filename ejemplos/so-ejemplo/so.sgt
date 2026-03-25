@@ -1,0 +1,80 @@
+// Lorenz OS: un sistema operativo minimo escrito en SGT (RF-ECO-039, RF-ECO-040, RF-ECO-042).
+//
+// Es un proyecto independiente del nucleo de Lorenz: solo usa el compilador y la descripcion de
+// maquina de esta carpeta. Tiene cargador de arranque (`arranque.sgt`), manejadores de
+// interrupcion (`teclado.sgt` y `reloj.sgt`) y controladores de pantalla y teclado
+// (`pantalla.sgt` y `teclado.sgt`). Este archivo es el nucleo: una consola de una linea.
+//
+// Para empezar un proyecto nuevo, copia esta carpeta (vease README.md) y cambia lo que haga falta.
+
+importar arranque { arrancar };
+importar pantalla { borrar, escribir, escribir_texto, escribir_numero, nueva_linea };
+importar teclado { leer };
+importar reloj { tics_desde_el_arranque };
+
+const TAMANO_LINEA: u16 = 15;
+
+var linea: [u16; 16];
+var largo: u16;
+
+var cmd_limpiar: [u16; 8] = "LIMPIAR";
+var cmd_hora: [u16; 8] = "HORA";
+var cmd_ayuda: [u16; 8] = "AYUDA";
+var txt_ayuda: [u16; 24] = "HORA LIMPIAR";
+var txt_desconocido: [u16; 8] = "NO SE";
+var indicador: [u16; 4] = ">";
+
+/// Pasa a mayusculas lo que se teclea, para comparar con las ordenes.
+funcion mayuscula(c: u16) -> u16 {
+    si c >= 97 && c <= 122 {
+        devolver c - 32;
+    }
+    devolver c;
+}
+
+funcion mostrar_indicador() {
+    escribir_texto(&indicador[0]);
+}
+
+/// Ejecuta la orden que hay en `linea`.
+funcion ejecutar() {
+    linea[largo] = 0;
+    si largo == 0 {
+        devolver;
+    }
+    si cad_comparar(&linea[0], &cmd_limpiar[0]) == 0 {
+        borrar();
+    } sino si cad_comparar(&linea[0], &cmd_hora[0]) == 0 {
+        escribir_numero(tics_desde_el_arranque());
+        nueva_linea();
+    } sino si cad_comparar(&linea[0], &cmd_ayuda[0]) == 0 {
+        escribir_texto(&txt_ayuda[0]);
+        nueva_linea();
+    } sino {
+        escribir_texto(&txt_desconocido[0]);
+        nueva_linea();
+    }
+}
+
+funcion principal() {
+    arrancar();
+    mostrar_indicador();
+    bucle {
+        var c: u16 = mayuscula(leer());
+        si c == 10 {
+            nueva_linea();
+            ejecutar();
+            largo = 0;
+            mostrar_indicador();
+        } sino si c == 8 {
+            si largo > 0 {
+                largo -= 1;
+                escribir(8);
+            }
+        } sino si largo < TAMANO_LINEA {
+            linea[largo] = c;
+            largo += 1;
+            escribir(c);
+        }
+    }
+}

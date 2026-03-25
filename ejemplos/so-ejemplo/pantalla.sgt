@@ -1,0 +1,166 @@
+// Controlador de pantalla (RF-ECO-040).
+//
+// La pantalla es un dispositivo de 64x32 pixeles que se dibuja escribiendo un indice de color por
+// palabra en su region de memoria, a partir de 0xE000. Cada caracter ocupa 3x5 pixeles mas uno de
+// separacion, asi que caben 16 columnas y 5 filas de texto.
+
+const ANCHO: u16 = 64;
+const ALTO: u16 = 32;
+const COLUMNAS: u16 = 16;
+const FILAS: u16 = 5;
+
+var video: [u16; 2048] @ 0xE000;
+var columna: u16;
+var fila: u16;
+
+/// Los 15 bits del dibujo de un caracter, por filas de arriba abajo y de izquierda a derecha.
+funcion glifo(c: u16) -> u16 {
+    segun c {
+        48 => { devolver 31599; }  // 0
+        49 => { devolver 11415; }  // 1
+        50 => { devolver 25255; }  // 2
+        51 => { devolver 25230; }  // 3
+        52 => { devolver 23497; }  // 4
+        53 => { devolver 31118; }  // 5
+        54 => { devolver 14831; }  // 6
+        55 => { devolver 29330; }  // 7
+        56 => { devolver 31727; }  // 8
+        57 => { devolver 31694; }  // 9
+        65 => { devolver 11245; }  // A
+        66 => { devolver 27566; }  // B
+        67 => { devolver 14627; }  // C
+        68 => { devolver 27502; }  // D
+        69 => { devolver 31143; }  // E
+        70 => { devolver 31140; }  // F
+        71 => { devolver 14699; }  // G
+        72 => { devolver 23533; }  // H
+        73 => { devolver 29847; }  // I
+        74 => { devolver 4714; }  // J
+        75 => { devolver 23469; }  // K
+        76 => { devolver 18727; }  // L
+        77 => { devolver 24557; }  // M
+        78 => { devolver 27501; }  // N
+        79 => { devolver 11114; }  // O
+        80 => { devolver 27556; }  // P
+        81 => { devolver 11131; }  // Q
+        82 => { devolver 27565; }  // R
+        83 => { devolver 14478; }  // S
+        84 => { devolver 29842; }  // T
+        85 => { devolver 23407; }  // U
+        86 => { devolver 23402; }  // V
+        87 => { devolver 23549; }  // W
+        88 => { devolver 23213; }  // X
+        89 => { devolver 23186; }  // Y
+        90 => { devolver 29351; }  // Z
+        46 => { devolver 2; }  // .
+        44 => { devolver 20; }  // ,
+        33 => { devolver 9346; }  // !
+        63 => { devolver 25218; }  // ?
+        58 => { devolver 1040; }  // :
+        45 => { devolver 448; }  // -
+        62 => { devolver 17492; }  // >
+        95 => { devolver 7; }  // _
+        47 => { devolver 4772; }  // /
+        otro => { devolver 0; }
+    }
+}
+
+funcion poner_pixel(x: u16, y: u16, color: u16) {
+    si x < ANCHO && y < ALTO {
+        video[y * ANCHO + x] = color;
+    }
+}
+
+/// Pone a cero toda la pantalla y lleva el cursor a la esquina.
+funcion borrar() {
+    mem_llenar(&video[0], 0, 2048);
+    columna = 0;
+    fila = 0;
+}
+
+/// Dibuja el caracter `c` en la casilla (`col`, `fil`).
+funcion dibujar(col: u16, fil: u16, c: u16) {
+    var bits: u16 = glifo(c);
+    var x0: u16 = col * 4;
+    var y0: u16 = fil * 6;
+    var f: u16 = 0;
+    mientras f < 5 {
+        var k: u16 = 0;
+        mientras k < 4 {
+            var color: u16 = 0;
+            si k < 3 {
+                var mascara: u16 = 1 << (14 - f * 3 - k);
+                si (bits & mascara) != 0 { color = 1; }
+            }
+            poner_pixel(x0 + k, y0 + f, color);
+            k += 1;
+        }
+        f += 1;
+    }
+}
+
+/// Sube el texto una fila y deja libre la de abajo.
+funcion subir() {
+    mem_copiar(&video[0], &video[384], 1536);
+    mem_llenar(&video[1536], 0, 384);
+}
+
+funcion nueva_linea() {
+    columna = 0;
+    si fila + 1 >= FILAS {
+        subir();
+    } sino {
+        fila += 1;
+    }
+}
+
+/// Escribe un caracter en el cursor: 10 es salto de linea y 8 borra el anterior.
+funcion escribir(c: u16) {
+    si c == 10 {
+        nueva_linea();
+        devolver;
+    }
+    si c == 8 {
+        si columna > 0 {
+            columna -= 1;
+            dibujar(columna, fila, 32);
+        }
+        devolver;
+    }
+    si c >= 97 && c <= 122 {
+        c -= 32;
+    }
+    si columna >= COLUMNAS {
+        nueva_linea();
+    }
+    dibujar(columna, fila, c);
+    columna += 1;
+}
+
+/// Escribe un texto terminado en cero.
+funcion escribir_texto(t: *u16) {
+    var i: u16 = 0;
+    mientras t[i] != 0 {
+        escribir(t[i]);
+        i += 1;
+    }
+}
+
+/// Escribe un numero en decimal.
+funcion escribir_numero(n: u16) {
+    var digitos: [u16; 5];
+    var cuantos: u16 = 0;
+    si n == 0 {
+        escribir(48);
+        devolver;
+    }
+    mientras n != 0 {
+        digitos[cuantos] = 48 + n % 10;
+        n = n / 10;
+        cuantos += 1;
+    }
+    mientras cuantos != 0 {
+        cuantos -= 1;
+        escribir(digitos[cuantos]);
+    }
+}

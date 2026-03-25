@@ -1,0 +1,387 @@
+# Maquina de 8 bits con mas variedad que ejemplo-8: resta, logica, desplazamientos, pila,
+# saltos relativos, puertos y banderas explicitas. Sirve para poner a prueba la conformidad.
+
+[maquina]
+nombre         = "rica-8"
+formato        = "0.1"
+bits_palabra   = 8
+bits_direccion = 16
+endianness     = "little"
+arranque       = 0x0000
+pila           = "descendente"
+
+[flags]
+Z = { bit = 0, descripcion = "cero" }
+C = { bit = 1, descripcion = "acarreo" }
+N = { bit = 2, descripcion = "negativo" }
+V = { bit = 3, descripcion = "desbordamiento" }
+
+[[registro]]
+nombre = "A"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "B"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "C"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "D"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "SP"
+bits = 16
+rol = "sp"
+inicial = 0xEFFF
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+[[registro]]
+nombre = "F"
+bits = 8
+rol = "flags"
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 ...."
+semantica = ""
+ciclos    = 1
+descripcion = "NOP."
+
+[[instruccion]]
+mnemonico = "MOV"
+sintaxis  = "MOV {rd}, {rs}"
+codigo    = "0001 rd:2 rs:2"
+semantica = "rd = rs"
+ciclos    = 1
+descripcion = "MOV."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "LDI"
+sintaxis  = "LDI {rd}, {imm}"
+codigo    = "0010 rd:2 .. | imm:8"
+semantica = "rd = imm"
+ciclos    = 2
+descripcion = "LDI."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD {rd}, {rs}"
+codigo    = "0011 rd:2 rs:2"
+semantica = "rd = rd + rs"
+afecta    = ["Z", "C", "N"]
+ciclos    = 1
+descripcion = "ADD."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "SUB"
+sintaxis  = "SUB {rd}, {rs}"
+codigo    = "0100 rd:2 rs:2"
+semantica = "rd = rd - rs"
+afecta    = ["Z", "C", "N"]
+ciclos    = 1
+descripcion = "SUB."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "AND"
+sintaxis  = "AND {rd}, {rs}"
+codigo    = "0101 rd:2 rs:2"
+semantica = "rd = rd & rs"
+afecta    = ["Z", "N"]
+ciclos    = 1
+descripcion = "AND."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "XOR"
+sintaxis  = "XOR {rd}, {rs}"
+codigo    = "0110 rd:2 rs:2"
+semantica = "rd = rd ^ rs"
+afecta    = ["Z", "N"]
+ciclos    = 1
+descripcion = "XOR."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "CMP"
+sintaxis  = "CMP {rd}, {rs}"
+codigo    = "0111 rd:2 rs:2"
+semantica = "Z = rd == rs; C = rd < rs; N = ((rd - rs) >> 7) & 1"
+afecta    = ["Z", "C", "N"]
+ciclos    = 1
+descripcion = "CMP."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "ADDI"
+sintaxis  = "ADDI {rd}, {imm}"
+codigo    = "1000 rd:2 .. | imm:8"
+semantica = "rd = rd + imm"
+afecta    = ["Z", "C", "N"]
+ciclos    = 2
+descripcion = "ADDI."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = true
+  rango = [-128, 127]
+
+[[instruccion]]
+mnemonico = "SHL"
+sintaxis  = "SHL {rd}"
+codigo    = "1001 rd:2 00"
+semantica = "rd = rd << 1"
+afecta    = ["Z", "C", "N"]
+ciclos    = 1
+descripcion = "SHL."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "SHR"
+sintaxis  = "SHR {rd}"
+codigo    = "1001 rd:2 01"
+semantica = "rd = rd >> 1"
+afecta    = ["Z", "N"]
+ciclos    = 1
+descripcion = "SHR."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "NEG"
+sintaxis  = "NEG {rd}"
+codigo    = "1001 rd:2 10"
+semantica = "rd = -rd"
+afecta    = ["Z", "C", "N"]
+ciclos    = 1
+descripcion = "NEG."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "INC"
+sintaxis  = "INC {rd}"
+codigo    = "1001 rd:2 11"
+semantica = "rd = rd + 1; V = rd == 128"
+afecta    = ["Z", "N", "V"]
+ciclos    = 1
+descripcion = "INC."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "BRA"
+sintaxis  = "BRA {rel}"
+codigo    = "1010 0000 | rel:8"
+semantica = "pc = pc + rel"
+ciclos    = 3
+descripcion = "BRA."
+  [[instruccion.operando]]
+  nombre = "rel"
+  tipo = "desplazamiento"
+
+[[instruccion]]
+mnemonico = "BNE"
+sintaxis  = "BNE {rel}"
+codigo    = "1010 0001 | rel:8"
+semantica = "si !Z: pc = pc + rel"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "BNE."
+  [[instruccion.operando]]
+  nombre = "rel"
+  tipo = "desplazamiento"
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1010 1111"
+semantica = "detener"
+ciclos    = 1
+descripcion = "HLT."
+
+[[instruccion]]
+mnemonico = "PUSH"
+sintaxis  = "PUSH {rs}"
+codigo    = "1011 00 rs:2"
+semantica = "sp = sp - 1; mem[sp] = rs"
+ciclos    = 2
+descripcion = "PUSH."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "POP"
+sintaxis  = "POP {rd}"
+codigo    = "1011 01 rd:2"
+semantica = "rd = mem[sp]; sp = sp + 1"
+afecta    = ["Z"]
+ciclos    = 2
+descripcion = "POP."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "RET"
+sintaxis  = "RET"
+codigo    = "1011 1000"
+semantica = "pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2"
+ciclos    = 3
+descripcion = "RET."
+
+[[instruccion]]
+mnemonico = "CALL"
+sintaxis  = "CALL {dir}"
+codigo    = "1100 .... | dir:8 | dir:8"
+semantica = "sp = sp - 2; mem[sp] = pc & 255; mem[sp + 1] = (pc >> 8) & 255; pc = dir"
+ciclos    = 4
+descripcion = "CALL."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "IN"
+sintaxis  = "IN {rd}, {puerto}"
+codigo    = "1101 rd:2 .. | puerto:8"
+semantica = "rd = in[puerto]"
+afecta    = ["Z"]
+ciclos    = 3
+descripcion = "IN."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "puerto"
+  tipo = "puerto"
+
+[[instruccion]]
+mnemonico = "OUT"
+sintaxis  = "OUT {puerto}, {rs}"
+codigo    = "1110 rs:2 .. | puerto:8"
+semantica = "out[puerto] = rs"
+ciclos    = 3
+descripcion = "OUT."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "puerto"
+  tipo = "puerto"
+
+[[instruccion]]
+mnemonico = "DIV"
+sintaxis  = "DIV {rd}, {rs}"
+codigo    = "1111 rd:2 rs:2"
+semantica = "rd = rd / rs"
+afecta    = ["Z"]
+ciclos    = 6
+descripcion = "DIV."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[region]]
+nombre = "rom"
+desde  = 0x0000
+hasta  = 0x1FFF
+acceso = "r"
+
+[[region]]
+nombre = "ram"
+desde  = 0x2000
+hasta  = 0xEFFF
+acceso = "rw"
