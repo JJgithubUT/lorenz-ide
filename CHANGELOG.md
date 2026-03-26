@@ -1,5 +1,39 @@
 # Registro de cambios
 
+## 0.2.0 — 2026-10-16 — Fases 2 a 5 (sin IDE ni GPU)
+
+Cubre herramientas alrededor del emulador, el lenguaje SGT y la simulacion ciclo a ciclo.
+Los requisitos del entorno grafico (IDE) y de la unidad grafica (GPU) siguen pendientes.
+
+### Herramientas (fase 2)
+
+- Ensamblador, desensamblador y enlazador generados desde la descripcion de la maquina, con
+  macros, inclusiones y avisos de banderas indeterminadas.
+- Depurador de linea de comandos con rupturas, observaciones, traza, retroceso a cualquier
+  instante, busqueda de quien escribio o cambio un valor, inyeccion de fallos (`inyectar`) y
+  exploracion de ordenes de eventos (`explorar`).
+- Pruebas como parte del proyecto: `probar`, conformidad, pruebas aleatorias, regresion y
+  compatibilidad.
+- Fallos reproducibles, documentacion generada de la arquitectura, `lorenz nuevo`.
+- Bancos de registros (`[[banco]]`) y de memoria (`bancos` en `[[region]]`).
+
+### Lenguaje SGT (fases 3 y 4)
+
+- Compilador a cualquier maquina descrita: optimizacion de 0 a 3, costes en ciclos por funcion,
+  biblioteca, enteros anchos, maquinas de 8 bits, dispositivos, interrupciones, modulos y
+  disposicion fijada de estructuras (`@ n`).
+- Ejemplo de sistema operativo en varios modulos (Lorenz OS).
+
+### Ciclos, cache y bus (fase 5 y parte de la 6)
+
+- `lorenz ciclos`: pipeline configurable con riesgos de datos y de control, predictores, cache,
+  latencias por region, vista y diagrama ciclo a ciclo, perfil, mapa de calor, historico por
+  version de la arquitectura y comparacion entre descripciones.
+- Controlador DMA (`tipo = "dma"`) y bus compartido con contencion (`[bus]`).
+- `lorenz sugerir`: instrucciones nuevas que acortarian los programas.
+
+Detalle en `docs/CICLOS.md`, `docs/FORMATO.md` y `docs/BITACORA.md`.
+
 ## 0.1.0 — 2026-10-16 — Fase 1: formato de arquitectura y emulador
 
 Primera version utilizable. Cubre los 46 requisitos RF-EMU de la ERS y la parte de RF-ARQ que el
