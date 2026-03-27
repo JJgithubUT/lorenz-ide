@@ -1,0 +1,265 @@
+# Maquina de ejemplo de 8 bits.
+# Caso de prueba de referencia del cargador y primera plantilla de proyecto.
+
+[maquina]
+nombre         = "ejemplo-8-ciclos"
+formato        = "0.1"
+bits_palabra   = 8
+bits_direccion = 16
+endianness     = "little"
+arranque       = 0x0000
+pila           = "descendente"
+
+[maquina.interrupciones]
+vectores = { 0 = 0xEFF0, 1 = 0xEFF2 }
+habilitadas_al_arrancar = false
+
+[flags]
+Z = { bit = 0, descripcion = "resultado igual a cero" }
+C = { bit = 1, descripcion = "acarreo" }
+
+[[registro]]
+nombre = "A"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "B"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "C"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "D"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "SP"
+bits = 16
+rol = "sp"
+inicial = 0xEFFF
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+[[registro]]
+nombre = "F"
+bits = 8
+rol = "flags"
+
+# --- instrucciones ---
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 ...."
+semantica = ""
+ciclos    = 1
+descripcion = "No hace nada y consume un ciclo."
+
+[[instruccion]]
+mnemonico = "MOV"
+sintaxis  = "MOV {rd}, {rs}"
+codigo    = "0001 rd:2 rs:2"
+semantica = "rd = rs"
+ciclos    = 1
+descripcion = "Copia un registro en otro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "LDI"
+sintaxis  = "LDI {rd}, {imm}"
+codigo    = "0010 rd:2 .. | imm:8"
+semantica = "rd = imm"
+ciclos    = 2
+descripcion = "Carga una constante en un registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD {rd}, {rs}"
+codigo    = "0011 rd:2 rs:2"
+semantica = "rd = rd + rs"
+afecta    = ["Z", "C"]
+ciclos    = 2
+descripcion = "Suma dos registros y deja el resultado en el primero."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+
+[[instruccion]]
+mnemonico = "LD"
+sintaxis  = "LD {rd}, [{dir}]"
+codigo    = "0100 rd:2 .. | dir:8 | dir:8"
+semantica = "rd = mem[dir]"
+ciclos    = 4
+descripcion = "Lee memoria en un registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "ST"
+sintaxis  = "ST [{dir}], {rs}"
+codigo    = "0101 rs:2 .. | dir:8 | dir:8"
+semantica = "mem[dir] = rs"
+ciclos    = 4
+descripcion = "Escribe un registro en memoria."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["A", "B", "C", "D"]
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "JZ"
+sintaxis  = "JZ {dir}"
+codigo    = "0110 .... | dir:8 | dir:8"
+semantica = "si Z: pc = dir"
+ciclos    = { tomado = 3, no_tomado = 2 }
+descripcion = "Salta si la bandera Z esta encendida."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "RETI"
+sintaxis  = "RETI"
+codigo    = "0111 0000"
+semantica = "pc = mem[sp] | (mem[sp + 1] << 8); sp = sp + 2; ie = 1"
+ciclos    = 4
+descripcion = "Vuelve de una interrupcion: recupera el pc de la pila y habilita las interrupciones."
+
+[[instruccion]]
+mnemonico = "EI"
+sintaxis  = "EI"
+codigo    = "0111 0001"
+semantica = "ie = 1"
+ciclos    = 1
+descripcion = "Habilita las interrupciones."
+
+[[instruccion]]
+mnemonico = "DI"
+sintaxis  = "DI"
+codigo    = "0111 0010"
+semantica = "ie = 0"
+ciclos    = 1
+descripcion = "Inhabilita las interrupciones."
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 ...."
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+
+# --- memoria y dispositivos ---
+
+[[region]]
+nombre  = "rom"
+latencia = 2
+desde  = 0x0000
+hasta  = 0x1FFF
+acceso = "r"
+
+[[region]]
+nombre  = "ram"
+desde   = 0x2000
+hasta   = 0xEFFF
+acceso  = "rw"
+latencia = 4
+
+[[region]]
+nombre      = "video"
+desde       = 0xF000
+hasta       = 0xF0FF
+acceso      = "rw"
+dispositivo = "pantalla"
+
+[[dispositivo]]
+nombre  = "pantalla"
+tipo    = "pantalla"
+ancho   = 64
+alto    = 32
+formato = "indice1"
+
+[[dispositivo]]
+nombre       = "teclado"
+tipo         = "teclado"
+puertos      = { datos = 0x01, estado = 0x02 }
+interrupcion = 1
+
+# ---------------------------------------------------------------------------------------------
+# Temporizacion (fase 5). El emulador funcional ignora estas secciones; `lorenz ciclos` las usa.
+# ---------------------------------------------------------------------------------------------
+
+[pipeline]
+adelantamiento = true
+prediccion     = "2-bits"
+
+[[pipeline.etapa]]
+nombre = "IF"
+hace   = ["leer la instruccion en pc", "avanzar pc"]
+
+[[pipeline.etapa]]
+nombre = "ID"
+hace   = ["decodificar", "leer los registros fuente"]
+
+[[pipeline.etapa]]
+nombre = "EX"
+hace   = ["operar en la ALU", "decidir el salto"]
+
+[[pipeline.etapa]]
+nombre = "MEM"
+hace   = ["leer o escribir la memoria de datos"]
+
+[[pipeline.etapa]]
+nombre = "WB"
+hace   = ["escribir el registro destino"]
+
+# Una cache pequena delante de la memoria de datos.
+[cache]
+tamano           = 16
+linea            = 4
+vias             = 2
+reemplazo        = "lru"
+escritura        = "post-escritura"
+latencia_acierto = 1

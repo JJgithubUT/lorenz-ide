@@ -27,6 +27,10 @@ struct ArchivoCrudo {
     flags: BTreeMap<String, BanderaCruda>,
     #[serde(default, rename = "registro")]
     registros: Vec<RegistroCrudo>,
+    #[serde(default, rename = "par")]
+    pares: Vec<ParCrudo>,
+    #[serde(default, rename = "banco")]
+    bancos: Vec<BancoCrudo>,
     #[serde(default, rename = "instruccion")]
     instrucciones: Vec<InstruccionCruda>,
     #[serde(default, rename = "region")]
@@ -86,6 +90,20 @@ struct RegistroCrudo {
     inicial: u64,
 }
 
+#[derive(Debug, Deserialize)]
+struct BancoCrudo {
+    selector: String,
+    registros: Vec<String>,
+    copias: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct ParCrudo {
+    nombre: String,
+    alto: String,
+    bajo: String,
+}
+
 fn rol_por_defecto() -> String {
     "general".to_string()
 }
@@ -131,6 +149,14 @@ struct RegionCruda {
     dispositivo: Option<String>,
     #[serde(default)]
     contenido: Option<String>,
+    #[serde(default = "un_banco")]
+    bancos: u32,
+    #[serde(default)]
+    selector_puerto: Option<u64>,
+}
+
+fn un_banco() -> u32 {
+    1
 }
 
 fn acceso_por_defecto() -> String {
@@ -166,9 +192,25 @@ struct DispositivoCrudo {
 // ---------------------------------------------------------------------------
 
 /// Lee y valida una descripcion de arquitectura desde un archivo.
+///
+/// Si la descripcion hereda de otra (`hereda` en `[maquina]`), el padre se busca junto a ella
+/// (RF-ARQ-035).
 pub fn cargar_archivo(ruta: impl AsRef<Path>) -> Result<Maquina, ErrorArquitectura> {
+    let ruta = ruta.as_ref();
     let texto = std::fs::read_to_string(ruta)?;
-    cargar(&texto)
+    let canonica = ruta.canonicalize().unwrap_or_else(|_| ruta.to_path_buf());
+    construir(&texto, ruta.parent(), &mut vec![canonica])
+}
+
+/// La descripcion de un archivo con su herencia ya mezclada, sin validar.
+///
+/// Sirve a las herramientas que leen secciones propias de la descripcion (la temporizacion, por
+/// ejemplo) y quieren ver lo mismo que ve el cargador: lo heredado y lo redefinido.
+pub fn mezclar_archivo(ruta: impl AsRef<Path>) -> Result<toml::Table, ErrorArquitectura> {
+    let ruta = ruta.as_ref();
+    let texto = std::fs::read_to_string(ruta)?;
+    let canonica = ruta.canonicalize().unwrap_or_else(|_| ruta.to_path_buf());
+    crate::herencia::resolver(&texto, ruta.parent(), &mut vec![canonica])
 }
 
 /// Lee y valida una descripcion de arquitectura desde su texto TOML.
@@ -176,7 +218,16 @@ pub fn cargar_archivo(ruta: impl AsRef<Path>) -> Result<Maquina, ErrorArquitectu
 /// Devuelve la maquina solo si pasa todas las reglas de validacion; en caso contrario devuelve la
 /// lista completa de fallos, no solo el primero.
 pub fn cargar(texto: &str) -> Result<Maquina, ErrorArquitectura> {
-    let crudo: ArchivoCrudo = toml::from_str(texto)?;
+    construir(texto, None, &mut Vec::new())
+}
+
+fn construir(
+    texto: &str,
+    carpeta: Option<&Path>,
+    visitados: &mut Vec<std::path::PathBuf>,
+) -> Result<Maquina, ErrorArquitectura> {
+    let mezclado = crate::herencia::resolver(texto, carpeta, visitados)?;
+    let crudo: ArchivoCrudo = toml::Value::Table(mezclado).try_into()?;
 
     comprobar_version(&crudo.maquina.formato)?;
 
@@ -184,6 +235,7 @@ pub fn cargar(texto: &str) -> Result<Maquina, ErrorArquitectura> {
     let maquina = convertir(crudo, &mut fallos)?;
 
     fallos.extend(validacion::validar(&maquina));
+    crate::localizar::situar(texto, &mut fallos);
 
     if fallos.is_empty() {
         Ok(maquina)
@@ -284,7 +336,7 @@ fn convertir(
                 causa: e.to_string(),
             })?;
 
-        let operandos = i
+        let operandos: Vec<Operando> = i
             .operandos
             .into_iter()
             .map(|o| {
@@ -317,8 +369,17 @@ fn convertir(
 
         let ciclos = convertir_ciclos(i.ciclos.as_ref(), &i.mnemonico, fallos);
 
+        // Sin `sintaxis` se escribe el mnemonico seguido de los operandos en el orden declarado.
         let sintaxis = if i.sintaxis.is_empty() {
-            i.mnemonico.clone()
+            let nombres: Vec<String> = operandos
+                .iter()
+                .map(|o| format!("{{{}}}", o.nombre))
+                .collect();
+            if nombres.is_empty() {
+                i.mnemonico.clone()
+            } else {
+                format!("{} {}", i.mnemonico, nombres.join(", "))
+            }
         } else {
             i.sintaxis
         };
@@ -385,6 +446,8 @@ fn convertir(
                 acceso,
                 dispositivo: r.dispositivo,
                 contenido: r.contenido,
+                bancos: r.bancos,
+                selector_puerto: r.selector_puerto,
             }
         })
         .collect();
@@ -401,6 +464,7 @@ fn convertir(
                 },
                 "teclado" => TipoDispositivo::Teclado,
                 "uart" => TipoDispositivo::Uart,
+                "dma" => TipoDispositivo::Dma,
                 "temporizador" => TipoDispositivo::Temporizador {
                     periodo: d.periodo.unwrap_or(1000),
                 },
@@ -459,6 +523,16 @@ fn convertir(
         habilitadas_al_arrancar: i.habilitadas_al_arrancar,
     });
 
+    let pares = crudo
+        .pares
+        .into_iter()
+        .map(|p| ParRegistros {
+            nombre: p.nombre,
+            alto: p.alto,
+            bajo: p.bajo,
+        })
+        .collect();
+
     Ok(Maquina {
         nombre: m.nombre,
         formato: m.formato,
@@ -468,6 +542,16 @@ fn convertir(
         arranque: m.arranque,
         pila,
         registros,
+        pares,
+        bancos_registros: crudo
+            .bancos
+            .into_iter()
+            .map(|b| BancoRegistros {
+                selector: b.selector,
+                registros: b.registros,
+                copias: b.copias,
+            })
+            .collect(),
         banderas,
         instrucciones,
         regiones,

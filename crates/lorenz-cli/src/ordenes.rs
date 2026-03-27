@@ -1,13 +1,13 @@
 //! Ejecucion de las ordenes de la linea de comandos.
 
-use std::io::Write;
+use std::io::{BufRead, Write};
 
 use lorenz_arch::modelo::TipoDispositivo;
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
 use crate::args::{interpretar, Disparo, Orden, Volcado};
 use crate::guion::{leer_guion, Accion, Evento};
-use crate::programa::{escribir_palabras, leer_palabras};
+use crate::programa::escribir_palabras;
 
 /// El programa termino bien: la maquina se detuvo.
 pub const SALIDA_OK: i32 = 0;
@@ -25,10 +25,36 @@ Lorenz: emulador de maquinas definidas por el usuario
 
 Uso:
   lorenz validar <maquina.toml>
-  lorenz ejecutar <maquina.toml> <programa.hex> [--limite N] [--direccion A] [--traza | --traza-maquina]
-                  [--pantalla] [--vigilar] [--teclas TEXTO] [--serie TEXTO]
+  lorenz ejecutar <maquina.toml> <programa.hex | fuente.s> [--limite N] [--direccion A] [--traza | --traza-maquina]
+                  [--pantalla] [--vigilar] [--cobertura] [--teclas TEXTO] [--serie TEXTO]
                   [--volcar DESDE:CANTIDAD[:ARCHIVO]] [--interrumpir LINEA@INSTRUCCION]
                   [--guion ARCHIVO]
+  lorenz compilar <maquina.toml> <fuente.sgt> [-O0|-O1|-O2|-O3] [-o PROGRAMA.hex] [--asm ARCHIVO] [--lineas ARCHIVO] [--costes ARCHIVO]
+  lorenz cotejar <fuente.sgt> <maquina.toml> <maquina.toml>... [-O0|-O1|-O2|-O3] [--limite N]
+  lorenz ciclos <maquina.toml> <programa.hex | fuente.s | fuente.sgt> [--limite N] [--direccion A]
+               [--vista CICLOS] [--diagrama INSTRUCCIONES] [--perfil] [--cache]
+               [--calor] [--calor-html ARCHIVO] [--historial ARCHIVO [--etiqueta TEXTO]] [--vigilar]
+  lorenz comparar-ciclos <maquina-a.toml> <maquina-b.toml> <programa> [--limite N] [--direccion A]
+  lorenz historial-ciclos <historial.toml>
+  lorenz sugerir <maquina.toml> <programa>... [--limite N] [--direccion A] [--minima N] [--maxima N]
+               [--cuantas N]
+  lorenz convencion <maquina.toml> [-o CONVENCION.md]
+  lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
+  lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
+                   [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
+                 [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz documentar <maquina.toml> [-o DOCUMENTACION.md] [--vigilar]
+  lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
+  lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
+  lorenz probar <pruebas.toml> [--nombre TEXTO] [--etiqueta ETIQUETA] [--hilos N] [--json]
+                [--salida RESULTADOS.json] [--depurar PRUEBA] [--cobertura]
+                [--comparar ANTERIOR.json] [--historial] [--umbral PORCENTAJE]
+  lorenz conformidad <maquina.toml> [--instruccion MNEMONICO] [--casos N] [--repeticiones N]
+                     [--json] [--salida INFORME.json]
+  lorenz aleatorio <maquina.toml> [--semilla N] [--programas N] [--longitud N] [--limite N]
+                   [--sin-reducir] [--json] [--salida INFORME.json]
+  lorenz compatibilidad <anterior.toml> <nueva.toml> <programa.hex | fuente.s> [--direccion A] [--json]
   lorenz comparar <maquina-a.toml> <maquina-b.toml> <programa.hex> [--limite N] [--direccion A]
   lorenz ayuda
   lorenz version
@@ -39,6 +65,11 @@ Codigos de salida:
   2  argumentos, archivos o arquitectura invalidos
   3  se alcanzo el limite de instrucciones
   4  comparar: las dos maquinas difieren
+  6  probar --comparar: ninguna prueba se rompio pero alguna gasta mas ciclos que antes
+  5  probar: alguna prueba no se pudo preparar (el programa no ensambla, falta un archivo...)
+     (probar usa 1 si alguna prueba falla y 0 si todas pasan; conformidad usa 1 si algun caso falla;
+      aleatorio usa 1 si el emulador y la referencia divergen;
+      compatibilidad usa 1 si algun binario anterior deja de valer)
 ";
 
 fn escribir(salida: &mut dyn Write, texto: &str) {
@@ -48,6 +79,17 @@ fn escribir(salida: &mut dyn Write, texto: &str) {
 
 /// Ejecuta la linea de comandos y devuelve el codigo de salida.
 pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn Write) -> i32 {
+    ejecutar_cli_con_entrada(args, &mut std::io::empty(), salida, errores)
+}
+
+/// Igual que [`ejecutar_cli`], pero las ordenes que leen del usuario (`depurar`) lo hacen de
+/// `entrada`.
+pub fn ejecutar_cli_con_entrada(
+    args: &[String],
+    entrada: &mut dyn BufRead,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> i32 {
     let orden = match interpretar(args) {
         Ok(o) => o,
         Err(e) => {
@@ -65,6 +107,173 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             SALIDA_OK
         }
         Orden::Validar { maquina } => validar(&maquina, salida, errores),
+        Orden::Probar {
+            pruebas,
+            nombre,
+            etiqueta,
+            hilos,
+            json,
+            salida: archivo,
+            depurar,
+            cobertura,
+            comparar,
+            historial,
+            umbral,
+        } => crate::probar::probar_cli(
+            &pruebas,
+            &crate::probar::OpcionesProbar {
+                nombre,
+                etiqueta,
+                hilos,
+                json,
+                salida: archivo,
+                depurar,
+                cobertura,
+                comparar,
+                historial,
+                umbral,
+            },
+            entrada,
+            salida,
+            errores,
+        ),
+        Orden::Conformidad {
+            maquina,
+            instruccion,
+            casos,
+            repeticiones,
+            json,
+            salida: archivo,
+        } => crate::conformidad::conformidad_cli(
+            &maquina,
+            &crate::conformidad::OpcionesConformidad {
+                instruccion,
+                casos,
+                repeticiones,
+                json,
+                salida: archivo,
+            },
+            salida,
+            errores,
+        ),
+        Orden::Aleatorio {
+            maquina,
+            semilla,
+            programas,
+            longitud,
+            limite,
+            sin_reducir,
+            json,
+            salida: archivo,
+        } => crate::aleatorio::aleatorio_cli(
+            &maquina,
+            &crate::aleatorio::OpcionesAleatorio {
+                semilla,
+                programas,
+                longitud,
+                limite,
+                sin_reducir,
+                json,
+                salida: archivo,
+            },
+            salida,
+            errores,
+        ),
+        Orden::Compatibilidad {
+            anterior,
+            nueva,
+            programa,
+            direccion,
+            json,
+        } => crate::compatibilidad::compatibilidad_cli(
+            &anterior, &nueva, &programa, direccion, json, salida, errores,
+        ),
+        Orden::Depurar {
+            maquina,
+            programa,
+            guion,
+        } => crate::depurar::depurar_cli(
+            &maquina,
+            &programa,
+            guion.as_deref(),
+            entrada,
+            salida,
+            errores,
+        ),
+        Orden::Compilar {
+            maquina,
+            fuente,
+            opciones,
+        } => crate::compilar::compilar_cli(&maquina, &fuente, &opciones, salida, errores),
+        Orden::Ensamblar {
+            maquina,
+            fuente,
+            opciones,
+        } => crate::ensamblar::ensamblar_cli(&maquina, &fuente, &opciones, salida, errores),
+        Orden::Cotejar {
+            fuente,
+            maquinas,
+            opciones,
+        } => crate::cotejar::cotejar_cli(&fuente, &maquinas, &opciones, salida, errores),
+        Orden::Ciclos {
+            maquina,
+            programa,
+            opciones,
+        } => crate::ciclos::ciclos_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::CompararCiclos {
+            maquina_a,
+            maquina_b,
+            programa,
+            opciones,
+        } => crate::ciclos::comparar_ciclos_cli(
+            &maquina_a, &maquina_b, &programa, &opciones, salida, errores,
+        ),
+        Orden::Sugerir {
+            maquina,
+            programas,
+            opciones,
+        } => crate::sugerir::sugerir_cli(&maquina, &programas, &opciones, salida, errores),
+        Orden::HistorialCiclos { archivo } => {
+            crate::historial_ciclos::historial_cli(&archivo, salida, errores)
+        }
+        Orden::Nuevo {
+            plantilla,
+            destino,
+            nombre,
+        } => crate::nuevo::nuevo_cli(&plantilla, &destino, nombre.as_deref(), salida, errores),
+        Orden::Convencion {
+            maquina,
+            salida: archivo,
+        } => crate::compilar::convencion_cli(&maquina, archivo.as_deref(), salida, errores),
+        Orden::Documentar {
+            maquina,
+            salida: archivo,
+            vigilar,
+        } => crate::documentar::documentar_cli(
+            &maquina,
+            archivo.as_deref(),
+            vigilar,
+            salida,
+            errores,
+        ),
+        Orden::Enlazar {
+            maquina,
+            entradas,
+            opciones,
+        } => crate::enlazar::enlazar_cli(&maquina, &entradas, &opciones, salida, errores),
+        Orden::Desensamblar {
+            maquina,
+            programa,
+            direccion,
+            simbolos,
+        } => crate::ensamblar::desensamblar_cli(
+            &maquina,
+            &programa,
+            direccion,
+            simbolos.as_deref(),
+            salida,
+            errores,
+        ),
         Orden::Comparar {
             maquina_a,
             maquina_b,
@@ -87,6 +296,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
             traza_maquina,
             pantalla,
             vigilar,
+            cobertura,
             teclas,
             serie,
             volcados,
@@ -100,6 +310,7 @@ pub fn ejecutar_cli(args: &[String], salida: &mut dyn Write, errores: &mut dyn W
                 traza_maquina,
                 pantalla,
                 vigilar,
+                cobertura,
                 teclas,
                 serie,
                 volcados,
@@ -140,6 +351,7 @@ struct Opciones {
     traza_maquina: bool,
     pantalla: bool,
     vigilar: bool,
+    cobertura: bool,
     teclas: Option<String>,
     serie: Option<String>,
     volcados: Vec<Volcado>,
@@ -168,22 +380,15 @@ fn ejecutar(
             return SALIDA_ERROR_USO;
         }
     };
-    let texto = match std::fs::read_to_string(ruta_programa) {
-        Ok(t) => t,
+    let inicio = direccion.unwrap_or(maquina.arranque);
+    let segmentos = match crate::ensamblar::cargar_segmentos(&maquina, ruta_programa, inicio) {
+        Ok(s) => s,
         Err(e) => {
-            escribir(errores, &format!("{ruta_programa}: no se pudo leer: {e}\n"));
-            return SALIDA_ERROR_USO;
-        }
-    };
-    let palabras = match leer_palabras(&texto, maquina.bits_palabra) {
-        Ok(p) => p,
-        Err(e) => {
-            escribir(errores, &format!("{ruta_programa}: {e}\n"));
+            escribir(errores, &format!("{e}\n"));
             return SALIDA_ERROR_USO;
         }
     };
     let digitos = (maquina.bits_direccion as usize).div_ceil(4);
-    let inicio = direccion.unwrap_or(maquina.arranque);
     let mut emulador = match Emulador::nuevo(maquina) {
         Ok(e) => e,
         Err(e) => {
@@ -191,12 +396,21 @@ fn ejecutar(
             return SALIDA_ERROR_USO;
         }
     };
+    if let Err(e) =
+        lorenz_emu::programa::precargar_regiones(&mut emulador, &carpeta_de(ruta_maquina))
+    {
+        escribir(errores, &format!("{ruta_maquina}: {e}\n"));
+        return SALIDA_ERROR_USO;
+    }
     if opciones.vigilar {
         emulador.memoria_mut().activar_seguimiento();
+        emulador.estado_mut().activar_seguimiento();
     }
-    if let Err(e) = emulador.cargar_programa(inicio, &palabras) {
-        escribir(errores, &format!("{ruta_programa}: {e}\n"));
-        return SALIDA_ERROR_USO;
+    for (desde, palabras) in &segmentos {
+        if let Err(e) = emulador.cargar_programa(*desde, palabras) {
+            escribir(errores, &format!("{ruta_programa}: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
     }
     emulador.estado_mut().fijar_pc(inicio);
     if let Some(teclas) = &opciones.teclas {
@@ -267,6 +481,9 @@ fn ejecutar(
     eventos.sort_by_key(|e| e.instruccion);
     let mut siguiente_evento = 0;
     let mut ejecutadas = 0u64;
+    let mut cobertura = opciones
+        .cobertura
+        .then(|| lorenz_tst::cobertura::Cobertura::nueva(emulador.maquina()));
     let codigo = 'ejecucion: loop {
         if emulador.estado().detenida() {
             break SALIDA_OK;
@@ -288,6 +505,9 @@ fn ejecutar(
         match emulador.paso() {
             Ok(Some(p)) => {
                 ejecutadas += 1;
+                if let Some(c) = &mut cobertura {
+                    c.registrar(ruta_programa, &p);
+                }
                 if traza && opciones.traza_maquina {
                     escribir(
                         salida,
@@ -329,7 +549,7 @@ fn ejecutar(
         }
     };
     resumen(&mut emulador, digitos, salida);
-    lecturas_sin_inicializar(&emulador, digitos, salida);
+    lecturas_sin_inicializar(&mut emulador, digitos, salida);
     interrupciones_atendidas(&emulador, digitos, salida);
     texto_de_uarts(&mut emulador, salida);
     for volcado in &opciones.volcados {
@@ -340,7 +560,18 @@ fn ejecutar(
     if opciones.pantalla {
         dibujar_pantallas(&emulador, salida);
     }
+    if let Some(c) = &cobertura {
+        escribir(salida, &format!("\n{}", c.informe().a_texto()));
+    }
     codigo
+}
+
+/// Carpeta que contiene un archivo, para resolver las rutas relativas que este declara.
+pub fn carpeta_de(ruta: &str) -> std::path::PathBuf {
+    std::path::Path::new(ruta).parent().map_or_else(
+        || std::path::PathBuf::from("."),
+        std::path::Path::to_path_buf,
+    )
 }
 
 /// Nombre del primer dispositivo de un tipo.
@@ -417,7 +648,16 @@ fn volcar(
 }
 
 /// Avisa de las lecturas de memoria que nadie habia escrito (RF-EMU-026).
-fn lecturas_sin_inicializar(emulador: &Emulador, digitos: usize, salida: &mut dyn Write) {
+fn lecturas_sin_inicializar(emulador: &mut Emulador, digitos: usize, salida: &mut dyn Write) {
+    for l in emulador.estado_mut().tomar_lecturas_sin_inicializar() {
+        escribir(
+            salida,
+            &format!(
+                "aviso: la instruccion en {:0digitos$x} leyo el registro {}, que nadie habia escrito\n",
+                l.pc, l.registro
+            ),
+        );
+    }
     for l in emulador.memoria().lecturas_sin_inicializar() {
         escribir(
             salida,

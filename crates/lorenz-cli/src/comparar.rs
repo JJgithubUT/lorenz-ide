@@ -35,6 +35,14 @@ fn preparar(
         escribir(errores, &format!("{ruta_maquina}: {e}\n"));
         SALIDA_ERROR_USO
     })?;
+    lorenz_emu::programa::precargar_regiones(
+        &mut emulador,
+        &crate::ordenes::carpeta_de(ruta_maquina),
+    )
+    .map_err(|e| {
+        escribir(errores, &format!("{ruta_maquina}: {e}\n"));
+        SALIDA_ERROR_USO
+    })?;
     emulador.cargar_programa(inicio, &palabras).map_err(|e| {
         escribir(errores, &format!("{ruta_programa}: {e}\n"));
         SALIDA_ERROR_USO

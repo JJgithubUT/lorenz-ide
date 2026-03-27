@@ -31,3 +31,11 @@ Ninguna herramienta guarda su propia copia de la definicion de la ISA: todas la 
 4. Todo lo publico lleva documentacion con ejemplo compilable.
 5. Nada en el nucleo usa aleatoriedad ni la hora del sistema sin que se pueda fijar desde fuera
    (RNF-FIA-001, RF-TST-035).
+
+## Precarga de regiones
+
+Una region puede declarar `contenido = "rom.hex"`. La ruta es relativa a la carpeta de la
+descripcion y el archivo usa la misma sintaxis que un programa (palabras en hexadecimal o
+binario, `#` para comentarios). Se escribe desde el primer extremo de la region, aunque sea de
+solo lectura, antes de cargar el programa del usuario, que puede sobrescribirlo. Lo hacen
+`ejecutar`, `depurar`, `comparar` y `probar` (RF-ARQ-029).

@@ -12,8 +12,42 @@ pub mod comparar;
 pub mod ordenes;
 
 pub use ordenes::{
-    ejecutar_cli, SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE,
-    SALIDA_OK,
+    ejecutar_cli, ejecutar_cli_con_entrada, SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION,
+    SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
 };
 
 pub mod guion;
+
+pub mod ensamblar;
+
+pub mod enlazar;
+
+pub mod depurar;
+
+pub mod probar;
+
+pub mod conformidad;
+
+pub mod aleatorio;
+
+pub mod compatibilidad;
+
+/// Documentacion generada de la arquitectura.
+pub mod documentar;
+
+/// Compilacion de SGT.
+pub mod compilar;
+
+pub mod nuevo;
+
+/// Simulacion ciclo a ciclo.
+pub mod ciclos;
+
+/// Instrucciones nuevas que acortarian los programas.
+pub mod sugerir;
+
+/// Historico de metricas por version de la arquitectura.
+pub mod historial_ciclos;
+
+/// El mismo programa SGT en varias maquinas.
+pub mod cotejar;

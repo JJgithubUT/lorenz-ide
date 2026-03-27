@@ -11,15 +11,19 @@ pub mod error;
 pub use error::ErrorEjecucion;
 pub mod memoria;
 
-pub use memoria::{Escritura, LecturaSinInicializar, Memoria, MAX_LECTURAS_SIN_INICIALIZAR};
+pub use memoria::{
+    AccesoVigilado, Escritura, EscrituraRegistrada, LecturaSinInicializar, Memoria, TipoAcceso,
+    Trafico, MAX_LECTURAS_SIN_INICIALIZAR,
+};
 pub mod estado;
+pub mod programa;
 
 pub use estado::Estado;
 
 pub mod puertos;
 pub(crate) mod script;
 
-pub use puertos::Puertos;
+pub use puertos::{Puertos, SolicitudDma};
 
 pub mod decodificador;
 
@@ -32,7 +36,8 @@ pub use interprete::{Entorno, Interprete, Resultado};
 pub mod emulador;
 
 pub use emulador::{
-    Emulador, Instantanea, InterrupcionAtendida, Paso, Resumen, MAX_INTERRUPCIONES_REGISTRADAS,
+    Emulador, Instantanea, InterrupcionAtendida, Paso, Resumen, TransferenciaDma,
+    MAX_INTERRUPCIONES_REGISTRADAS,
 };
 
 pub mod comparar;
