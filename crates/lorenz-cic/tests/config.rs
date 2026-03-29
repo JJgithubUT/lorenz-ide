@@ -134,3 +134,35 @@ fn un_hijo_hereda_la_temporizacion_del_padre_y_puede_cambiar_una_latencia() {
     assert_eq!(c.latencia_de(0x2100), 9, "redefine la latencia de la ram");
     assert_eq!(c.latencia_de(0x10), 2, "conserva la de la rom");
 }
+
+#[test]
+fn las_restricciones_se_leen_con_enteros_y_decimales() {
+    let c = lorenz_cic::cargar_config(
+        "[[restriccion]]\nmetrica = \"ciclos\"\nmaximo = 200\n\n\
+         [[restriccion]]\nnombre = \"cpi bajo\"\nmetrica = \"cpi\"\nmaximo = 1.5\nminimo = 1\n",
+    )
+    .unwrap();
+    assert_eq!(c.restricciones.len(), 2);
+    assert_eq!(c.restricciones[0].nombre, "ciclos");
+    assert_eq!(c.restricciones[0].maximo, Some(200.0));
+    assert_eq!(c.restricciones[1].nombre, "cpi bajo");
+    assert_eq!(c.restricciones[1].minimo, Some(1.0));
+    assert_eq!(c.restricciones[1].maximo, Some(1.5));
+}
+
+#[test]
+fn una_restriccion_con_metrica_desconocida_o_sin_limite_es_un_error() {
+    let e = lorenz_cic::cargar_config("[[restriccion]]\nmetrica = \"calor\"\nmaximo = 1\n")
+        .unwrap_err();
+    assert!(e.contains("calor"), "{e}");
+    let e = lorenz_cic::cargar_config("[[restriccion]]\nmetrica = \"ciclos\"\n").unwrap_err();
+    assert!(e.contains("maximo"), "{e}");
+}
+
+#[test]
+fn una_descripcion_sin_restricciones_da_una_lista_vacia() {
+    assert!(lorenz_cic::cargar_config("")
+        .unwrap()
+        .restricciones
+        .is_empty());
+}
