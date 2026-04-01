@@ -153,14 +153,10 @@ fn predecir_que_se_salta_mejora_un_programa_que_siempre_salta() {
 }
 
 #[test]
-fn si_el_programa_falla_el_error_dice_en_que_variante() {
+fn si_el_programa_no_termina_el_error_nombra_la_variante() {
     let vs = variantes(&config(CINCO), &Espacio::default());
-    // limite de una instruccion: no llega al HLT
-    let e = evaluar(&vs, &[], 6, 1, &mut emulador);
-    // dependiendo de como trate el simulador el limite puede ser Ok; si es error, nombra la variante
-    if let Err(m) = e {
-        assert!(m.contains("base"), "{m}");
-    }
+    let e = evaluar(&vs, &[], 6, 1, &mut emulador).unwrap_err();
+    assert!(e.contains("base") && e.contains("no termino"), "{e}");
 }
 
 fn medidas(ciclos: u64, instr: u64, palabras: u64) -> Medidas {

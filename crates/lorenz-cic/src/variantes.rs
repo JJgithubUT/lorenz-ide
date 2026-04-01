@@ -145,6 +145,12 @@ pub fn evaluar(
         let mut sim = Simulador::nuevo(nuevo_emulador()?, v.config.clone())?;
         sim.ejecutar(limite)
             .map_err(|e| format!("variante `{}`: fallo durante la ejecucion: {e}", v.nombre))?;
+        if !sim.detenida() {
+            return Err(format!(
+                "variante `{}`: el programa no termino en {limite} instrucciones",
+                v.nombre
+            ));
+        }
         let medidas = Medidas::new(sim.metricas(), palabras_codigo);
         let veredictos = comprobar(restricciones, &medidas);
         let cumple = todas_cumplen(&veredictos);
