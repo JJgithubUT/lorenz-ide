@@ -17,6 +17,26 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Restricciones de diseño y variantes
+
+Se pueden fijar límites al diseño y buscar variantes que los cumplan (RF-CIC-033).
+
+**Decisiones:**
+
+- **D-089** — Las restricciones se declaran en la descripción (`[[restriccion]]`) y se miden sobre una
+  ejecución completa; un programa cortado por el límite no se evalúa, porque una variante parecería
+  mejor solo por haber hecho menos. Una cifra imposible de medir no cumple.
+- **D-090** — Las variantes cambian parámetros de temporización (adelantamiento, predicción, caché,
+  bus) y se simulan de verdad. Las de repertorio (instrucciones nuevas) solo se estiman restando el
+  ahorro de `sugerir`, y la salida lo dice. La base es siempre la primera y no se repiten
+  configuraciones iguales.
+- **D-091** — Código de salida 5 para «no se cumple», distinto del 4 de «difieren».
+
+**Requisitos:** RF-CIC-033.
+**Commits:** rama `feat/restricciones`.
+
+---
+
 ## 2026-10-16 — Sugerencias de instrucciones nuevas
 
 `lorenz sugerir` propone secuencias de instrucciones que valdria la pena convertir en una sola
@@ -29,8 +49,8 @@ Formato de una entrada:
   no cruza un destino de salto y termina en la primera instruccion que salta. El ahorro supone una
   instruccion tan larga y tan lenta como la peor de la secuencia; no se miran operandos.
 
-**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024), restricciones de diseno
-(RF-CIC-033) y los genericos de SGT (RF-SGT-021).
+**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024) y los genericos de SGT
+(RF-SGT-021).
 
 **Requisitos:** RF-CIC-034.
 **Commits:** rama `feat/sugerir`.

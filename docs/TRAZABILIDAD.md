@@ -297,7 +297,7 @@ La fase 5 completa y, de la 6, el bus y el DMA. El modelo esta en `docs/CICLOS.m
 | RF-CIC-022 | Controlador de acceso directo a memoria | Hecho | dispositivo `dma`, `Emulador::tomar_transferencias_dma`, `tests/dma.rs`, `tests/bus.rs` |
 | RF-CIC-023 | Maquinas de varios nucleos | Pendiente | fase 6 de la ERS |
 | RF-CIC-024 | Coherencia de cache entre nucleos | Pendiente | fase 6 de la ERS |
-| RF-CIC-033 | Restricciones de diseno | Pendiente | fase 6 de la ERS |
+| RF-CIC-033 | Restricciones de diseno | Hecho | `restricciones`, `variantes`, `lorenz restricciones`, `lorenz variantes`, `tests/restricciones.rs`, `tests/variantes.rs` |
 | RF-CIC-034 | Sugerencias a partir de los programas | Hecho | `sugerir::sugerir`, `lorenz sugerir`, `tests/sugerir.rs` |
 
 ## Requisitos del lenguaje SGT (RF-SGT)
