@@ -149,7 +149,7 @@ pub fn comprobar(restricciones: &[Restriccion], medidas: &Medidas) -> Vec<Veredi
         .map(|r| {
             let valor = medidas.valor(r.metrica);
             let cumple = valor.is_some_and(|v| {
-                r.minimo.is_none_or(|m| v >= m) && r.maximo.is_none_or(|m| v <= m)
+                r.minimo.map_or(true, |m| v >= m) && r.maximo.map_or(true, |m| v <= m)
             });
             Veredicto {
                 restriccion: r.clone(),
