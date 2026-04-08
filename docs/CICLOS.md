@@ -137,6 +137,43 @@ comentarios y el espaciado no la cambian, una latencia sí.
 Desde Rust, `lorenz_cic::Simulador` ofrece lo mismo: `ejecutar`, `metricas`, `vista(ciclo)`,
 `avanzar_ciclo` y `retroceder_ciclo` (RF-CIC-014), `diagrama` y `perfil`.
 
+## Restricciones de diseño y variantes
+
+La descripción puede fijar límites que el diseño debe cumplir (RF-CIC-033):
+
+```toml
+[[restriccion]]
+nombre = "rapido"          # opcional; por omisión, el nombre de la métrica
+metrica = "ciclos"
+maximo = 400
+
+[[restriccion]]
+metrica = "palabras-codigo"
+maximo = 64
+```
+
+Cada una pide `metrica` y al menos un `maximo` o un `minimo` (enteros o decimales; el mínimo no puede
+superar al máximo). Las métricas son `ciclos`, `instrucciones`, `cpi`, `esperas-datos`,
+`esperas-estructurales`, `esperas-control`, `esperas-bus`, `saltos-fallados`, `uso-del-bus`,
+`fallos-cache` y `palabras-codigo` (el tamaño del programa). Una cifra que no se puede medir, como los
+fallos de caché sin caché, no cumple.
+
+```
+lorenz restricciones maquina.toml programa [--limite N] [--direccion A]
+lorenz variantes maquina.toml programa [--limite N] [--direccion A] [--bus] [--cuantas N]
+```
+
+`restricciones` ejecuta el programa y muestra, por cada límite, lo medido y si se cumple. Sale con 0
+si se cumplen todas, 5 si falla alguna y 3 si el programa no termina dentro del límite (con un
+programa cortado las cifras no valen).
+
+`variantes` prueba las combinaciones de adelantamiento, predicción de saltos, tamaño de caché (la
+mitad, igual, el doble y el cuádruple, siempre que sigan siendo válidos) y, con `--bus`, bus
+compartido o separado. Muestra primero las que cumplen todo y, entre ellas, las más rápidas. Después
+estima, para cada instrucción nueva que propondría `sugerir`, qué cifras tendría el programa y si
+cumpliría; esa parte es una estimación y no simula el repertorio ampliado. Sale con 5 si ninguna
+variante cumple. Desde Rust: `lorenz_cic::{variantes, evaluar, variantes_isa}`.
+
 ## Sugerencias de instrucciones nuevas
 
 ```

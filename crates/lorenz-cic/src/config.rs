@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 use crate::cache::{ConfigCache, Escritura, Reemplazo};
 use crate::pipeline::{ConfigPipeline, Etapa, Prediccion};
+use crate::restricciones::{Metrica, Restriccion};
 
 /// Latencia de acceso de una region de memoria (RF-CIC-020).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,11 +18,13 @@ pub struct LatenciaRegion {
 }
 
 /// Todo lo que la descripcion dice sobre tiempos.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Config {
     pub pipeline: Option<ConfigPipeline>,
     pub cache: Option<ConfigCache>,
     pub latencias: Vec<LatenciaRegion>,
+    /// Limites de diseno que debe cumplir la maquina (RF-CIC-033).
+    pub restricciones: Vec<Restriccion>,
 }
 
 impl Config {
@@ -39,6 +42,8 @@ struct Archivo {
     pipeline: Option<PipelineCrudo>,
     cache: Option<CacheCruda>,
     bus: Option<BusCrudo>,
+    #[serde(default, rename = "restriccion")]
+    restricciones: Vec<RestriccionCruda>,
     #[serde(default, rename = "region")]
     regiones: Vec<RegionCruda>,
 }
@@ -67,6 +72,33 @@ struct PipelineCrudo {
     ciclos_declarados: bool,
     #[serde(default)]
     ciclos_objetivo: u64,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(untagged)]
+enum Numero {
+    Entero(i64),
+    Real(f64),
+}
+
+impl Numero {
+    fn valor(self) -> f64 {
+        match self {
+            Numero::Entero(n) => n as f64,
+            Numero::Real(x) => x,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RestriccionCruda {
+    #[serde(default)]
+    nombre: Option<String>,
+    metrica: String,
+    #[serde(default)]
+    maximo: Option<Numero>,
+    #[serde(default)]
+    minimo: Option<Numero>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,6 +181,17 @@ fn desde_archivo(a: Archivo) -> Result<Config, String> {
                 ciclos: l,
             });
         }
+    }
+    for r in &a.restricciones {
+        let metrica = Metrica::desde_nombre(&r.metrica).map_err(|e| format!("restriccion: {e}"))?;
+        let restriccion = Restriccion {
+            nombre: r.nombre.clone().unwrap_or_else(|| metrica.nombre().into()),
+            metrica,
+            minimo: r.minimo.map(Numero::valor),
+            maximo: r.maximo.map(Numero::valor),
+        };
+        restriccion.validar()?;
+        cfg.restricciones.push(restriccion);
     }
     if let Some(c) = a.cache {
         let reemplazo = match c.reemplazo.as_deref().unwrap_or("lru") {
