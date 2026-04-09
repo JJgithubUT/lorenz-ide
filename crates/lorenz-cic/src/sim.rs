@@ -3,12 +3,12 @@
 
 use std::collections::BTreeMap;
 
-use lorenz_emu::{Decodificador, Emulador, ErrorEjecucion};
+use lorenz_emu::{Decodificador, Emulador, ErrorEjecucion, Trafico};
 
 use crate::analisis::dependencias;
 use crate::cache::{Cache, EstadisticasCache};
 use crate::config::Config;
-use crate::pipeline::{Causa, ConfigPipeline, Entrada, Planificada, Planificador};
+use crate::pipeline::{Bus, Causa, ConfigPipeline, Entrada, Planificada, Planificador};
 
 /// Que hace una etapa en un ciclo.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,6 +120,8 @@ pub struct Simulador {
     historial: Vec<Planificada>,
     ciclos_de_memoria: u64,
     ciclo: u64,
+    /// Accesos a datos de la ultima instruccion ejecutada.
+    ultimos_accesos: Vec<Trafico>,
 }
 
 impl Simulador {
@@ -139,7 +141,18 @@ impl Simulador {
             historial: Vec::new(),
             ciclos_de_memoria: 0,
             ciclo: 0,
+            ultimos_accesos: Vec::new(),
         })
+    }
+
+    /// Los accesos a datos que hizo la ultima instruccion ejecutada, en orden.
+    pub fn ultimos_accesos(&self) -> &[Trafico] {
+        &self.ultimos_accesos
+    }
+
+    /// Cambia el bus del planificador por otro (ver `Planificador::intercambiar_bus`).
+    pub fn intercambiar_bus(&mut self, otro: &mut Bus) {
+        self.planificador.intercambiar_bus(otro);
     }
 
     pub fn emulador(&self) -> &Emulador {
@@ -220,6 +233,7 @@ impl Simulador {
             return Ok(None);
         };
         let accesos = self.emu.memoria_mut().tomar_trafico();
+        self.ultimos_accesos.clone_from(&accesos);
         let dec = match previa {
             Some(d) if d.direccion == paso.direccion => d,
             _ => self
