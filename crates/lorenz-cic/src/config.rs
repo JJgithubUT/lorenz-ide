@@ -17,6 +17,30 @@ pub struct LatenciaRegion {
     pub ciclos: u64,
 }
 
+/// Una region de memoria que comparten todos los nucleos (RF-CIC-023).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegionCompartida {
+    pub region: String,
+    pub desde: u64,
+    pub hasta: u64,
+}
+
+/// Varios nucleos sobre memoria compartida (RF-CIC-023).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigNucleos {
+    pub cantidad: usize,
+    pub compartidas: Vec<RegionCompartida>,
+}
+
+impl ConfigNucleos {
+    /// Si la direccion cae en una region compartida.
+    pub fn es_compartida(&self, direccion: u64) -> bool {
+        self.compartidas
+            .iter()
+            .any(|r| (r.desde..=r.hasta).contains(&direccion))
+    }
+}
+
 /// Todo lo que la descripcion dice sobre tiempos.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Config {
@@ -25,6 +49,8 @@ pub struct Config {
     pub latencias: Vec<LatenciaRegion>,
     /// Limites de diseno que debe cumplir la maquina (RF-CIC-033).
     pub restricciones: Vec<Restriccion>,
+    /// Mas de un nucleo sobre memoria compartida; `None` es una maquina de un solo nucleo.
+    pub nucleos: Option<ConfigNucleos>,
 }
 
 impl Config {
@@ -42,6 +68,7 @@ struct Archivo {
     pipeline: Option<PipelineCrudo>,
     cache: Option<CacheCruda>,
     bus: Option<BusCrudo>,
+    nucleos: Option<NucleosCrudos>,
     #[serde(default, rename = "restriccion")]
     restricciones: Vec<RestriccionCruda>,
     #[serde(default, rename = "region")]
@@ -99,6 +126,16 @@ struct RestriccionCruda {
     maximo: Option<Numero>,
     #[serde(default)]
     minimo: Option<Numero>,
+}
+
+/// Mas nucleos de los que tiene sentido simular; evita que un error de tipeo pida un millon.
+pub const MAX_NUCLEOS: usize = 64;
+
+#[derive(Debug, Deserialize)]
+struct NucleosCrudos {
+    cantidad: usize,
+    #[serde(default)]
+    compartida: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -181,6 +218,39 @@ fn desde_archivo(a: Archivo) -> Result<Config, String> {
                 ciclos: l,
             });
         }
+    }
+    if let Some(n) = &a.nucleos {
+        if n.cantidad == 0 || n.cantidad > MAX_NUCLEOS {
+            return Err(format!(
+                "nucleos.cantidad debe estar entre 1 y {MAX_NUCLEOS}, no {}",
+                n.cantidad
+            ));
+        }
+        let mut compartidas = Vec::new();
+        for nombre in &n.compartida {
+            let r = a
+                .regiones
+                .iter()
+                .find(|r| &r.nombre == nombre)
+                .ok_or_else(|| {
+                    format!("nucleos.compartida: no hay una region llamada `{nombre}`")
+                })?;
+            compartidas.push(RegionCompartida {
+                region: nombre.clone(),
+                desde: r.desde,
+                hasta: r.hasta,
+            });
+        }
+        if n.cantidad > 1 && compartidas.is_empty() {
+            return Err(
+                "nucleos: con mas de un nucleo hace falta al menos una region en `compartida`"
+                    .into(),
+            );
+        }
+        cfg.nucleos = Some(ConfigNucleos {
+            cantidad: n.cantidad,
+            compartidas,
+        });
     }
     for r in &a.restricciones {
         let metrica = Metrica::desde_nombre(&r.metrica).map_err(|e| format!("restriccion: {e}"))?;

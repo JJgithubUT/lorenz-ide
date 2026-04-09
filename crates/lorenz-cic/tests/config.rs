@@ -166,3 +166,51 @@ fn una_descripcion_sin_restricciones_da_una_lista_vacia() {
         .restricciones
         .is_empty());
 }
+
+const REGIONES: &str = "[[region]]\nnombre = \"rom\"\ndesde = 0\nhasta = 0x7F\n\n\
+                        [[region]]\nnombre = \"ram\"\ndesde = 0x80\nhasta = 0xFF\n\n";
+
+#[test]
+fn los_nucleos_resuelven_las_regiones_compartidas() {
+    let c = lorenz_cic::cargar_config(&format!(
+        "{REGIONES}[nucleos]\ncantidad = 4\ncompartida = [\"ram\"]\n"
+    ))
+    .unwrap();
+    let n = c.nucleos.unwrap();
+    assert_eq!(n.cantidad, 4);
+    assert_eq!(n.compartidas.len(), 1);
+    assert_eq!(
+        (n.compartidas[0].desde, n.compartidas[0].hasta),
+        (0x80, 0xFF)
+    );
+    assert!(n.es_compartida(0x80) && n.es_compartida(0xFF));
+    assert!(!n.es_compartida(0x7F));
+}
+
+#[test]
+fn sin_seccion_de_nucleos_hay_uno_solo() {
+    assert!(lorenz_cic::cargar_config(REGIONES)
+        .unwrap()
+        .nucleos
+        .is_none());
+}
+
+#[test]
+fn los_nucleos_rechazan_cantidades_absurdas_y_regiones_que_no_existen() {
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 0\n").unwrap_err();
+    assert!(e.contains("entre 1 y 64"), "{e}");
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 65\n").unwrap_err();
+    assert!(e.contains("entre 1 y 64"), "{e}");
+    let e = lorenz_cic::cargar_config(&format!(
+        "{REGIONES}[nucleos]\ncantidad = 2\ncompartida = [\"vram\"]\n"
+    ))
+    .unwrap_err();
+    assert!(e.contains("vram"), "{e}");
+}
+
+#[test]
+fn varios_nucleos_sin_nada_compartido_es_un_error_pero_uno_solo_no() {
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 2\n").unwrap_err();
+    assert!(e.contains("compartida"), "{e}");
+    assert!(lorenz_cic::cargar_config("[nucleos]\ncantidad = 1\n").is_ok());
+}
