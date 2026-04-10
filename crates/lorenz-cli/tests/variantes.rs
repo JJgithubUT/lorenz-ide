@@ -37,11 +37,17 @@ fn maquina_con(nombre: &str, restricciones: &str) -> String {
     temporal(nombre, &format!("{base}\n{restricciones}\n"))
 }
 
+// Se escribe una sola vez: las pruebas corren a la vez y una lectura no debe coincidir con una
+// escritura del mismo archivo.
 fn programa() -> String {
-    temporal(
-        "suma.s",
-        "LDI A, 1\nLDI B, 2\nADD A, B\nADD A, B\nADD A, B\nHLT\n",
-    )
+    static R: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    R.get_or_init(|| {
+        temporal(
+            "suma.s",
+            "LDI A, 1\nLDI B, 2\nADD A, B\nADD A, B\nADD A, B\nHLT\n",
+        )
+    })
+    .clone()
 }
 
 #[test]
