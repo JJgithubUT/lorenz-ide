@@ -54,3 +54,6 @@ pub mod cotejar;
 
 /// Restricciones de diseno y variantes que las cumplan.
 pub mod variantes;
+
+/// Varios nucleos sobre memoria compartida.
+pub mod nucleos;

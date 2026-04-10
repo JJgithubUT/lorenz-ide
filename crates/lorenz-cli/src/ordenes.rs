@@ -40,6 +40,7 @@ Uso:
   lorenz historial-ciclos <historial.toml>
   lorenz sugerir <maquina.toml> <programa>... [--limite N] [--direccion A] [--minima N] [--maxima N]
                [--cuantas N]
+  lorenz nucleos <maquina.toml> <programa>... [--limite N] [--direccion A]
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
@@ -237,6 +238,11 @@ pub fn ejecutar_cli_con_entrada(
             programas,
             opciones,
         } => crate::sugerir::sugerir_cli(&maquina, &programas, &opciones, salida, errores),
+        Orden::Nucleos {
+            maquina,
+            programas,
+            opciones,
+        } => crate::nucleos::nucleos_cli(&maquina, &programas, &opciones, salida, errores),
         Orden::Restricciones {
             maquina,
             programa,
