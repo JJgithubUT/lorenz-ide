@@ -137,6 +137,42 @@ comentarios y el espaciado no la cambian, una latencia sí.
 Desde Rust, `lorenz_cic::Simulador` ofrece lo mismo: `ejecutar`, `metricas`, `vista(ciclo)`,
 `avanzar_ciclo` y `retroceder_ciclo` (RF-CIC-014), `diagrama` y `perfil`.
 
+## Varios núcleos
+
+```toml
+[nucleos]
+cantidad = 2
+compartida = ["ram"]
+```
+
+Declara una máquina con `cantidad` núcleos (de 1 a 64) que comparten las regiones de `compartida`,
+nombradas como en `[[region]]` (RF-CIC-023). Con más de un núcleo hace falta al menos una. Cada
+núcleo tiene sus registros, su pipeline, su caché y sus dispositivos; lo único común es esa memoria.
+
+```
+lorenz nucleos maquina.toml programa... [--limite N] [--direccion A]
+```
+
+Se da un programa por núcleo, o uno solo para que lo ejecuten todos. La salida lista, por núcleo,
+los ciclos, las instrucciones, el CPI y las esperas por el bus, y después el total (los ciclos del
+último núcleo en terminar), las palabras compartidas copiadas y, si el bus es común, los ciclos que
+estuvo ocupado. `--limite` cuenta instrucciones de todos los núcleos juntos.
+
+Cómo se comportan:
+
+- En cada paso ejecuta el núcleo que menos ciclos lleva (si empatan, el de menor número). Así el
+  orden en que se ven las escrituras es el del tiempo simulado y el resultado se repite.
+- Una escritura a una dirección compartida se copia a la memoria de los demás núcleos en cuanto
+  termina su instrucción. Es una memoria secuencialmente consistente: todos ven las escrituras en
+  el mismo orden y nadie ve una antes de que se haga.
+- Al empezar, lo que hay en las regiones compartidas del primer núcleo se copia a los demás.
+- Con `[bus] compartido = true` los accesos de *todos* los núcleos se turnan en un único bus
+  (`esperas por el bus compartido`); sin él, cada núcleo tiene el suyo y no se estorban.
+- Un DMA que escribe en una región compartida no se propaga a los otros núcleos todavía.
+
+Desde Rust: `lorenz_cic::Sistema` (`nuevo`, `ejecutar`, `ejecutar_instruccion`, `metricas`,
+`nucleo(i)`).
+
 ## Restricciones de diseño y variantes
 
 La descripción puede fijar límites que el diseño debe cumplir (RF-CIC-033):
