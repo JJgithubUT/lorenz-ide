@@ -188,3 +188,28 @@ fn el_mismo_programa_da_las_mismas_metricas() {
     };
     assert_eq!(a, b);
 }
+
+#[test]
+fn el_simulador_guarda_los_accesos_a_datos_de_la_ultima_instruccion() {
+    // LD [0x00] lee una palabra de la direccion 0; ADD no toca datos
+    let mut s = simulador(CINCO, &[0x44, 0x00, 0x20, ADD_AB, HLT]);
+    s.ejecutar_instruccion().unwrap();
+    let a = s.ultimos_accesos();
+    assert_eq!(a.len(), 1);
+    assert!(!a[0].escritura);
+    s.ejecutar_instruccion().unwrap();
+    assert!(s.ultimos_accesos().is_empty());
+}
+
+#[test]
+fn intercambiar_el_bus_deja_el_anterior_en_su_sitio() {
+    use lorenz_cic::pipeline::Bus;
+    let mut s = simulador(CINCO, &[ADD_AB, HLT]);
+    let mut otro = Bus::default();
+    otro.reservar(0, 7);
+    s.intercambiar_bus(&mut otro);
+    // ahora `otro` es el bus que tenia el simulador: vacio
+    assert_eq!(otro.ciclos_ocupado(), 0);
+    s.intercambiar_bus(&mut otro);
+    assert_eq!(otro.ciclos_ocupado(), 7);
+}

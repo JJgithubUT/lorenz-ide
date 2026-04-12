@@ -316,6 +316,12 @@ impl Planificador {
         &self.cfg
     }
 
+    /// Cambia el bus de este planificador por otro. Es como varios nucleos comparten un bus: el
+    /// que va a ejecutar toma el comun, y lo devuelve cuando termina (RF-CIC-023).
+    pub fn intercambiar_bus(&mut self, otro: &mut Bus) {
+        std::mem::swap(&mut self.bus, otro);
+    }
+
     pub fn programar(&mut self, i: &Entrada) -> Planificada {
         let n = self.cfg.etapas.len();
         let c = &self.cfg;

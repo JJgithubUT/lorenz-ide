@@ -17,6 +17,27 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Varios núcleos con memoria compartida
+
+Una máquina puede tener varios núcleos que ven las mismas regiones de memoria (RF-CIC-023).
+
+**Decisiones:**
+
+- **D-092** — Cada núcleo es un emulador con su simulador completo; solo se comparte lo que
+  `[nucleos].compartida` nombra. Avanza el núcleo con menos ciclos (desempata el menor número) y sus
+  escrituras compartidas se copian a los demás al acabar la instrucción: consistencia secuencial
+  determinista, sin relojes que se desfasen.
+- **D-093** — El bus común se consigue prestando el bus del sistema al planificador del núcleo que
+  ejecuta (`intercambiar_bus`, O(1)), en lugar de duplicar la lógica de reservas.
+- **D-094** — Un DMA hacia memoria compartida no se propaga; queda anotado como límite conocido.
+
+**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024).
+
+**Requisitos:** RF-CIC-023, RF-CIC-021.
+**Commits:** rama `feat/multinucleo`.
+
+---
+
 ## 2026-10-16 — Restricciones de diseño y variantes
 
 Se pueden fijar límites al diseño y buscar variantes que los cumplan (RF-CIC-033).

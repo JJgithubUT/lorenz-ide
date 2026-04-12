@@ -259,6 +259,11 @@ interrupcion = 0
 Solo lo lee `lorenz ciclos`. `compartido = true` hace que la búsqueda de instrucciones, los accesos a
 datos y el DMA se turnen en un único bus (RF-CIC-021); exige `[pipeline]`. Ver `docs/CICLOS.md`.
 
+## `[nucleos]`
+
+Solo lo lee `lorenz nucleos`. `cantidad` (1 a 64) y `compartida`, la lista de nombres de `[[region]]`
+que ven todos los núcleos (RF-CIC-023). Ver `docs/CICLOS.md`.
+
 ## `[[restriccion]]`
 
 Solo las leen `lorenz restricciones` y `lorenz variantes`. Cada una tiene `metrica` y un `maximo`, un

@@ -12,6 +12,7 @@ pub mod config;
 pub mod pipeline;
 pub mod restricciones;
 pub mod sim;
+pub mod sistema;
 pub mod sugerir;
 pub mod variantes;
 
@@ -19,8 +20,11 @@ pub use analisis::{dependencias, Dependencias};
 pub use cache::{
     Cache, ConfigCache, Escritura, EstadisticasCache, FilaCache, Reemplazo, ResultadoCache,
 };
-pub use config::{cargar_config, cargar_config_archivo, Config, LatenciaRegion};
+pub use config::{
+    cargar_config, cargar_config_archivo, Config, ConfigNucleos, LatenciaRegion, RegionCompartida,
+};
 pub use pipeline::{Causa, ConfigPipeline, Entrada, Etapa, Planificada, Planificador, Prediccion};
 pub use restricciones::{comprobar, Medidas, Metrica, Restriccion, Veredicto};
 pub use sim::{EstadoEtapa, FilaPerfil, Metricas, Ocupante, Simulador, Vista};
+pub use sistema::{MetricasSistema, Sistema};
 pub use variantes::{evaluar, variantes, variantes_isa, Espacio, Resultado, Variante, VarianteIsa};
