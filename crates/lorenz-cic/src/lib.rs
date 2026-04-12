@@ -18,7 +18,8 @@ pub mod variantes;
 
 pub use analisis::{dependencias, Dependencias};
 pub use cache::{
-    Cache, ConfigCache, Escritura, EstadisticasCache, FilaCache, Reemplazo, ResultadoCache,
+    Cache, ConfigCache, Escritura, EstadisticasCache, EstadoLinea, FilaCache, Reemplazo,
+    ResultadoCache,
 };
 pub use config::{
     cargar_config, cargar_config_archivo, Config, ConfigNucleos, LatenciaRegion, RegionCompartida,
