@@ -22,7 +22,8 @@ pub use cache::{
     ResultadoCache,
 };
 pub use config::{
-    cargar_config, cargar_config_archivo, Config, ConfigNucleos, LatenciaRegion, RegionCompartida,
+    cargar_config, cargar_config_archivo, Config, ConfigCoherencia, ConfigNucleos, LatenciaRegion,
+    Protocolo, RegionCompartida,
 };
 pub use pipeline::{Causa, ConfigPipeline, Entrada, Etapa, Planificada, Planificador, Prediccion};
 pub use restricciones::{comprobar, Medidas, Metrica, Restriccion, Veredicto};

@@ -214,3 +214,40 @@ fn varios_nucleos_sin_nada_compartido_es_un_error_pero_uno_solo_no() {
     assert!(e.contains("compartida"), "{e}");
     assert!(lorenz_cic::cargar_config("[nucleos]\ncantidad = 1\n").is_ok());
 }
+
+const CACHE: &str = "[cache]\ntamano = 16\nlinea = 2\nvias = 2\n";
+
+#[test]
+fn la_coherencia_usa_msi_y_una_invalidacion_de_un_ciclo_por_omision() {
+    let c = lorenz_cic::cargar_config(&format!("{CACHE}[coherencia]\n")).unwrap();
+    let k = c.coherencia.unwrap();
+    assert_eq!(k.protocolo, lorenz_cic::Protocolo::Msi);
+    assert_eq!(k.protocolo.nombre(), "msi");
+    assert_eq!(k.latencia_invalidacion, 1);
+}
+
+#[test]
+fn la_latencia_de_invalidacion_se_puede_cambiar() {
+    let c = lorenz_cic::cargar_config(&format!(
+        "{CACHE}[coherencia]\nprotocolo = \"msi\"\nlatencia_invalidacion = 4\n"
+    ))
+    .unwrap();
+    assert_eq!(c.coherencia.unwrap().latencia_invalidacion, 4);
+}
+
+#[test]
+fn la_coherencia_rechaza_protocolos_desconocidos_y_exige_cache() {
+    let e = lorenz_cic::cargar_config(&format!("{CACHE}[coherencia]\nprotocolo = \"mesi\"\n"))
+        .unwrap_err();
+    assert!(e.contains("mesi") && e.contains("msi"), "{e}");
+    let e = lorenz_cic::cargar_config("[coherencia]\n").unwrap_err();
+    assert!(e.contains("[cache]"), "{e}");
+}
+
+#[test]
+fn sin_seccion_de_coherencia_no_hay_espionaje() {
+    assert!(lorenz_cic::cargar_config(CACHE)
+        .unwrap()
+        .coherencia
+        .is_none());
+}

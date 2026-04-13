@@ -41,6 +41,29 @@ impl ConfigNucleos {
     }
 }
 
+/// Protocolo de coherencia entre las caches de los nucleos (RF-CIC-024).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Protocolo {
+    /// Modificada, compartida e invalida; una escritura anula las copias de los demas.
+    Msi,
+}
+
+impl Protocolo {
+    pub fn nombre(self) -> &'static str {
+        match self {
+            Protocolo::Msi => "msi",
+        }
+    }
+}
+
+/// Como se mantienen coherentes las caches de varios nucleos (RF-CIC-024).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigCoherencia {
+    pub protocolo: Protocolo,
+    /// Ciclos que se detiene el nucleo que escribe por cada linea que anula en otra cache.
+    pub latencia_invalidacion: u64,
+}
+
 /// Todo lo que la descripcion dice sobre tiempos.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Config {
@@ -51,6 +74,8 @@ pub struct Config {
     pub restricciones: Vec<Restriccion>,
     /// Mas de un nucleo sobre memoria compartida; `None` es una maquina de un solo nucleo.
     pub nucleos: Option<ConfigNucleos>,
+    /// Coherencia entre las caches de los nucleos; `None` es sin espionaje.
+    pub coherencia: Option<ConfigCoherencia>,
 }
 
 impl Config {
@@ -69,6 +94,7 @@ struct Archivo {
     cache: Option<CacheCruda>,
     bus: Option<BusCrudo>,
     nucleos: Option<NucleosCrudos>,
+    coherencia: Option<CoherenciaCruda>,
     #[serde(default, rename = "restriccion")]
     restricciones: Vec<RestriccionCruda>,
     #[serde(default, rename = "region")]
@@ -136,6 +162,14 @@ struct NucleosCrudos {
     cantidad: usize,
     #[serde(default)]
     compartida: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CoherenciaCruda {
+    #[serde(default)]
+    protocolo: Option<String>,
+    #[serde(default = "una_via")]
+    latencia_invalidacion: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -250,6 +284,19 @@ fn desde_archivo(a: Archivo) -> Result<Config, String> {
         cfg.nucleos = Some(ConfigNucleos {
             cantidad: n.cantidad,
             compartidas,
+        });
+    }
+    if let Some(c) = &a.coherencia {
+        let protocolo = match c.protocolo.as_deref().unwrap_or("msi") {
+            "msi" => Protocolo::Msi,
+            o => return Err(format!("coherencia.protocolo `{o}` no existe; usa msi")),
+        };
+        if a.cache.is_none() {
+            return Err("coherencia: necesita una [cache] que mantener coherente".into());
+        }
+        cfg.coherencia = Some(ConfigCoherencia {
+            protocolo,
+            latencia_invalidacion: c.latencia_invalidacion,
         });
     }
     for r in &a.restricciones {
