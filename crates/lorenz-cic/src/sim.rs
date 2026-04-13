@@ -147,6 +147,11 @@ impl Simulador {
         })
     }
 
+    /// La cache, para que el sistema de varios nucleos pueda espiarla (RF-CIC-024).
+    pub fn cache_mut(&mut self) -> Option<&mut Cache> {
+        self.cache.as_mut()
+    }
+
     /// Los accesos a datos que hizo la ultima instruccion ejecutada, en orden.
     pub fn ultimos_accesos(&self) -> &[Trafico] {
         &self.ultimos_accesos

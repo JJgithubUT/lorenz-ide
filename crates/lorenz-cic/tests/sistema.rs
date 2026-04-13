@@ -170,3 +170,133 @@ fn un_bus_compartido_entre_nucleos_los_hace_esperar() {
     let esperas: u64 = ma.nucleos.iter().map(|m| m.esperas_bus).sum();
     assert!(esperas > 0);
 }
+
+// ---- coherencia de caches (RF-CIC-024) ----
+
+use lorenz_cic::EstadoLinea;
+
+const CACHE: &str = "[cache]\ntamano = 16\nlinea = 2\nvias = 2\nlatencia_acierto = 1\n";
+
+fn con_coherencia(extra: &str) -> String {
+    format!("{CINCO}{CACHE}{DOS}[coherencia]\n{extra}")
+}
+
+fn sin_coherencia() -> String {
+    format!("{CINCO}{CACHE}{DOS}")
+}
+
+/// LD B, [0x2000] ; HLT
+const LEE: [u8; 4] = [0x44, 0x00, 0x20, HLT];
+
+/// `esperas` NOP ; ST A -> [0x2000] ; HLT
+fn escribe_tras(esperas: usize) -> Vec<u8> {
+    let mut p = vec![0x00; esperas];
+    p.extend([0x50, 0x00, 0x20, HLT]);
+    p
+}
+
+fn estado(s: &mut Sistema, nucleo: usize, dir: u64) -> Option<EstadoLinea> {
+    s.nucleo_mut(nucleo).cache_mut().unwrap().estado_de(dir)
+}
+
+#[test]
+fn escribir_una_linea_anula_la_copia_de_los_demas() {
+    let escritor = escribe_tras(10);
+    let mut s = sistema(&con_coherencia(""), &[&LEE, &escritor]);
+    s.ejecutar(1000).unwrap();
+    assert_eq!(estado(&mut s, 0, 0x2000), None, "el lector perdio su copia");
+    assert_eq!(estado(&mut s, 1, 0x2000), Some(EstadoLinea::Modificada));
+    let m = s.metricas();
+    assert_eq!((m.invalidaciones, m.cesiones), (1, 0));
+    s.comprobar_coherencia().unwrap();
+}
+
+#[test]
+fn sin_la_seccion_las_caches_no_se_espian() {
+    let escritor = escribe_tras(10);
+    let mut s = sistema(&sin_coherencia(), &[&LEE, &escritor]);
+    s.ejecutar(1000).unwrap();
+    assert_eq!(estado(&mut s, 0, 0x2000), Some(EstadoLinea::Compartida));
+    assert_eq!(estado(&mut s, 1, 0x2000), Some(EstadoLinea::Modificada));
+    assert_eq!(s.metricas().invalidaciones, 0);
+    // y por eso el invariante se rompe: la comprobacion lo detecta
+    assert!(s.comprobar_coherencia().is_err());
+}
+
+#[test]
+fn leer_una_linea_modificada_ajena_la_hace_ceder_y_quedan_las_dos_compartidas() {
+    let mut lector = vec![0x00; 10];
+    lector.extend(LEE);
+    let mut s = sistema(&con_coherencia(""), &[&[0x50, 0x00, 0x20, HLT], &lector]);
+    s.ejecutar(1000).unwrap();
+    assert_eq!(estado(&mut s, 0, 0x2000), Some(EstadoLinea::Compartida));
+    assert_eq!(estado(&mut s, 1, 0x2000), Some(EstadoLinea::Compartida));
+    let m = s.metricas();
+    assert_eq!((m.invalidaciones, m.cesiones), (0, 1));
+    assert!(m.nucleos[1].esperas_coherencia > 0, "{m:?}");
+    s.comprobar_coherencia().unwrap();
+}
+
+#[test]
+fn la_latencia_de_invalidacion_se_paga_por_cada_linea_anulada() {
+    let espera = |lat: u64| {
+        let escritor = escribe_tras(10);
+        let mut s = sistema(
+            &con_coherencia(&format!("latencia_invalidacion = {lat}\n")),
+            &[&LEE, &escritor],
+        );
+        s.ejecutar(1000).unwrap();
+        s.metricas().nucleos[1].esperas_coherencia
+    };
+    assert_eq!(espera(1), 1);
+    assert_eq!(espera(6), 6);
+}
+
+#[test]
+fn lo_que_no_es_compartido_no_se_espia() {
+    // solo `video` es compartida; los accesos a la ram (0x2000) son privados de cada nucleo
+    let escritor = escribe_tras(10);
+    let extra =
+        format!("{CINCO}{CACHE}[nucleos]\ncantidad = 2\ncompartida = [\"video\"]\n[coherencia]\n");
+    let mut s = sistema(&extra, &[&LEE, &escritor]);
+    s.ejecutar(1000).unwrap();
+    assert_eq!(estado(&mut s, 0, 0x2000), Some(EstadoLinea::Compartida));
+    assert_eq!(s.metricas().invalidaciones, 0);
+}
+
+#[test]
+fn leer_y_escribir_a_la_vez_en_muchos_ciclos_mantiene_el_invariante() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    for _ in 0..8 {
+        a.extend([0x50, 0x00, 0x20]); // ST A, [0x2000]
+        a.extend([0x44, 0x02, 0x20]); // LD B, [0x2002]
+        b.extend([0x44, 0x00, 0x20]); // LD B, [0x2000]
+        b.extend([0x54, 0x02, 0x20]); // ST B, [0x2002]
+    }
+    a.push(HLT);
+    b.push(HLT);
+    let mut s = sistema(&con_coherencia(""), &[&a, &b]);
+    for _ in 0..1000 {
+        if s.ejecutar_instruccion().unwrap().is_none() {
+            break;
+        }
+        s.comprobar_coherencia().unwrap();
+    }
+    assert!(s.detenido());
+    let m = s.metricas();
+    assert!(m.invalidaciones + m.cesiones > 4, "{m:?}");
+}
+
+#[test]
+fn con_una_invalidacion_lenta_el_programa_tarda_mas_que_sin_coherencia() {
+    let escritor = escribe_tras(10);
+    let tarda = |extra: &str| {
+        let mut s = sistema(extra, &[&LEE, &escritor]);
+        s.ejecutar(1000).unwrap();
+        s.metricas().ciclos
+    };
+    // una espera corta puede quedar tapada por otras del pipeline; una larga se nota
+    assert!(tarda(&con_coherencia("latencia_invalidacion = 50\n")) > tarda(&sin_coherencia()) + 40);
+    assert!(tarda(&con_coherencia("")) >= tarda(&sin_coherencia()));
+}
