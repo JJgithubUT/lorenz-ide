@@ -91,20 +91,21 @@ pub fn nucleos_cli(
     escribir(
         salida,
         &format!(
-            "{:<8} {:>8} {:>13} {:>7} {:>13}\n",
-            "nucleo", "ciclos", "instrucciones", "CPI", "esperas bus"
+            "{:<8} {:>8} {:>13} {:>7} {:>13} {:>10}\n",
+            "nucleo", "ciclos", "instrucciones", "CPI", "esperas bus", "coherencia"
         ),
     );
     for (i, x) in m.nucleos.iter().enumerate() {
         escribir(
             salida,
             &format!(
-                "{:<8} {:>8} {:>13} {:>7} {:>13}\n",
+                "{:<8} {:>8} {:>13} {:>7} {:>13} {:>10}\n",
                 i,
                 x.ciclos,
                 x.instrucciones,
                 x.cpi().map_or("-".to_string(), |c| format!("{c:.3}")),
-                x.esperas_bus
+                x.esperas_bus,
+                x.esperas_coherencia
             ),
         );
     }
@@ -119,6 +120,15 @@ pub fn nucleos_cli(
         salida,
         &format!("palabras compartidas copiadas: {}\n", m.propagaciones),
     );
+    if m.invalidaciones > 0 || m.cesiones > 0 {
+        escribir(
+            salida,
+            &format!(
+                "coherencia: {} lineas anuladas, {} entregadas entre caches\n",
+                m.invalidaciones, m.cesiones
+            ),
+        );
+    }
     if m.ciclos_de_bus_comun > 0 {
         escribir(
             salida,
