@@ -121,3 +121,28 @@ fn los_argumentos_que_faltan_o_sobran_se_rechazan() {
     let (c, _, _) = correr(&["nucleos", "m.toml", "p.s", "--nada"]);
     assert_eq!(c, SALIDA_ERROR_USO);
 }
+
+#[test]
+fn con_coherencia_la_orden_cuenta_lineas_anuladas_y_esperas() {
+    let m = maquina(
+        "coherente.toml",
+        &format!("{DOS}[coherencia]\nlatencia_invalidacion = 3\n"),
+    );
+    let lee = temporal("lee.s", "LD B, [0x2000]\nHLT\n");
+    let escribe = temporal(
+        "escribe.s",
+        &format!("{}LDI A, 1\nST [0x2000], A\nNOP\nHLT\n", "NOP\n".repeat(12)),
+    );
+    let (c, s, e) = correr(&["nucleos", &m, &lee, &escribe]);
+    assert_eq!(c, SALIDA_OK, "{e}{s}");
+    assert!(s.contains("coherencia: 1 lineas anuladas"), "{s}");
+    assert!(s.contains("coherencia"), "{s}");
+}
+
+#[test]
+fn sin_coherencia_no_aparece_la_linea_de_coherencia() {
+    let m = maquina("incoherente.toml", DOS);
+    let (c, s, _) = correr(&["nucleos", &m, &escritor(), &lector()]);
+    assert_eq!(c, SALIDA_OK);
+    assert!(!s.contains("lineas anuladas"), "{s}");
+}
