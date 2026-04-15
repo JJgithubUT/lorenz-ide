@@ -264,6 +264,11 @@ datos y el DMA se turnen en un único bus (RF-CIC-021); exige `[pipeline]`. Ver 
 Solo lo lee `lorenz nucleos`. `cantidad` (1 a 64) y `compartida`, la lista de nombres de `[[region]]`
 que ven todos los núcleos (RF-CIC-023). Ver `docs/CICLOS.md`.
 
+## `[coherencia]`
+
+Solo lo lee `lorenz nucleos`. `protocolo` (`msi`) y `latencia_invalidacion`, los ciclos que cuesta
+anular una línea ajena. Exige `[cache]` (RF-CIC-024). Ver `docs/CICLOS.md`.
+
 ## `[[restriccion]]`
 
 Solo las leen `lorenz restricciones` y `lorenz variantes`. Cada una tiene `metrica` y un `maximo`, un

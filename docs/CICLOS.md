@@ -173,6 +173,44 @@ Cómo se comportan:
 Desde Rust: `lorenz_cic::Sistema` (`nuevo`, `ejecutar`, `ejecutar_instruccion`, `metricas`,
 `nucleo(i)`).
 
+### Coherencia de cachés
+
+```toml
+[cache]
+tamano = 64
+linea  = 4
+vias   = 2
+
+[nucleos]
+cantidad = 2
+compartida = ["ram"]
+
+[coherencia]
+protocolo = "msi"            # el único por ahora
+latencia_invalidacion = 2    # ciclos por línea ajena que se anula (por omisión, 1)
+```
+
+Cada núcleo tiene su caché. Con `[coherencia]` se mantienen coherentes con MSI (RF-CIC-024); exige
+`[cache]`. Una línea de caché está *modificada* (la única copia, distinta de la memoria),
+*compartida* (igual que la memoria, quizá con copias) o ausente (inválida). Tras cada instrucción
+de un núcleo, para cada línea compartida que tocó:
+
+- Si **escribió**, las copias de los demás núcleos se anulan. El que escribe espera
+  `latencia_invalidacion` ciclos por cada línea anulada y, si estaba modificada en otra caché,
+  además lo que cuesta volcarla a memoria (la latencia de sus palabras).
+- Si **leyó** y otro núcleo la tenía modificada, ese la entrega (se vuelca) y queda compartida; el
+  que lee espera el volcado.
+
+La espera retrasa la entrada de la instrucción siguiente al pipeline y sale como causa
+`coherencia`. Puede quedar tapada por otra espera mayor del mismo pipeline.
+
+Las cachés de este modelo no guardan datos, solo qué líneas tienen y en qué estado. La coherencia
+cambia por tanto los tiempos y los contadores (`invalidaciones`, `cesiones`), no los valores, que
+ya son coherentes por la propagación de memoria de arriba. Solo se espían los accesos a datos en
+regiones compartidas, no las búsquedas de instrucciones. Sin `[coherencia]` los nucleos no se
+espían: es el modelo optimista, que subestima los fallos. `Sistema::comprobar_coherencia`
+verifica el invariante («si una línea está modificada, nadie más la tiene»).
+
 ## Restricciones de diseño y variantes
 
 La descripción puede fijar límites que el diseño debe cumplir (RF-CIC-033):
