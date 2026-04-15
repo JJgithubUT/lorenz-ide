@@ -54,7 +54,7 @@ Una máquina puede tener varios núcleos que ven las mismas regiones de memoria 
   ejecuta (`intercambiar_bus`, O(1)), en lugar de duplicar la lógica de reservas.
 - **D-094** — Un DMA hacia memoria compartida no se propaga; queda anotado como límite conocido.
 
-**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024), hecha en la entrada siguiente.
+**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024), hecha despues (ver la entrada de coherencia, mas arriba).
 
 **Requisitos:** RF-CIC-023, RF-CIC-021.
 **Commits:** rama `feat/multinucleo`.
