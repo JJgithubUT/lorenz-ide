@@ -17,6 +17,29 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Coherencia de cachés entre núcleos
+
+Las cachés de los núcleos se mantienen coherentes con MSI (RF-CIC-024).
+
+**Decisiones:**
+
+- **D-095** — Las cachés no guardan datos, así que la coherencia es de *estado y tiempo*: qué
+  núcleo tiene cada línea modificada o compartida, cuántas anulaciones y entregas hubo, y cuánto
+  espera el que actúa. Los valores ya eran coherentes por la propagación de D-092; se evita
+  duplicar los datos en cada caché.
+- **D-096** — El espionaje se hace tras la instrucción, no durante ella, y se cobra como un hueco
+  en la entrada del pipeline del que actúa (`Planificador::retrasar`, causa `Coherencia`). Puede
+  quedar tapado por otra espera mayor; es lo esperable en un pipeline y se documenta así.
+- **D-097** — Solo se espían los datos en regiones compartidas. Las búsquedas de instrucciones y
+  el código automodificable quedan fuera.
+
+**Pendiente:** ningún requisito de la fase 6 fuera de los genéricos de SGT y la parte gráfica.
+
+**Requisitos:** RF-CIC-024.
+**Commits:** rama `feat/coherencia`.
+
+---
+
 ## 2026-10-16 — Varios núcleos con memoria compartida
 
 Una máquina puede tener varios núcleos que ven las mismas regiones de memoria (RF-CIC-023).
@@ -31,7 +54,7 @@ Una máquina puede tener varios núcleos que ven las mismas regiones de memoria 
   ejecuta (`intercambiar_bus`, O(1)), en lugar de duplicar la lógica de reservas.
 - **D-094** — Un DMA hacia memoria compartida no se propaga; queda anotado como límite conocido.
 
-**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024).
+**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024), hecha despues (ver la entrada de coherencia, mas arriba).
 
 **Requisitos:** RF-CIC-023, RF-CIC-021.
 **Commits:** rama `feat/multinucleo`.

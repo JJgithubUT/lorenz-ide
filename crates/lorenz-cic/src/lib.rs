@@ -18,10 +18,12 @@ pub mod variantes;
 
 pub use analisis::{dependencias, Dependencias};
 pub use cache::{
-    Cache, ConfigCache, Escritura, EstadisticasCache, FilaCache, Reemplazo, ResultadoCache,
+    Cache, ConfigCache, Escritura, EstadisticasCache, EstadoLinea, FilaCache, Reemplazo,
+    ResultadoCache,
 };
 pub use config::{
-    cargar_config, cargar_config_archivo, Config, ConfigNucleos, LatenciaRegion, RegionCompartida,
+    cargar_config, cargar_config_archivo, Config, ConfigCoherencia, ConfigNucleos, LatenciaRegion,
+    Protocolo, RegionCompartida,
 };
 pub use pipeline::{Causa, ConfigPipeline, Entrada, Etapa, Planificada, Planificador, Prediccion};
 pub use restricciones::{comprobar, Medidas, Metrica, Restriccion, Veredicto};

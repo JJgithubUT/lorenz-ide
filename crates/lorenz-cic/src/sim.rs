@@ -77,6 +77,8 @@ pub struct Metricas {
     pub esperas_control: u64,
     /// Ciclos esperando a que el bus compartido quedara libre (RF-CIC-021).
     pub esperas_bus: u64,
+    /// Ciclos detenido esperando a que otro nucleo invalidara o entregara una linea (RF-CIC-024).
+    pub esperas_coherencia: u64,
     pub saltos: u64,
     pub saltos_acertados: u64,
     /// Instrucciones de la rama equivocada que se buscaron y se descartaron.
@@ -145,9 +147,20 @@ impl Simulador {
         })
     }
 
+    /// La cache, para que el sistema de varios nucleos pueda espiarla (RF-CIC-024).
+    pub fn cache_mut(&mut self) -> Option<&mut Cache> {
+        self.cache.as_mut()
+    }
+
     /// Los accesos a datos que hizo la ultima instruccion ejecutada, en orden.
     pub fn ultimos_accesos(&self) -> &[Trafico] {
         &self.ultimos_accesos
+    }
+
+    /// Detiene el nucleo `ciclos` ciclos tras la ultima instruccion (ver
+    /// `Planificador::retrasar`).
+    pub fn retrasar(&mut self, ciclos: u64) {
+        self.planificador.retrasar(ciclos);
     }
 
     /// Cambia el bus del planificador por otro (ver `Planificador::intercambiar_bus`).
@@ -329,6 +342,7 @@ impl Simulador {
                     Causa::Estructural => m.esperas_estructurales += n,
                     Causa::Control => m.esperas_control += n,
                     Causa::Bus => m.esperas_bus += n,
+                    Causa::Coherencia => m.esperas_coherencia += n,
                 }
             }
             if let Some((_, acierto)) = h.prediccion {

@@ -11,10 +11,19 @@
 //! consistente: ningun nucleo ve una escritura antes de que su autor la haya hecho, y todos las ven
 //! en el mismo orden. Si el bus es compartido (`[bus]`), los accesos de todos los nucleos se turnan
 //! en un mismo bus.
+//!
+//! Si la descripcion tiene `[coherencia]`, las caches de los nucleos se mantienen coherentes con
+//! el protocolo MSI (RF-CIC-024). Las caches de este modelo no guardan datos, solo que lineas
+//! tienen y en que estado: lo que la coherencia cambia es el tiempo (una lectura de una linea que
+//! otro nucleo tiene modificada espera a que la entregue; una escritura espera a anular las copias
+//! ajenas) y los contadores, no los valores, que ya son coherentes por la propagacion de arriba.
 
 use lorenz_emu::{Emulador, ErrorEjecucion};
 
-use crate::config::Config;
+use std::collections::BTreeMap;
+
+use crate::cache::EstadoLinea;
+use crate::config::{Config, ConfigCoherencia};
 use crate::pipeline::Bus;
 use crate::sim::{Metricas, Simulador};
 
@@ -28,6 +37,10 @@ pub struct MetricasSistema {
     pub instrucciones: u64,
     /// Palabras compartidas copiadas de un nucleo a los demas.
     pub propagaciones: u64,
+    /// Lineas de cache anuladas por la escritura de otro nucleo, entre todos.
+    pub invalidaciones: u64,
+    /// Lineas modificadas que un nucleo entrego a otro (por una lectura o una escritura ajena).
+    pub cesiones: u64,
     /// Ciclos en que el bus comun estuvo ocupado (0 si cada nucleo tiene el suyo).
     pub ciclos_de_bus_comun: u64,
 }
@@ -38,6 +51,7 @@ pub struct Sistema {
     bus_comun: Bus,
     bus_compartido: bool,
     propagaciones: u64,
+    coherencia: Option<ConfigCoherencia>,
 }
 
 impl Sistema {
@@ -84,6 +98,7 @@ impl Sistema {
             bus_comun: Bus::default(),
             bus_compartido,
             propagaciones: 0,
+            coherencia: cfg.coherencia.clone(),
         })
     }
 
@@ -137,7 +152,79 @@ impl Sistema {
             return Ok(None);
         }
         self.propagar(i)?;
+        self.espiar(i);
         Ok(Some(i))
+    }
+
+    /// Mantiene coherentes las caches tras una instruccion de `autor` (RF-CIC-024): una escritura
+    /// anula la linea en las demas caches (y si estaba modificada la entrega antes), una lectura
+    /// hace que quien la tiene modificada la entregue y quede compartida. El autor espera lo que
+    /// cuesta: la latencia de invalidacion por linea anulada y volcar a memoria cada linea
+    /// entregada.
+    fn espiar(&mut self, autor: usize) {
+        let Some(coh) = self.coherencia.clone() else {
+            return;
+        };
+        let Some(linea) = self.nucleos[autor].cache_mut().map(|c| c.config().linea) else {
+            return;
+        };
+        // Lineas compartidas que toco, y si en alguna escribio.
+        let mut lineas: BTreeMap<u64, bool> = BTreeMap::new();
+        for a in self.nucleos[autor].ultimos_accesos() {
+            if self.es_compartida(a.direccion) {
+                *lineas.entry(a.direccion - a.direccion % linea).or_default() |= a.escritura;
+            }
+        }
+        let mut espera = 0;
+        for (base, escribe) in lineas {
+            let volcado: u64 = (0..linea)
+                .map(|k| self.nucleos[autor].config().latencia_de(base + k))
+                .sum();
+            for j in (0..self.nucleos.len()).filter(|&j| j != autor) {
+                let Some(otra) = self.nucleos[j].cache_mut() else {
+                    continue;
+                };
+                if escribe {
+                    match otra.invalidar(base) {
+                        Some(EstadoLinea::Modificada) => {
+                            espera += coh.latencia_invalidacion + volcado;
+                        }
+                        Some(EstadoLinea::Compartida) => espera += coh.latencia_invalidacion,
+                        None => {}
+                    }
+                } else if otra.ceder(base) {
+                    espera += volcado;
+                }
+            }
+        }
+        self.nucleos[autor].retrasar(espera);
+    }
+
+    /// Comprueba el invariante de MSI en las lineas compartidas: si una cache tiene una linea
+    /// modificada, ninguna otra la tiene. Devuelve la primera violacion.
+    pub fn comprobar_coherencia(&self) -> Result<(), String> {
+        let mut lineas: BTreeMap<u64, (usize, usize)> = BTreeMap::new();
+        for n in &self.nucleos {
+            let Some(c) = n.cache() else { continue };
+            for f in c.contenido() {
+                let Some(d) = f.direccion else { continue };
+                if !self.es_compartida(d) {
+                    continue;
+                }
+                let e = lineas.entry(d).or_default();
+                e.0 += 1;
+                e.1 += usize::from(f.sucia);
+            }
+        }
+        for (d, (copias, modificadas)) in lineas {
+            if modificadas > 1 || (modificadas == 1 && copias > 1) {
+                return Err(format!(
+                    "la linea {d:#x} esta modificada en una cache y presente en {} mas",
+                    copias - 1
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// Copia a los demas nucleos lo que `autor` escribio en memoria compartida.
@@ -179,6 +266,16 @@ impl Sistema {
             ciclos: nucleos.iter().map(|m| m.ciclos).max().unwrap_or(0),
             instrucciones: nucleos.iter().map(|m| m.instrucciones).sum(),
             propagaciones: self.propagaciones,
+            invalidaciones: nucleos
+                .iter()
+                .filter_map(|m| m.cache.as_ref())
+                .map(|c| c.invalidaciones)
+                .sum(),
+            cesiones: nucleos
+                .iter()
+                .filter_map(|m| m.cache.as_ref())
+                .map(|c| c.cesiones)
+                .sum(),
             ciclos_de_bus_comun: self.bus_comun.ciclos_ocupado(),
             nucleos,
         }
