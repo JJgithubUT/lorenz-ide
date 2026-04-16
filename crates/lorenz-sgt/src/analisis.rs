@@ -1798,6 +1798,15 @@ impl<'a> Analizador<'a> {
             ClaseExpr::Unario(op, a) => self.unario(lugar, *op, a, esperado),
             ClaseExpr::Binario(op, a, b) => self.binario(lugar, *op, a, b, esperado),
             ClaseExpr::Llamada(n, args) => self.llamada(lugar, n, args),
+            ClaseExpr::LlamadaGenerica(n, ..) => {
+                // El expansor de genericos las sustituye antes de llegar aqui.
+                self.error_con(
+                    lugar,
+                    format!("la llamada generica a `{n}` no se expandio"),
+                    "esto es un fallo del compilador; avisa de el".to_string(),
+                );
+                self.error_expr(lugar)
+            }
             ClaseExpr::Indice(..) => match self.sitio(e) {
                 Some(s) => self.leer_valor(lugar, s),
                 None => self.error_expr(lugar),
