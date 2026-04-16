@@ -41,6 +41,7 @@ pub fn analizar(
     destino: &Destino,
     opciones: Opciones,
 ) -> Result<hir::Modulo, Vec<Diagnostico>> {
+    let programa = &crate::genericos::expandir_programa(archivo, programa)?;
     let mut a = Analizador::nuevo(archivo, destino);
     a.programa(programa, opciones);
     if a.diag.is_empty() {
