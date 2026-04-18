@@ -330,7 +330,7 @@ conocida, escrita en la columna de evidencia.
 | RF-SGT-039, 040 | El mismo programa en varias maquinas y comparacion | Hecho | `lorenz cotejar`, `tests/ocho_bits.rs`, `ejemplos/sgt-8`, `ejemplos/sgt-16` |
 | RF-SGT-041 | Biblioteca de apoyo en SGT | Hecho | `biblioteca` (`__mul`, `__divmod`, `mem_*`, `cad_*`, rutinas por ancho), `podar` |
 | RF-SGT-018 | Modulos con importacion explicita de simbolos | Hecho | `analisis` (nombres por modulo), `compilar::compilar_con`, `tests/modulos.rs`, `crates/lorenz-cli/tests/compilar.rs` |
-| RF-SGT-021 | Genericos sencillos sobre enteros | Pendiente | opcional (fase 6) |
+| RF-SGT-021 | Genericos sencillos sobre enteros | Hecho | `genericos::expandir`, `tests/genericos.rs`, `docs/SGT.md` |
 
 ## Concordancia con los commits anteriores
 

@@ -17,6 +17,29 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Genéricos de SGT
+
+Las funciones pueden tener parámetros de tipo entero (RF-SGT-021).
+
+**Decisiones:**
+
+- **D-098** — Monomorfización antes del análisis de tipos, en el árbol sintáctico: cada combinación
+  de tipos genera una copia (`f__u16`) y la llamada pasa a ser corriente. El análisis, el
+  optimizador, el generador y el intérprete no cambian ni saben de genéricos. Se engancha al
+  principio de `analizar`, de modo que lo ven todos los caminos (compilar, intérprete, pruebas).
+- **D-099** — Sin inferencia: los tipos se escriben en cada llamada (`f<u16>(x)`). Evita ligar el
+  análisis al expansor y hace que cada llamada diga lo que genera. Solo enteros, sin importar
+  genéricos entre módulos, sin atributos. Una genérica no usada no se revisa.
+- **D-100** — `nombre<tipos>(` se reconoce con vuelta atrás: se prueba la lista de tipos y, si
+  no sigue `>(`, `<` era una comparación. Es ambiguo solo en `a < b > (c)`, que se documenta.
+
+**Pendiente:** nada de la fase 6 fuera de las partes gráficas.
+
+**Requisitos:** RF-SGT-021.
+**Commits:** rama `feat/genericos`.
+
+---
+
 ## 2026-10-16 — Coherencia de cachés entre núcleos
 
 Las cachés de los núcleos se mantienen coherentes con MSI (RF-CIC-024).
