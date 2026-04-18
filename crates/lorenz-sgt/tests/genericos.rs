@@ -5,7 +5,7 @@ use comun::*;
 const MAQ: &str = "sgt-8";
 
 fn error(fuente: &str) -> String {
-    compilar_en(MAQ, fuente).err().expect("debia fallar")
+    compilar_en(MAQ, fuente).expect_err("debia fallar")
 }
 
 #[test]

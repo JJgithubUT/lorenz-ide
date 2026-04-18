@@ -81,7 +81,9 @@ fn recorrer_expr(e: &mut Expr, fe: FnExpr<'_>, ft: FnTipo<'_>) {
         | ClaseExpr::Campo(a, _) => recorrer_expr(a, fe, ft),
         ClaseExpr::Llamada(_, args) => args.iter_mut().for_each(|a| recorrer_expr(a, fe, ft)),
         ClaseExpr::LlamadaGenerica(_, tipos, args) => {
-            tipos.iter_mut().for_each(|t| ft(t));
+            for t in tipos.iter_mut() {
+                ft(t);
+            }
             args.iter_mut().for_each(|a| recorrer_expr(a, fe, ft));
         }
         ClaseExpr::Cast(a, t) => {
