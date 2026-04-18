@@ -1,5 +1,35 @@
 # Registro de cambios
 
+## 0.3.0 — 2026-10-16 — Cierre de la fase 6 sin IDE ni GPU
+
+Completa lo opcional que quedaba en el nucleo, el modelo de ciclos y el lenguaje. Lo unico que sigue
+pendiente de la ERS es el entorno grafico (IDE) y la unidad grafica (GPU).
+
+### Varios nucleos (fase 6)
+
+- `[nucleos]`: de 1 a 64 nucleos sobre memoria compartida, cada uno con su pipeline y su cache.
+  Avanza el que menos ciclos lleva, de modo que el orden de las escrituras es el del tiempo
+  simulado y el resultado se repite. Con `[bus] compartido` los nucleos se turnan en un bus comun.
+- `[coherencia]`: caches coherentes con MSI. Se cuentan invalidaciones y entregas de lineas, y el
+  nucleo que actua espera lo que cuestan (nueva causa de espera, `coherencia`).
+- `lorenz nucleos maquina.toml programa...`.
+
+### Restricciones y variantes de diseno (fase 6)
+
+- `[[restriccion]]`: limites sobre ciclos, instrucciones, CPI, esperas, fallos de cache, uso del bus
+  y tamano del codigo.
+- `lorenz restricciones` comprueba un programa contra ellas; `lorenz variantes` prueba variantes de
+  adelantamiento, prediccion, cache y bus, y estima las instrucciones nuevas que las cumplirian.
+  Codigo de salida 5 cuando algo no se cumple.
+
+### Lenguaje SGT
+
+- Genericos sencillos sobre enteros: `funcion maximo<T>(a: T, b: T) -> T` y `maximo<u16>(1, 2)`,
+  resueltos por monomorfizacion antes del analisis de tipos.
+
+Detalle en `docs/CICLOS.md`, `docs/SGT.md`, `docs/FORMATO.md` y `docs/BITACORA.md`; el plan del
+sprint, en `docs/SPRINTS.md`.
+
 ## 0.2.0 — 2026-10-16 — Fases 2 a 5 (sin IDE ni GPU)
 
 Cubre herramientas alrededor del emulador, el lenguaje SGT y la simulacion ciclo a ciclo.
