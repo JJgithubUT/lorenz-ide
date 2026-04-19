@@ -106,6 +106,8 @@ pub enum Causa {
     Estructural,
     /// Esperaba a que el bus quedara libre (RF-CIC-021).
     Bus,
+    /// Esperaba a que otro nucleo invalidara o entregara una linea de cache (RF-CIC-024).
+    Coherencia,
     /// Esperaba a saber adonde va un salto.
     Control,
 }
@@ -116,6 +118,7 @@ impl Causa {
             Causa::Datos { registro } => format!("datos ({registro})"),
             Causa::Estructural => "estructural".into(),
             Causa::Bus => "bus".into(),
+            Causa::Coherencia => "coherencia".into(),
             Causa::Control => "control".into(),
         }
     }
@@ -283,6 +286,8 @@ pub struct Planificador {
     libre: Vec<u64>,
     /// Hasta cuando no se puede empezar a buscar (salto sin resolver).
     bloqueo: u64,
+    /// Hasta cuando no se puede empezar a buscar porque la coherencia de cache detuvo al nucleo.
+    coherencia: u64,
     /// Para cada registro: quien lo escribio por ultima vez y cuando esta listo.
     productores: BTreeMap<String, Productor>,
     bus: Bus,
@@ -306,6 +311,7 @@ impl Planificador {
             predictor,
             libre: vec![0; n],
             bloqueo: 0,
+            coherencia: 0,
             productores: BTreeMap::new(),
             bus: Bus::default(),
             siguiente_id: 0,
@@ -314,6 +320,23 @@ impl Planificador {
 
     pub fn config(&self) -> &ConfigPipeline {
         &self.cfg
+    }
+
+    /// Retrasa `ciclos` ciclos la entrada de la instruccion siguiente: es lo que cuesta esperar a
+    /// que otro nucleo invalide o entregue una linea (RF-CIC-024). El retraso se suma al que ya
+    /// hubiera por otras causas solo si es mayor, como un hueco en la entrada del pipeline.
+    pub fn retrasar(&mut self, ciclos: u64) {
+        if ciclos == 0 {
+            return;
+        }
+        let desde = self.libre[0].max(self.coherencia);
+        self.coherencia = desde + ciclos;
+    }
+
+    /// Cambia el bus de este planificador por otro. Es como varios nucleos comparten un bus: el
+    /// que va a ejecutar toma el comun, y lo devuelve cuando termina (RF-CIC-023).
+    pub fn intercambiar_bus(&mut self, otro: &mut Bus) {
+        std::mem::swap(&mut self.bus, otro);
     }
 
     pub fn programar(&mut self, i: &Entrada) -> Planificada {
@@ -355,8 +378,11 @@ impl Planificador {
         let mut previa = None;
         if self.bloqueo > t0 {
             previa = Some((Causa::Control, self.bloqueo - t0));
-            t0 = self.bloqueo;
         }
+        if self.coherencia > t0.max(self.bloqueo) {
+            previa = Some((Causa::Coherencia, self.coherencia - t0));
+        }
+        t0 = t0.max(self.bloqueo).max(self.coherencia);
         if etapa_operandos == 0 && listo > t0 {
             previa = por
                 .clone()

@@ -3,12 +3,12 @@
 
 use std::collections::BTreeMap;
 
-use lorenz_emu::{Decodificador, Emulador, ErrorEjecucion};
+use lorenz_emu::{Decodificador, Emulador, ErrorEjecucion, Trafico};
 
 use crate::analisis::dependencias;
 use crate::cache::{Cache, EstadisticasCache};
 use crate::config::Config;
-use crate::pipeline::{Causa, ConfigPipeline, Entrada, Planificada, Planificador};
+use crate::pipeline::{Bus, Causa, ConfigPipeline, Entrada, Planificada, Planificador};
 
 /// Que hace una etapa en un ciclo.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,6 +77,8 @@ pub struct Metricas {
     pub esperas_control: u64,
     /// Ciclos esperando a que el bus compartido quedara libre (RF-CIC-021).
     pub esperas_bus: u64,
+    /// Ciclos detenido esperando a que otro nucleo invalidara o entregara una linea (RF-CIC-024).
+    pub esperas_coherencia: u64,
     pub saltos: u64,
     pub saltos_acertados: u64,
     /// Instrucciones de la rama equivocada que se buscaron y se descartaron.
@@ -120,6 +122,8 @@ pub struct Simulador {
     historial: Vec<Planificada>,
     ciclos_de_memoria: u64,
     ciclo: u64,
+    /// Accesos a datos de la ultima instruccion ejecutada.
+    ultimos_accesos: Vec<Trafico>,
 }
 
 impl Simulador {
@@ -139,7 +143,29 @@ impl Simulador {
             historial: Vec::new(),
             ciclos_de_memoria: 0,
             ciclo: 0,
+            ultimos_accesos: Vec::new(),
         })
+    }
+
+    /// La cache, para que el sistema de varios nucleos pueda espiarla (RF-CIC-024).
+    pub fn cache_mut(&mut self) -> Option<&mut Cache> {
+        self.cache.as_mut()
+    }
+
+    /// Los accesos a datos que hizo la ultima instruccion ejecutada, en orden.
+    pub fn ultimos_accesos(&self) -> &[Trafico] {
+        &self.ultimos_accesos
+    }
+
+    /// Detiene el nucleo `ciclos` ciclos tras la ultima instruccion (ver
+    /// `Planificador::retrasar`).
+    pub fn retrasar(&mut self, ciclos: u64) {
+        self.planificador.retrasar(ciclos);
+    }
+
+    /// Cambia el bus del planificador por otro (ver `Planificador::intercambiar_bus`).
+    pub fn intercambiar_bus(&mut self, otro: &mut Bus) {
+        self.planificador.intercambiar_bus(otro);
     }
 
     pub fn emulador(&self) -> &Emulador {
@@ -220,6 +246,7 @@ impl Simulador {
             return Ok(None);
         };
         let accesos = self.emu.memoria_mut().tomar_trafico();
+        self.ultimos_accesos.clone_from(&accesos);
         let dec = match previa {
             Some(d) if d.direccion == paso.direccion => d,
             _ => self
@@ -315,6 +342,7 @@ impl Simulador {
                     Causa::Estructural => m.esperas_estructurales += n,
                     Causa::Control => m.esperas_control += n,
                     Causa::Bus => m.esperas_bus += n,
+                    Causa::Coherencia => m.esperas_coherencia += n,
                 }
             }
             if let Some((_, acierto)) = h.prediccion {

@@ -137,6 +137,117 @@ comentarios y el espaciado no la cambian, una latencia sí.
 Desde Rust, `lorenz_cic::Simulador` ofrece lo mismo: `ejecutar`, `metricas`, `vista(ciclo)`,
 `avanzar_ciclo` y `retroceder_ciclo` (RF-CIC-014), `diagrama` y `perfil`.
 
+## Varios núcleos
+
+```toml
+[nucleos]
+cantidad = 2
+compartida = ["ram"]
+```
+
+Declara una máquina con `cantidad` núcleos (de 1 a 64) que comparten las regiones de `compartida`,
+nombradas como en `[[region]]` (RF-CIC-023). Con más de un núcleo hace falta al menos una. Cada
+núcleo tiene sus registros, su pipeline, su caché y sus dispositivos; lo único común es esa memoria.
+
+```
+lorenz nucleos maquina.toml programa... [--limite N] [--direccion A]
+```
+
+Se da un programa por núcleo, o uno solo para que lo ejecuten todos. La salida lista, por núcleo,
+los ciclos, las instrucciones, el CPI y las esperas por el bus, y después el total (los ciclos del
+último núcleo en terminar), las palabras compartidas copiadas y, si el bus es común, los ciclos que
+estuvo ocupado. `--limite` cuenta instrucciones de todos los núcleos juntos.
+
+Cómo se comportan:
+
+- En cada paso ejecuta el núcleo que menos ciclos lleva (si empatan, el de menor número). Así el
+  orden en que se ven las escrituras es el del tiempo simulado y el resultado se repite.
+- Una escritura a una dirección compartida se copia a la memoria de los demás núcleos en cuanto
+  termina su instrucción. Es una memoria secuencialmente consistente: todos ven las escrituras en
+  el mismo orden y nadie ve una antes de que se haga.
+- Al empezar, lo que hay en las regiones compartidas del primer núcleo se copia a los demás.
+- Con `[bus] compartido = true` los accesos de *todos* los núcleos se turnan en un único bus
+  (`esperas por el bus compartido`); sin él, cada núcleo tiene el suyo y no se estorban.
+- Un DMA que escribe en una región compartida no se propaga a los otros núcleos todavía.
+
+Desde Rust: `lorenz_cic::Sistema` (`nuevo`, `ejecutar`, `ejecutar_instruccion`, `metricas`,
+`nucleo(i)`).
+
+### Coherencia de cachés
+
+```toml
+[cache]
+tamano = 64
+linea  = 4
+vias   = 2
+
+[nucleos]
+cantidad = 2
+compartida = ["ram"]
+
+[coherencia]
+protocolo = "msi"            # el único por ahora
+latencia_invalidacion = 2    # ciclos por línea ajena que se anula (por omisión, 1)
+```
+
+Cada núcleo tiene su caché. Con `[coherencia]` se mantienen coherentes con MSI (RF-CIC-024); exige
+`[cache]`. Una línea de caché está *modificada* (la única copia, distinta de la memoria),
+*compartida* (igual que la memoria, quizá con copias) o ausente (inválida). Tras cada instrucción
+de un núcleo, para cada línea compartida que tocó:
+
+- Si **escribió**, las copias de los demás núcleos se anulan. El que escribe espera
+  `latencia_invalidacion` ciclos por cada línea anulada y, si estaba modificada en otra caché,
+  además lo que cuesta volcarla a memoria (la latencia de sus palabras).
+- Si **leyó** y otro núcleo la tenía modificada, ese la entrega (se vuelca) y queda compartida; el
+  que lee espera el volcado.
+
+La espera retrasa la entrada de la instrucción siguiente al pipeline y sale como causa
+`coherencia`. Puede quedar tapada por otra espera mayor del mismo pipeline.
+
+Las cachés de este modelo no guardan datos, solo qué líneas tienen y en qué estado. La coherencia
+cambia por tanto los tiempos y los contadores (`invalidaciones`, `cesiones`), no los valores, que
+ya son coherentes por la propagación de memoria de arriba. Solo se espían los accesos a datos en
+regiones compartidas, no las búsquedas de instrucciones. Sin `[coherencia]` los nucleos no se
+espían: es el modelo optimista, que subestima los fallos. `Sistema::comprobar_coherencia`
+verifica el invariante («si una línea está modificada, nadie más la tiene»).
+
+## Restricciones de diseño y variantes
+
+La descripción puede fijar límites que el diseño debe cumplir (RF-CIC-033):
+
+```toml
+[[restriccion]]
+nombre = "rapido"          # opcional; por omisión, el nombre de la métrica
+metrica = "ciclos"
+maximo = 400
+
+[[restriccion]]
+metrica = "palabras-codigo"
+maximo = 64
+```
+
+Cada una pide `metrica` y al menos un `maximo` o un `minimo` (enteros o decimales; el mínimo no puede
+superar al máximo). Las métricas son `ciclos`, `instrucciones`, `cpi`, `esperas-datos`,
+`esperas-estructurales`, `esperas-control`, `esperas-bus`, `saltos-fallados`, `uso-del-bus`,
+`fallos-cache` y `palabras-codigo` (el tamaño del programa). Una cifra que no se puede medir, como los
+fallos de caché sin caché, no cumple.
+
+```
+lorenz restricciones maquina.toml programa [--limite N] [--direccion A]
+lorenz variantes maquina.toml programa [--limite N] [--direccion A] [--bus] [--cuantas N]
+```
+
+`restricciones` ejecuta el programa y muestra, por cada límite, lo medido y si se cumple. Sale con 0
+si se cumplen todas, 5 si falla alguna y 3 si el programa no termina dentro del límite (con un
+programa cortado las cifras no valen).
+
+`variantes` prueba las combinaciones de adelantamiento, predicción de saltos, tamaño de caché (la
+mitad, igual, el doble y el cuádruple, siempre que sigan siendo válidos) y, con `--bus`, bus
+compartido o separado. Muestra primero las que cumplen todo y, entre ellas, las más rápidas. Después
+estima, para cada instrucción nueva que propondría `sugerir`, qué cifras tendría el programa y si
+cumpliría; esa parte es una estimación y no simula el repertorio ampliado. Sale con 5 si ninguna
+variante cumple. Desde Rust: `lorenz_cic::{variantes, evaluar, variantes_isa}`.
+
 ## Sugerencias de instrucciones nuevas
 
 ```

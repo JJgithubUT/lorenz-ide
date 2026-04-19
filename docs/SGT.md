@@ -121,6 +121,54 @@ funcion principal() { f(3); }
 // error: recursion
 ```
 
+## Genericos sobre enteros (RF-SGT-021)
+
+Una funcion puede declarar parametros de tipo entre `<` y `>`, y se llama diciendo con que tipos:
+
+```sgt
+var a: u16;
+var b: i16;
+
+funcion maximo<T>(x: T, y: T) -> T {
+    si x > y { devolver x; }
+    devolver y;
+}
+
+funcion principal() {
+    a = maximo<u16>(7, 300);
+    b = maximo<i16>(-5, 3);
+}
+// espera: a = 300
+// espera: b = 3
+```
+
+El compilador **no infiere** los tipos: hay que escribirlos en cada llamada, `maximo<u16>(...)`.
+Por cada combinacion de tipos que se usa genera una copia de la funcion con los parametros
+sustituidos, llamada `maximo__u16`, `maximo__i16`... (se ven asi en el ensamblador y en los
+informes de coste). Dos llamadas con los mismos tipos comparten la copia, y una funcion generica que
+nadie llama no deja codigo. El parametro de tipo vale en los parametros, el retorno, las variables
+locales (`var y: T`), las conversiones (`x como T`) y los punteros (`*T`). Puede haber varios
+(`funcion f<A, B>(x: A) -> B`) y una generica puede llamar a otra (`sumar<T>(a, b)`).
+
+Limites, a proposito para que sean sencillos:
+
+- Solo se instancian con tipos enteros (`u16`, `i32`, `usize`...), y el ancho debe existir en la
+  maquina: `f<u8>` falla en una maquina de 16 bits como lo haria `var x: u8`.
+- Una funcion generica se llama desde el archivo donde esta definida; no se importa de otro modulo.
+- No lleva atributos (`@interrupcion`).
+- Como las demas funciones, no puede ser recursiva (decision D-059), y el error nombra la copia
+  (`suma__u16 se llama a si misma`).
+- `a < b > (c)` se lee como una llamada generica a `a` con el tipo `b`; para comparar, usa
+  parentesis: `(a < b) > (c)`.
+- Una generica solo se revisa al instanciarla: un error en su cuerpo sale la primera vez que se usa,
+  en la linea del cuerpo.
+
+```sgt-error
+funcion f<T>(x: T) -> T { devolver x; }
+funcion principal() { var a: u16 = f(1); }
+// error: necesita que se diga con que tipos
+```
+
 ## Control de flujo (RF-SGT-010, 011)
 
 `si`/`sino`, `mientras`, `bucle` (infinito, se sale con `romper`), `continuar` y `segun`. Las
@@ -351,7 +399,7 @@ funcion principal() { segun x { 1 => { } otro => { } } }
 
 ## Lo que falta
 
-Los genericos estan descritos en la ERS y se haran despues (vease `docs/TRAZABILIDAD.md`).
+Lo que sigue pendiente de la ERS esta en `docs/TRAZABILIDAD.md`.
 
 ## Proyecto nuevo desde una plantilla (RF-ECO-042)
 

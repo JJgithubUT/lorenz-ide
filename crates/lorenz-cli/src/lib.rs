@@ -13,7 +13,7 @@ pub mod ordenes;
 
 pub use ordenes::{
     ejecutar_cli, ejecutar_cli_con_entrada, SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION,
-    SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
+    SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_NO_CUMPLE, SALIDA_OK,
 };
 
 pub mod guion;
@@ -51,3 +51,9 @@ pub mod historial_ciclos;
 
 /// El mismo programa SGT en varias maquinas.
 pub mod cotejar;
+
+/// Restricciones de diseno y variantes que las cumplan.
+pub mod variantes;
+
+/// Varios nucleos sobre memoria compartida.
+pub mod nucleos;

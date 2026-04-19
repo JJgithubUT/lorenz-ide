@@ -17,6 +17,108 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Versión 0.3.0
+
+Cierre del sprint 1: la fase 6 queda completa salvo la parte gráfica.
+
+**Hecho:** restricciones y variantes, varios núcleos, coherencia de cachés y genéricos de SGT,
+con pruebas y documentación. 1907 pruebas verdes, clippy sin avisos.
+**Decidido:** D-089 a D-100 (ver las entradas anteriores). Se publica como 0.3.0 por el mismo
+camino que la 0.2.0: develop → deploy → main con etiqueta, y de vuelta a develop.
+**Pendiente:** IDE, GPU y el control gráfico de DEP-022.
+**Requisitos:** RF-CIC-023, RF-CIC-024, RF-CIC-033, RF-SGT-021.
+**Commits:** ramas `feat/restricciones`, `feat/multinucleo`, `feat/coherencia`, `feat/genericos`
+y `chore/version-0.3.0`.
+
+---
+
+## 2026-10-16 — Genéricos de SGT
+
+Las funciones pueden tener parámetros de tipo entero (RF-SGT-021).
+
+**Decisiones:**
+
+- **D-098** — Monomorfización antes del análisis de tipos, en el árbol sintáctico: cada combinación
+  de tipos genera una copia (`f__u16`) y la llamada pasa a ser corriente. El análisis, el
+  optimizador, el generador y el intérprete no cambian ni saben de genéricos. Se engancha al
+  principio de `analizar`, de modo que lo ven todos los caminos (compilar, intérprete, pruebas).
+- **D-099** — Sin inferencia: los tipos se escriben en cada llamada (`f<u16>(x)`). Evita ligar el
+  análisis al expansor y hace que cada llamada diga lo que genera. Solo enteros, sin importar
+  genéricos entre módulos, sin atributos. Una genérica no usada no se revisa.
+- **D-100** — `nombre<tipos>(` se reconoce con vuelta atrás: se prueba la lista de tipos y, si
+  no sigue `>(`, `<` era una comparación. Es ambiguo solo en `a < b > (c)`, que se documenta.
+
+**Pendiente:** nada de la fase 6 fuera de las partes gráficas.
+
+**Requisitos:** RF-SGT-021.
+**Commits:** rama `feat/genericos`.
+
+---
+
+## 2026-10-16 — Coherencia de cachés entre núcleos
+
+Las cachés de los núcleos se mantienen coherentes con MSI (RF-CIC-024).
+
+**Decisiones:**
+
+- **D-095** — Las cachés no guardan datos, así que la coherencia es de *estado y tiempo*: qué
+  núcleo tiene cada línea modificada o compartida, cuántas anulaciones y entregas hubo, y cuánto
+  espera el que actúa. Los valores ya eran coherentes por la propagación de D-092; se evita
+  duplicar los datos en cada caché.
+- **D-096** — El espionaje se hace tras la instrucción, no durante ella, y se cobra como un hueco
+  en la entrada del pipeline del que actúa (`Planificador::retrasar`, causa `Coherencia`). Puede
+  quedar tapado por otra espera mayor; es lo esperable en un pipeline y se documenta así.
+- **D-097** — Solo se espían los datos en regiones compartidas. Las búsquedas de instrucciones y
+  el código automodificable quedan fuera.
+
+**Pendiente:** ningún requisito de la fase 6 fuera de los genéricos de SGT y la parte gráfica.
+
+**Requisitos:** RF-CIC-024.
+**Commits:** rama `feat/coherencia`.
+
+---
+
+## 2026-10-16 — Varios núcleos con memoria compartida
+
+Una máquina puede tener varios núcleos que ven las mismas regiones de memoria (RF-CIC-023).
+
+**Decisiones:**
+
+- **D-092** — Cada núcleo es un emulador con su simulador completo; solo se comparte lo que
+  `[nucleos].compartida` nombra. Avanza el núcleo con menos ciclos (desempata el menor número) y sus
+  escrituras compartidas se copian a los demás al acabar la instrucción: consistencia secuencial
+  determinista, sin relojes que se desfasen.
+- **D-093** — El bus común se consigue prestando el bus del sistema al planificador del núcleo que
+  ejecuta (`intercambiar_bus`, O(1)), en lugar de duplicar la lógica de reservas.
+- **D-094** — Un DMA hacia memoria compartida no se propaga; queda anotado como límite conocido.
+
+**Pendiente:** coherencia de cachés entre núcleos (RF-CIC-024), hecha despues (ver la entrada de coherencia, mas arriba).
+
+**Requisitos:** RF-CIC-023, RF-CIC-021.
+**Commits:** rama `feat/multinucleo`.
+
+---
+
+## 2026-10-16 — Restricciones de diseño y variantes
+
+Se pueden fijar límites al diseño y buscar variantes que los cumplan (RF-CIC-033).
+
+**Decisiones:**
+
+- **D-089** — Las restricciones se declaran en la descripción (`[[restriccion]]`) y se miden sobre una
+  ejecución completa; un programa cortado por el límite no se evalúa, porque una variante parecería
+  mejor solo por haber hecho menos. Una cifra imposible de medir no cumple.
+- **D-090** — Las variantes cambian parámetros de temporización (adelantamiento, predicción, caché,
+  bus) y se simulan de verdad. Las de repertorio (instrucciones nuevas) solo se estiman restando el
+  ahorro de `sugerir`, y la salida lo dice. La base es siempre la primera y no se repiten
+  configuraciones iguales.
+- **D-091** — Código de salida 5 para «no se cumple», distinto del 4 de «difieren».
+
+**Requisitos:** RF-CIC-033.
+**Commits:** rama `feat/restricciones`.
+
+---
+
 ## 2026-10-16 — Sugerencias de instrucciones nuevas
 
 `lorenz sugerir` propone secuencias de instrucciones que valdria la pena convertir en una sola
@@ -29,8 +131,8 @@ Formato de una entrada:
   no cruza un destino de salto y termina en la primera instruccion que salta. El ahorro supone una
   instruccion tan larga y tan lenta como la peor de la secuencia; no se miran operandos.
 
-**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024), restricciones de diseno
-(RF-CIC-033) y los genericos de SGT (RF-SGT-021).
+**Pendiente:** varios nucleos y coherencia (RF-CIC-023, RF-CIC-024) y los genericos de SGT
+(RF-SGT-021).
 
 **Requisitos:** RF-CIC-034.
 **Commits:** rama `feat/sugerir`.

@@ -19,6 +19,8 @@ pub const SALIDA_ERROR_USO: i32 = 2;
 pub const SALIDA_LIMITE: i32 = 3;
 /// `comparar` encontro una diferencia entre las dos maquinas.
 pub const SALIDA_DIFIEREN: i32 = 4;
+/// Alguna restriccion de diseno no se cumple (`restricciones`, `variantes`).
+pub const SALIDA_NO_CUMPLE: i32 = 5;
 
 const AYUDA: &str = "\
 Lorenz: emulador de maquinas definidas por el usuario
@@ -38,6 +40,9 @@ Uso:
   lorenz historial-ciclos <historial.toml>
   lorenz sugerir <maquina.toml> <programa>... [--limite N] [--direccion A] [--minima N] [--maxima N]
                [--cuantas N]
+  lorenz nucleos <maquina.toml> <programa>... [--limite N] [--direccion A]
+  lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
+  lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
   lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
@@ -233,6 +238,21 @@ pub fn ejecutar_cli_con_entrada(
             programas,
             opciones,
         } => crate::sugerir::sugerir_cli(&maquina, &programas, &opciones, salida, errores),
+        Orden::Nucleos {
+            maquina,
+            programas,
+            opciones,
+        } => crate::nucleos::nucleos_cli(&maquina, &programas, &opciones, salida, errores),
+        Orden::Restricciones {
+            maquina,
+            programa,
+            opciones,
+        } => crate::variantes::restricciones_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Variantes {
+            maquina,
+            programa,
+            opciones,
+        } => crate::variantes::variantes_cli(&maquina, &programa, &opciones, salida, errores),
         Orden::HistorialCiclos { archivo } => {
             crate::historial_ciclos::historial_cli(&archivo, salida, errores)
         }

@@ -76,6 +76,24 @@ pub enum Orden {
         programas: Vec<String>,
         opciones: crate::sugerir::OpcionesSugerir,
     },
+    /// Comprobar las restricciones de diseno de la maquina contra un programa.
+    Restricciones {
+        maquina: String,
+        programa: String,
+        opciones: crate::variantes::OpcionesVariantes,
+    },
+    /// Buscar variantes de diseno que cumplan las restricciones.
+    Variantes {
+        maquina: String,
+        programa: String,
+        opciones: crate::variantes::OpcionesVariantes,
+    },
+    /// Ejecutar un programa por nucleo sobre memoria compartida.
+    Nucleos {
+        maquina: String,
+        programas: Vec<String>,
+        opciones: crate::nucleos::OpcionesNucleos,
+    },
     /// Listar el historico de mediciones de ciclos.
     HistorialCiclos {
         archivo: String,
@@ -272,6 +290,9 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ciclos" => interpretar_ciclos(resto),
         "comparar-ciclos" => interpretar_comparar_ciclos(resto),
         "sugerir" => interpretar_sugerir(resto),
+        "nucleos" => interpretar_nucleos(resto),
+        "restricciones" => interpretar_variantes(resto, false),
+        "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
             [archivo] => Ok(Orden::HistorialCiclos {
                 archivo: archivo.clone(),
@@ -525,6 +546,71 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
         fuente,
         maquinas,
         opciones,
+    })
+}
+
+fn interpretar_nucleos(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::nucleos::OpcionesNucleos::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programas: Vec<String> = it.collect();
+    if programas.is_empty() {
+        return Err(ErrorUso::Falta("programa"));
+    }
+    Ok(Orden::Nucleos {
+        maquina,
+        programas,
+        opciones,
+    })
+}
+
+fn interpretar_variantes(resto: &[String], buscar: bool) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) =
+        (Vec::new(), crate::variantes::OpcionesVariantes::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--bus" if buscar => opciones.bus = true,
+            "--cuantas" if buscar => {
+                opciones.cuantas = numero(a, valor_de(resto, &mut i, a)?)? as usize
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = it.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(if buscar {
+        Orden::Variantes {
+            maquina,
+            programa,
+            opciones,
+        }
+    } else {
+        Orden::Restricciones {
+            maquina,
+            programa,
+            opciones,
+        }
     })
 }
 

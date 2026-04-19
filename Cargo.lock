@@ -32,7 +32,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "lorenz-arch"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -41,7 +41,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-cic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-cic",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-dbg"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
@@ -79,7 +79,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-emu"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "thiserror",
@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-ens"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-sgt"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-emu",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "lorenz-tst"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lorenz-arch",
  "lorenz-dbg",

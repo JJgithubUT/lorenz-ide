@@ -270,6 +270,23 @@ impl Parser {
     fn funcion(&mut self, lugar: Lugar, atributos: Vec<Atributo>) -> Res<DefFuncion> {
         self.avanzar();
         let (nombre, _) = self.ident("el nombre de la funcion")?;
+        let mut tipos = Vec::new();
+        if self.si_es(&Token::Menor) {
+            loop {
+                let lugar = self.lugar();
+                let (t, _) = self.ident("el nombre de un parametro de tipo")?;
+                if tipos.contains(&t) {
+                    return Err(
+                        self.error(lugar, format!("el parametro de tipo `{t}` esta repetido"))
+                    );
+                }
+                tipos.push(t);
+                if !self.si_es(&Token::Coma) {
+                    break;
+                }
+            }
+            self.esperar(Token::Mayor, "al cerrar los parametros de tipo")?;
+        }
         self.esperar(Token::ParenAbre, "despues del nombre de la funcion")?;
         let mut parametros = Vec::new();
         if self.ver() != &Token::ParenCierra {
@@ -299,10 +316,56 @@ impl Parser {
             lugar,
             atributos,
             nombre,
+            tipos,
             parametros,
             retorno,
             cuerpo,
         })
+    }
+
+    /// Si lo que sigue es `<tipos>(`, lo consume y devuelve los tipos; si no, deja el analizador
+    /// donde estaba, porque `a < b` es una comparacion. Al volver, el siguiente lexema es `(`.
+    fn tipos_de_llamada(&mut self) -> Option<Vec<TipoAst>> {
+        if self.ver() != &Token::Menor {
+            return None;
+        }
+        let inicio = self.pos;
+        self.avanzar();
+        let mut tipos = Vec::new();
+        loop {
+            match self.tipo() {
+                Ok(t) => tipos.push(t),
+                Err(_) => {
+                    self.pos = inicio;
+                    return None;
+                }
+            }
+            if !self.si_es(&Token::Coma) {
+                break;
+            }
+        }
+        if self.si_es(&Token::Mayor) && self.ver() == &Token::ParenAbre {
+            Some(tipos)
+        } else {
+            self.pos = inicio;
+            None
+        }
+    }
+
+    /// Los argumentos de una llamada; el lexema actual es el `(`.
+    fn argumentos(&mut self) -> Res<Vec<Expr>> {
+        self.esperar(Token::ParenAbre, "al abrir la llamada")?;
+        let mut args = Vec::new();
+        if self.ver() != &Token::ParenCierra {
+            loop {
+                args.push(self.expr()?);
+                if !self.si_es(&Token::Coma) {
+                    break;
+                }
+            }
+        }
+        self.esperar(Token::ParenCierra, "al cerrar la llamada")?;
+        Ok(args)
     }
 
     fn tipo(&mut self) -> Res<TipoAst> {
@@ -663,7 +726,10 @@ impl Parser {
             }
             Token::Ident(nombre) => {
                 self.avanzar();
-                if self.ver() == &Token::ParenAbre {
+                if let Some(tipos) = self.tipos_de_llamada() {
+                    let args = self.argumentos()?;
+                    ClaseExpr::LlamadaGenerica(nombre, tipos, args)
+                } else if self.ver() == &Token::ParenAbre {
                     self.avanzar();
                     let mut args = Vec::new();
                     if self.ver() != &Token::ParenCierra {
