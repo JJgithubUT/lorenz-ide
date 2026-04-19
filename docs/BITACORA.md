@@ -17,6 +17,21 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Versión 0.3.0
+
+Cierre del sprint 1: la fase 6 queda completa salvo la parte gráfica.
+
+**Hecho:** restricciones y variantes, varios núcleos, coherencia de cachés y genéricos de SGT,
+con pruebas y documentación. 1907 pruebas verdes, clippy sin avisos.
+**Decidido:** D-089 a D-100 (ver las entradas anteriores). Se publica como 0.3.0 por el mismo
+camino que la 0.2.0: develop → deploy → main con etiqueta, y de vuelta a develop.
+**Pendiente:** IDE, GPU y el control gráfico de DEP-022.
+**Requisitos:** RF-CIC-023, RF-CIC-024, RF-CIC-033, RF-SGT-021.
+**Commits:** ramas `feat/restricciones`, `feat/multinucleo`, `feat/coherencia`, `feat/genericos`
+y `chore/version-0.3.0`.
+
+---
+
 ## 2026-10-16 — Genéricos de SGT
 
 Las funciones pueden tener parámetros de tipo entero (RF-SGT-021).

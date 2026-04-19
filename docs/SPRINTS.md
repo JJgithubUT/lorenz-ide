@@ -34,4 +34,23 @@ fusion `--no-ff`, commits pequenos que compilan solos, cada historia deja su fil
 
 ## Registro de cierre
 
-(Se rellena al terminar el sprint.)
+**Resultado:** las cinco historias se hicieron completas.
+
+| Historia | Requisito | Estado | Decisiones |
+| --- | --- | --- | --- |
+| Restricciones y variantes | RF-CIC-033 | Hecha | D-089 a D-091 |
+| Varios nucleos | RF-CIC-023 | Hecha | D-092 a D-094 |
+| Coherencia de cache | RF-CIC-024 | Hecha | D-095 a D-097 |
+| Genericos de SGT | RF-SGT-021 | Hecha | D-098 a D-100 |
+| Cierre | todos | Hecha: version 0.3.0 | |
+
+**Lo que sale del sprint:**
+
+- Pruebas del workspace: 1907, todas verdes; clippy sin avisos.
+- Cuatro requisitos de la ERS pasan a Hecho. Quedan solo los del IDE, los de la GPU y el control
+  grafico de DEP-022.
+- Un fallo propio encontrado y corregido: las pruebas de las ordenes nuevas escribian el mismo
+  archivo temporal a la vez y a veces leian a medias; ahora se escribe una sola vez.
+
+**Para el siguiente sprint:** el entorno grafico y la unidad grafica, o ampliar lo hecho (inferencia
+de tipos en los genericos, MESI, propagar el DMA entre nucleos).
