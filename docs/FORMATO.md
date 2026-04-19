@@ -259,6 +259,21 @@ interrupcion = 0
 Solo lo lee `lorenz ciclos`. `compartido = true` hace que la búsqueda de instrucciones, los accesos a
 datos y el DMA se turnen en un único bus (RF-CIC-021); exige `[pipeline]`. Ver `docs/CICLOS.md`.
 
+## `[nucleos]`
+
+Solo lo lee `lorenz nucleos`. `cantidad` (1 a 64) y `compartida`, la lista de nombres de `[[region]]`
+que ven todos los núcleos (RF-CIC-023). Ver `docs/CICLOS.md`.
+
+## `[coherencia]`
+
+Solo lo lee `lorenz nucleos`. `protocolo` (`msi`) y `latencia_invalidacion`, los ciclos que cuesta
+anular una línea ajena. Exige `[cache]` (RF-CIC-024). Ver `docs/CICLOS.md`.
+
+## `[[restriccion]]`
+
+Solo las leen `lorenz restricciones` y `lorenz variantes`. Cada una tiene `metrica` y un `maximo`, un
+`minimo` o ambos, y puede llevar `nombre` (RF-CIC-033). Ver `docs/CICLOS.md`.
+
 ## Comentarios y documentación
 
 `lorenz documentar maquina.toml -o isa.md` genera la documentación de la arquitectura: resumen,

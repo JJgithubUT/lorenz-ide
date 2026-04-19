@@ -289,3 +289,74 @@ fn el_lugar_de_cada_nodo_es_el_de_su_primer_lexema() {
     assert_eq!((f.lugar.linea, f.lugar.columna), (3, 1));
     assert_eq!(f.cuerpo.sentencias[0].lugar.linea, 4);
 }
+
+// ---- genericos (RF-SGT-021) ----
+
+#[test]
+fn una_funcion_generica_lista_sus_parametros_de_tipo() {
+    let p = programa("funcion maximo<T>(a: T, b: T) -> T { devolver a; }");
+    let f = funcion(&p);
+    assert_eq!(f.tipos, vec!["T".to_string()]);
+    assert_eq!(f.parametros.len(), 2);
+}
+
+#[test]
+fn una_funcion_corriente_no_tiene_parametros_de_tipo() {
+    let p = programa("funcion f(a: u8) { }");
+    assert!(funcion(&p).tipos.is_empty());
+}
+
+#[test]
+fn se_aceptan_varios_parametros_de_tipo() {
+    let p = programa("funcion f<A, B>(a: A, b: B) { }");
+    assert_eq!(funcion(&p).tipos, vec!["A".to_string(), "B".to_string()]);
+}
+
+#[test]
+fn un_parametro_de_tipo_repetido_o_sin_cerrar_es_un_error() {
+    assert!(error("funcion f<T, T>(a: T) { }").contains("repetido"));
+    assert!(error("funcion f<T(a: T) { }").contains("al cerrar los parametros de tipo"));
+}
+
+#[test]
+fn una_llamada_con_tipos_se_distingue_de_una_comparacion() {
+    match expr("maximo<u8>(1, 2)") {
+        ClaseExpr::LlamadaGenerica(n, tipos, args) => {
+            assert_eq!(n, "maximo");
+            assert_eq!(tipos.len(), 1);
+            assert_eq!(tipos[0].clase, ClaseTipo::Nombre("u8".into()));
+            assert_eq!(args.len(), 2);
+        }
+        otro => panic!("{otro:?}"),
+    }
+    // a < b > (c): sin `(` pegado tras el `>` no es una llamada
+    assert!(matches!(
+        expr("a < b"),
+        ClaseExpr::Binario(OpBinario::Menor, _, _)
+    ));
+    assert!(matches!(
+        expr("a < b && c > d"),
+        ClaseExpr::Binario(OpBinario::YLogico, _, _)
+    ));
+}
+
+#[test]
+fn una_llamada_generica_acepta_varios_tipos_y_tipos_compuestos() {
+    match expr("f<u8, *u16>(x)") {
+        ClaseExpr::LlamadaGenerica(_, tipos, _) => {
+            assert_eq!(tipos.len(), 2);
+            assert!(matches!(tipos[1].clase, ClaseTipo::Puntero(_)));
+        }
+        otro => panic!("{otro:?}"),
+    }
+}
+
+#[test]
+fn una_comparacion_que_parece_llamada_sigue_siendo_comparacion() {
+    // `a < b > (c)` se lee como llamada generica a `a` con tipo `b`: es lo que se documenta; con
+    // parentesis se desambigua.
+    assert!(matches!(
+        expr("(a < b) > (c)"),
+        ClaseExpr::Binario(OpBinario::Mayor, _, _)
+    ));
+}

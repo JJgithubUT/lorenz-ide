@@ -82,6 +82,11 @@ pub struct EstadisticasCache {
     pub volcados: u64,
     /// Lineas traidas de memoria.
     pub rellenos: u64,
+    /// Lineas anuladas porque otro nucleo escribio en ellas (RF-CIC-024).
+    pub invalidaciones: u64,
+    /// Veces que esta cache tuvo que entregar una linea sucia porque otro nucleo la queria
+    /// (RF-CIC-024).
+    pub cesiones: u64,
 }
 
 impl EstadisticasCache {
@@ -113,6 +118,24 @@ pub struct ResultadoCache {
     pub volcado: bool,
     /// Se escribio una palabra directamente en memoria.
     pub escritura_directa: bool,
+}
+
+/// Estado de una linea en el protocolo MSI (RF-CIC-024). Una linea invalida no esta en la cache.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EstadoLinea {
+    /// La unica copia, y distinta de la de memoria.
+    Modificada,
+    /// Copia igual a la de memoria; puede haber otras.
+    Compartida,
+}
+
+impl EstadoLinea {
+    pub fn letra(self) -> char {
+        match self {
+            EstadoLinea::Modificada => 'M',
+            EstadoLinea::Compartida => 'S',
+        }
+    }
 }
 
 /// Una linea tal como se muestra (RF-CIC-019).
@@ -156,6 +179,56 @@ impl Cache {
 
     pub fn estadisticas(&self) -> EstadisticasCache {
         self.estadisticas
+    }
+
+    fn buscar(&self, direccion: u64) -> Option<(usize, usize)> {
+        let numero_de_linea = direccion / self.cfg.linea;
+        let conjunto = (numero_de_linea % self.cfg.conjuntos()) as usize;
+        let etiqueta = numero_de_linea / self.cfg.conjuntos();
+        self.conjuntos[conjunto]
+            .iter()
+            .position(|l| l.valida && l.etiqueta == etiqueta)
+            .map(|via| (conjunto, via))
+    }
+
+    /// Estado de la linea que contiene la direccion, o `None` si no esta en la cache. No cuenta
+    /// como acceso.
+    pub fn estado_de(&self, direccion: u64) -> Option<EstadoLinea> {
+        self.buscar(direccion).map(|(c, v)| {
+            if self.conjuntos[c][v].sucia {
+                EstadoLinea::Modificada
+            } else {
+                EstadoLinea::Compartida
+            }
+        })
+    }
+
+    /// Quita de la cache la linea que contiene la direccion porque otro nucleo la ha escrito
+    /// (RF-CIC-024). Devuelve el estado que tenia, o `None` si no estaba.
+    pub fn invalidar(&mut self, direccion: u64) -> Option<EstadoLinea> {
+        let anterior = self.estado_de(direccion)?;
+        let (c, v) = self.buscar(direccion)?;
+        self.conjuntos[c][v] = Linea::default();
+        self.estadisticas.invalidaciones += 1;
+        if anterior == EstadoLinea::Modificada {
+            self.estadisticas.cesiones += 1;
+        }
+        Some(anterior)
+    }
+
+    /// Pasa la linea de modificada a compartida porque otro nucleo la va a leer; su contenido se
+    /// entrega a memoria (RF-CIC-024). Devuelve si estaba modificada.
+    pub fn ceder(&mut self, direccion: u64) -> bool {
+        let Some((c, v)) = self.buscar(direccion) else {
+            return false;
+        };
+        let l = &mut self.conjuntos[c][v];
+        if !l.sucia {
+            return false;
+        }
+        l.sucia = false;
+        self.estadisticas.cesiones += 1;
+        true
     }
 
     fn aleatorio(&mut self) -> u64 {

@@ -1,6 +1,6 @@
 //! Cache asociativa: aciertos, reemplazo y escritura (RF-CIC-015 a RF-CIC-019).
 
-use lorenz_cic::{Cache, ConfigCache, Escritura, Reemplazo};
+use lorenz_cic::{Cache, ConfigCache, Escritura, EstadoLinea, Reemplazo};
 
 fn cfg(tamano: u64, linea: u64, vias: u64, r: Reemplazo, e: Escritura) -> ConfigCache {
     ConfigCache {
@@ -129,4 +129,64 @@ fn el_contenido_muestra_etiquetas_y_bits() {
     assert_eq!(f.direccion, Some(8));
     assert_eq!(f.etiqueta, 1);
     assert!(c.volcar().contains("0 0 1 1 0x1 0x8"), "{}", c.volcar());
+}
+
+#[test]
+fn el_estado_de_una_linea_es_modificada_si_esta_sucia_y_compartida_si_no() {
+    let mut c = directa();
+    assert_eq!(c.estado_de(4), None);
+    c.acceder(4, false);
+    assert_eq!(c.estado_de(4), Some(EstadoLinea::Compartida));
+    assert_eq!(c.estado_de(5), Some(EstadoLinea::Compartida), "misma linea");
+    c.acceder(4, true);
+    assert_eq!(c.estado_de(4), Some(EstadoLinea::Modificada));
+    assert_eq!(EstadoLinea::Modificada.letra(), 'M');
+    assert_eq!(EstadoLinea::Compartida.letra(), 'S');
+}
+
+#[test]
+fn consultar_el_estado_no_cuenta_como_acceso() {
+    let mut c = directa();
+    c.acceder(0, false);
+    let antes = c.estadisticas();
+    let _ = c.estado_de(0);
+    let _ = c.estado_de(100);
+    assert_eq!(c.estadisticas(), antes);
+}
+
+#[test]
+fn invalidar_quita_la_linea_y_se_cuenta() {
+    let mut c = directa();
+    c.acceder(2, false);
+    assert_eq!(c.invalidar(3), Some(EstadoLinea::Compartida));
+    assert_eq!(c.estado_de(2), None);
+    assert!(!c.acceder(2, false).acierto, "tras invalidar, fallo");
+    let e = c.estadisticas();
+    assert_eq!((e.invalidaciones, e.cesiones), (1, 0));
+    assert_eq!(c.invalidar(100), None, "lo que no esta no se cuenta");
+    assert_eq!(c.estadisticas().invalidaciones, 1);
+}
+
+#[test]
+fn invalidar_una_linea_modificada_cuenta_tambien_una_cesion() {
+    let mut c = directa();
+    c.acceder(0, true);
+    assert_eq!(c.invalidar(0), Some(EstadoLinea::Modificada));
+    let e = c.estadisticas();
+    assert_eq!((e.invalidaciones, e.cesiones), (1, 1));
+}
+
+#[test]
+fn ceder_deja_la_linea_compartida_y_limpia() {
+    let mut c = directa();
+    c.acceder(0, true);
+    assert!(c.ceder(1));
+    assert_eq!(c.estado_de(0), Some(EstadoLinea::Compartida));
+    assert_eq!(c.estadisticas().cesiones, 1);
+    assert!(!c.ceder(0), "ya estaba limpia");
+    assert!(!c.ceder(100), "no estaba");
+    assert_eq!(c.estadisticas().cesiones, 1);
+    // al desalojarla ya no se vuelca: lo sucio se entrego antes
+    c.acceder(8, false);
+    assert_eq!(c.estadisticas().volcados, 0);
 }

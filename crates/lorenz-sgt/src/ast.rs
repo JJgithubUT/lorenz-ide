@@ -91,6 +91,8 @@ pub struct DefFuncion {
     pub lugar: Lugar,
     pub atributos: Vec<Atributo>,
     pub nombre: String,
+    /// Parametros de tipo de una funcion generica: `funcion maximo<T>(...)` (RF-SGT-021).
+    pub tipos: Vec<String>,
     pub parametros: Vec<Parametro>,
     pub retorno: Option<TipoAst>,
     pub cuerpo: Bloque,
@@ -244,6 +246,9 @@ pub enum ClaseExpr {
     Binario(OpBinario, Box<Expr>, Box<Expr>),
     Unario(OpUnario, Box<Expr>),
     Llamada(String, Vec<Expr>),
+    /// `f<u8>(x)`: llamada a una funcion generica con sus tipos (RF-SGT-021). El expansor la
+    /// convierte en una `Llamada` a la copia de `f` para esos tipos.
+    LlamadaGenerica(String, Vec<TipoAst>, Vec<Expr>),
     Indice(Box<Expr>, Box<Expr>),
     Campo(Box<Expr>, String),
     Cast(Box<Expr>, TipoAst),

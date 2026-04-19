@@ -134,3 +134,120 @@ fn un_hijo_hereda_la_temporizacion_del_padre_y_puede_cambiar_una_latencia() {
     assert_eq!(c.latencia_de(0x2100), 9, "redefine la latencia de la ram");
     assert_eq!(c.latencia_de(0x10), 2, "conserva la de la rom");
 }
+
+#[test]
+fn las_restricciones_se_leen_con_enteros_y_decimales() {
+    let c = lorenz_cic::cargar_config(
+        "[[restriccion]]\nmetrica = \"ciclos\"\nmaximo = 200\n\n\
+         [[restriccion]]\nnombre = \"cpi bajo\"\nmetrica = \"cpi\"\nmaximo = 1.5\nminimo = 1\n",
+    )
+    .unwrap();
+    assert_eq!(c.restricciones.len(), 2);
+    assert_eq!(c.restricciones[0].nombre, "ciclos");
+    assert_eq!(c.restricciones[0].maximo, Some(200.0));
+    assert_eq!(c.restricciones[1].nombre, "cpi bajo");
+    assert_eq!(c.restricciones[1].minimo, Some(1.0));
+    assert_eq!(c.restricciones[1].maximo, Some(1.5));
+}
+
+#[test]
+fn una_restriccion_con_metrica_desconocida_o_sin_limite_es_un_error() {
+    let e = lorenz_cic::cargar_config("[[restriccion]]\nmetrica = \"calor\"\nmaximo = 1\n")
+        .unwrap_err();
+    assert!(e.contains("calor"), "{e}");
+    let e = lorenz_cic::cargar_config("[[restriccion]]\nmetrica = \"ciclos\"\n").unwrap_err();
+    assert!(e.contains("maximo"), "{e}");
+}
+
+#[test]
+fn una_descripcion_sin_restricciones_da_una_lista_vacia() {
+    assert!(lorenz_cic::cargar_config("")
+        .unwrap()
+        .restricciones
+        .is_empty());
+}
+
+const REGIONES: &str = "[[region]]\nnombre = \"rom\"\ndesde = 0\nhasta = 0x7F\n\n\
+                        [[region]]\nnombre = \"ram\"\ndesde = 0x80\nhasta = 0xFF\n\n";
+
+#[test]
+fn los_nucleos_resuelven_las_regiones_compartidas() {
+    let c = lorenz_cic::cargar_config(&format!(
+        "{REGIONES}[nucleos]\ncantidad = 4\ncompartida = [\"ram\"]\n"
+    ))
+    .unwrap();
+    let n = c.nucleos.unwrap();
+    assert_eq!(n.cantidad, 4);
+    assert_eq!(n.compartidas.len(), 1);
+    assert_eq!(
+        (n.compartidas[0].desde, n.compartidas[0].hasta),
+        (0x80, 0xFF)
+    );
+    assert!(n.es_compartida(0x80) && n.es_compartida(0xFF));
+    assert!(!n.es_compartida(0x7F));
+}
+
+#[test]
+fn sin_seccion_de_nucleos_hay_uno_solo() {
+    assert!(lorenz_cic::cargar_config(REGIONES)
+        .unwrap()
+        .nucleos
+        .is_none());
+}
+
+#[test]
+fn los_nucleos_rechazan_cantidades_absurdas_y_regiones_que_no_existen() {
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 0\n").unwrap_err();
+    assert!(e.contains("entre 1 y 64"), "{e}");
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 65\n").unwrap_err();
+    assert!(e.contains("entre 1 y 64"), "{e}");
+    let e = lorenz_cic::cargar_config(&format!(
+        "{REGIONES}[nucleos]\ncantidad = 2\ncompartida = [\"vram\"]\n"
+    ))
+    .unwrap_err();
+    assert!(e.contains("vram"), "{e}");
+}
+
+#[test]
+fn varios_nucleos_sin_nada_compartido_es_un_error_pero_uno_solo_no() {
+    let e = lorenz_cic::cargar_config("[nucleos]\ncantidad = 2\n").unwrap_err();
+    assert!(e.contains("compartida"), "{e}");
+    assert!(lorenz_cic::cargar_config("[nucleos]\ncantidad = 1\n").is_ok());
+}
+
+const CACHE: &str = "[cache]\ntamano = 16\nlinea = 2\nvias = 2\n";
+
+#[test]
+fn la_coherencia_usa_msi_y_una_invalidacion_de_un_ciclo_por_omision() {
+    let c = lorenz_cic::cargar_config(&format!("{CACHE}[coherencia]\n")).unwrap();
+    let k = c.coherencia.unwrap();
+    assert_eq!(k.protocolo, lorenz_cic::Protocolo::Msi);
+    assert_eq!(k.protocolo.nombre(), "msi");
+    assert_eq!(k.latencia_invalidacion, 1);
+}
+
+#[test]
+fn la_latencia_de_invalidacion_se_puede_cambiar() {
+    let c = lorenz_cic::cargar_config(&format!(
+        "{CACHE}[coherencia]\nprotocolo = \"msi\"\nlatencia_invalidacion = 4\n"
+    ))
+    .unwrap();
+    assert_eq!(c.coherencia.unwrap().latencia_invalidacion, 4);
+}
+
+#[test]
+fn la_coherencia_rechaza_protocolos_desconocidos_y_exige_cache() {
+    let e = lorenz_cic::cargar_config(&format!("{CACHE}[coherencia]\nprotocolo = \"mesi\"\n"))
+        .unwrap_err();
+    assert!(e.contains("mesi") && e.contains("msi"), "{e}");
+    let e = lorenz_cic::cargar_config("[coherencia]\n").unwrap_err();
+    assert!(e.contains("[cache]"), "{e}");
+}
+
+#[test]
+fn sin_seccion_de_coherencia_no_hay_espionaje() {
+    assert!(lorenz_cic::cargar_config(CACHE)
+        .unwrap()
+        .coherencia
+        .is_none());
+}

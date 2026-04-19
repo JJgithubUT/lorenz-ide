@@ -14,6 +14,7 @@ pub mod destino;
 pub mod diagnostico;
 pub mod emisor;
 pub mod generador;
+pub mod genericos;
 pub mod hir;
 pub mod interprete;
 pub mod layout;

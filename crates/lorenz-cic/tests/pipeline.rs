@@ -195,3 +195,46 @@ fn las_instrucciones_declaradas_de_varios_ciclos_alargan_la_ejecucion() {
     assert_eq!(h.trabajo[2], 4);
     assert_eq!(h.sale(), 8);
 }
+
+#[test]
+fn retrasar_hace_esperar_a_la_instruccion_siguiente_por_coherencia() {
+    let mut p = Planificador::nuevo(cinco(true, Prediccion::NoTomado));
+    p.programar(&alu(0, "A", &[]));
+    p.retrasar(3);
+    let b = p.programar(&alu(1, "B", &[]));
+    // sin el retraso habria entrado en el ciclo 1
+    assert_eq!(b.entra[0], 4, "{:?}", b.entra);
+    assert_eq!(b.esperas(), vec![(Causa::Coherencia, 3)]);
+    assert_eq!(Causa::Coherencia.texto(), "coherencia");
+}
+
+#[test]
+fn varios_retrasos_seguidos_se_acumulan() {
+    let mut p = Planificador::nuevo(cinco(true, Prediccion::NoTomado));
+    p.programar(&alu(0, "A", &[]));
+    p.retrasar(2);
+    p.retrasar(2);
+    let b = p.programar(&alu(1, "B", &[]));
+    assert_eq!(b.esperas(), vec![(Causa::Coherencia, 4)]);
+}
+
+#[test]
+fn un_retraso_de_cero_no_hace_nada() {
+    let mut p = Planificador::nuevo(cinco(true, Prediccion::NoTomado));
+    p.programar(&alu(0, "A", &[]));
+    p.retrasar(0);
+    let b = p.programar(&alu(1, "B", &[]));
+    assert!(b.esperas().is_empty());
+    assert_eq!(b.entra[0], 1);
+}
+
+#[test]
+fn el_retraso_no_borra_la_espera_por_un_salto_mal_predicho() {
+    let mut p = Planificador::nuevo(cinco(true, Prediccion::NoTomado));
+    p.programar(&salto(0, true));
+    p.retrasar(1);
+    let b = p.programar(&alu(1, "B", &[]));
+    // el salto se resuelve mas tarde que el retraso: la causa es el control
+    assert_eq!(b.esperas().len(), 1);
+    assert_eq!(b.esperas()[0].0, Causa::Control);
+}
