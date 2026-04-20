@@ -8,3 +8,5 @@ pub mod superficie;
 pub use superficie::{
     componer, descomponer, ConfigSuperficie, ProfundidadColor, Superficie, PROFUNDIDAD_LEJANA,
 };
+pub mod raster;
+pub use raster::{linea, rellenar, triangulo, Vertice};
