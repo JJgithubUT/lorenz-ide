@@ -97,6 +97,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-gpu"
+version = "0.3.0"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "lorenz-sgt"
 version = "0.3.0"
 dependencies = [
