@@ -10,4 +10,8 @@ pub use superficie::{
 };
 pub mod raster;
 pub use raster::{linea, rellenar, triangulo, Vertice};
+pub mod comandos;
+pub mod error;
 pub mod imagen;
+pub use comandos::{leer_guion, Comando};
+pub use error::ErrorGpu;
