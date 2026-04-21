@@ -15,3 +15,7 @@ pub mod error;
 pub mod imagen;
 pub use comandos::{leer_guion, Comando};
 pub use error::ErrorGpu;
+pub mod config;
+pub use config::{cargar_config, cargar_config_archivo, ConfigGpu, Costes};
+pub mod unidad;
+pub use unidad::{Gpu, Metricas};
