@@ -10,3 +10,4 @@ pub use superficie::{
 };
 pub mod raster;
 pub use raster::{linea, rellenar, triangulo, Vertice};
+pub mod imagen;
