@@ -166,7 +166,13 @@ impl Puertos {
                     }
                 }
             }
+            // Un dispositivo generico sin script no hace nada por si mismo: sus puertos solo
+            // registran lo que el programa escribe, para que lo recoja un modelo externo (la
+            // unidad grafica, por ejemplo).
             if let TipoDispositivo::Generico { programa, .. } = &d.tipo {
+                if programa.sentencias.is_empty() {
+                    continue;
+                }
                 let indice = scripts.len();
                 scripts.push(Script {
                     nombre: d.nombre.clone(),
