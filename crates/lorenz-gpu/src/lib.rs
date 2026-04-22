@@ -19,3 +19,5 @@ pub mod config;
 pub use config::{cargar_config, cargar_config_archivo, ConfigGpu, Costes};
 pub mod unidad;
 pub use unidad::{Gpu, Metricas};
+pub mod sistema;
+pub use sistema::{color_nativo, convertir_palabras, SistemaGrafico};

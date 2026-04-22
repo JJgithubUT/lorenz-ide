@@ -9,3 +9,8 @@ license.workspace = true
 [dependencies]
 serde.workspace = true
 toml.workspace = true
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+
+[dev-dependencies]
+lorenz-ens = { path = "../lorenz-ens" }

@@ -39,6 +39,8 @@ pub struct ConfigGpu {
     pub costes: Costes,
     /// Linea de interrupcion que se levanta al terminar un lote (RF-GPU-012).
     pub interrupcion: Option<u32>,
+    /// Ciclos de la unidad por cada ciclo de la CPU (su reloj relativo).
+    pub razon_reloj: u64,
 }
 
 impl Default for ConfigGpu {
@@ -54,6 +56,7 @@ impl Default for ConfigGpu {
             cola: 16,
             costes: Costes::default(),
             interrupcion: None,
+            razon_reloj: 1,
         }
     }
 }
@@ -76,6 +79,7 @@ struct Cruda {
     ciclos_comando: Option<u64>,
     ciclos_pixel: Option<u64>,
     ciclos_triangulo: Option<u64>,
+    razon_reloj: Option<u64>,
 }
 
 /// Lado maximo de la superficie: evita que un error de tipeo pida gigabytes.
@@ -115,6 +119,12 @@ pub fn cargar_config(texto: &str) -> Result<Option<ConfigGpu>, ErrorGpu> {
             "gpu: `ciclos_comando` debe ser al menos 1".into(),
         ));
     }
+    let razon_reloj = c.razon_reloj.unwrap_or(1);
+    if !(1..=1024).contains(&razon_reloj) {
+        return Err(ErrorGpu::Config(format!(
+            "gpu: `razon_reloj` debe estar entre 1 y 1024, no {razon_reloj}"
+        )));
+    }
     Ok(Some(ConfigGpu {
         dispositivo: c.dispositivo,
         superficie: ConfigSuperficie {
@@ -126,6 +136,7 @@ pub fn cargar_config(texto: &str) -> Result<Option<ConfigGpu>, ErrorGpu> {
         cola,
         costes,
         interrupcion: c.interrupcion,
+        razon_reloj,
     }))
 }
 

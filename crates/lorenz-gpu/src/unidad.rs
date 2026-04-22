@@ -139,8 +139,9 @@ impl Gpu {
     pub fn vaciar(&mut self, limite: u64) -> u64 {
         let mut gastados = 0;
         while self.ocupada() && gastados < limite {
-            self.avanzar(1);
-            gastados += 1;
+            let paso = self.restante.max(1).min(limite - gastados);
+            self.avanzar(paso);
+            gastados += paso;
         }
         gastados
     }
