@@ -21,6 +21,10 @@ pub enum ErrorGpu {
         mensaje: String,
     },
     Config(String),
+    /// El kernel no termino dentro del limite de instrucciones de warp.
+    LimiteDeEmisiones {
+        limite: u64,
+    },
 }
 
 impl fmt::Display for ErrorGpu {
@@ -37,6 +41,12 @@ impl fmt::Display for ErrorGpu {
             }
             Self::Texto { linea, mensaje } => write!(f, "linea {linea}: {mensaje}"),
             Self::Config(m) => write!(f, "{m}"),
+            Self::LimiteDeEmisiones { limite } => {
+                write!(
+                    f,
+                    "el kernel no termino tras {limite} instrucciones de warp"
+                )
+            }
         }
     }
 }
