@@ -1,0 +1,25 @@
+; Suma de 8 numeros con un solo grupo: cada paso, la mitad de los hilos suma a la otra mitad en
+; la memoria compartida, con una barrera entre pasos. El total queda en la direccion 8.
+.global 16
+.dato 0  3 1 4 1 5 9 2 6
+.lanzar 1 8
+        tid   r0
+        ld    r1, [r0+0]
+        sts   [r0+0], r1     ; copia su elemento a la memoria compartida
+        bar
+        li    r4, 4          ; cuantos hilos suman en este paso
+paso:   slt   r5, r0, r4     ; solo suman los hilos con tid < r4
+        bz    r5, espera
+        add   r6, r0, r4
+        lds   r7, [r0+0]
+        lds   r8, [r6+0]
+        add   r7, r7, r8
+        sts   [r0+0], r7
+espera: bar
+        shr   r4, r4, 1
+        bnz   r4, paso
+        seq   r9, r0, 0
+        bz    r9, fin
+        lds   r1, [r0+0]
+        st    [r0+8], r1     ; el hilo 0 publica el total
+fin:    exit

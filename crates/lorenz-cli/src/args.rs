@@ -100,6 +100,25 @@ pub enum Orden {
         programa: String,
         opciones: crate::gpu::OpcionesGpu,
     },
+    /// Lanzar un kernel en los hilos de la unidad grafica.
+    Kernel {
+        maquina: String,
+        kernel: String,
+        opciones: crate::kernel::OpcionesKernel,
+    },
+    /// Depurar un kernel instruccion de warp a instruccion de warp.
+    DepurarKernel {
+        maquina: String,
+        kernel: String,
+        guion: Option<String>,
+    },
+    /// Resolver el mismo problema en la CPU y en la GPU y comparar tiempos y resultados.
+    CompararGpu {
+        maquina: String,
+        programa: String,
+        kernel: String,
+        opciones: crate::kernel::OpcionesComparar,
+    },
     /// Listar el historico de mediciones de ciclos.
     HistorialCiclos {
         archivo: String,
@@ -243,6 +262,8 @@ pub enum ErrorUso {
     NumeroInvalido { opcion: String, valor: String },
     #[error("'{0}' no es un pixel valido; se espera X,Y")]
     PixelInvalido(String),
+    #[error("'{0}' no es un resultado valido; se espera DIR_CPU:DIR_GPU:CANTIDAD")]
+    ResultadoInvalido(String),
 }
 
 fn numero(opcion: &str, valor: &str) -> Result<u64, ErrorUso> {
@@ -300,6 +321,9 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "sugerir" => interpretar_sugerir(resto),
         "nucleos" => interpretar_nucleos(resto),
         "gpu" => interpretar_gpu(resto),
+        "kernel" => interpretar_kernel(resto),
+        "depurar-kernel" => interpretar_depurar_kernel(resto),
+        "comparar-gpu" => interpretar_comparar_gpu(resto),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -554,6 +578,99 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Cotejar {
         fuente,
         maquinas,
+        opciones,
+    })
+}
+
+fn interpretar_kernel(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::kernel::OpcionesKernel::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--grupos" => opciones.grupos = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize),
+            "--hilos" => opciones.hilos = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize),
+            "--traza" => opciones.traza = true,
+            "--volcar" => {
+                let v = interpretar_volcado(valor_de(resto, &mut i, a)?)?;
+                opciones.volcados.push((v.desde, v.cantidad));
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let kernel = it.next().ok_or(ErrorUso::Falta("kernel"))?;
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::Kernel {
+        maquina,
+        kernel,
+        opciones,
+    })
+}
+
+fn interpretar_depurar_kernel(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut guion) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--guion" => guion = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let kernel = it.next().ok_or(ErrorUso::Falta("kernel"))?;
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::DepurarKernel {
+        maquina,
+        kernel,
+        guion,
+    })
+}
+
+fn interpretar_comparar_gpu(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::kernel::OpcionesComparar::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--resultado" => {
+                let v = valor_de(resto, &mut i, a)?;
+                let partes: Vec<&str> = v.split(':').collect();
+                let [c, g, n] = partes[..] else {
+                    return Err(ErrorUso::ResultadoInvalido(v.clone()));
+                };
+                opciones.resultado = Some((numero(a, c)?, numero(a, g)?, numero(a, n)?));
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    let kernel = it.next().ok_or(ErrorUso::Falta("kernel"))?;
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::CompararGpu {
+        maquina,
+        programa,
+        kernel,
         opciones,
     })
 }

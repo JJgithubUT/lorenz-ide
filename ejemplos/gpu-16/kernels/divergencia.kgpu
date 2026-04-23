@@ -1,0 +1,13 @@
+; Divergencia: los hilos pares y los impares siguen caminos distintos dentro del mismo warp, asi
+; que el warp recorre los dos caminos uno tras otro. Prueba con `lorenz kernel ... --traza` para
+; ver que hilos trabajan en cada instruccion.
+.global 16
+.lanzar 1 8
+        tid   r0
+        and   r1, r0, 1
+        bz    r1, par
+        mul   r2, r0, 100    ; camino de los impares
+        bra   unir
+par:    li    r2, 7          ; camino de los pares
+unir:   st    [r0+0], r2
+        exit
