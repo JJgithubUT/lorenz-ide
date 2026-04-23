@@ -55,5 +55,7 @@ pub mod cotejar;
 /// Restricciones de diseno y variantes que las cumplan.
 pub mod variantes;
 
+/// La unidad grafica.
+pub mod gpu;
 /// Varios nucleos sobre memoria compartida.
 pub mod nucleos;

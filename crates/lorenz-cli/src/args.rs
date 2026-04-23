@@ -94,6 +94,12 @@ pub enum Orden {
         programas: Vec<String>,
         opciones: crate::nucleos::OpcionesNucleos,
     },
+    /// Ejecutar un programa o un guion de comandos en la unidad grafica.
+    Gpu {
+        maquina: String,
+        programa: String,
+        opciones: crate::gpu::OpcionesGpu,
+    },
     /// Listar el historico de mediciones de ciclos.
     HistorialCiclos {
         archivo: String,
@@ -235,6 +241,8 @@ pub enum ErrorUso {
     DisparoInvalido(String),
     #[error("'{valor}' no es un numero valido para {opcion}")]
     NumeroInvalido { opcion: String, valor: String },
+    #[error("'{0}' no es un pixel valido; se espera X,Y")]
+    PixelInvalido(String),
 }
 
 fn numero(opcion: &str, valor: &str) -> Result<u64, ErrorUso> {
@@ -291,6 +299,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "comparar-ciclos" => interpretar_comparar_ciclos(resto),
         "sugerir" => interpretar_sugerir(resto),
         "nucleos" => interpretar_nucleos(resto),
+        "gpu" => interpretar_gpu(resto),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -545,6 +554,43 @@ fn interpretar_cotejar(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Cotejar {
         fuente,
         maquinas,
+        opciones,
+    })
+}
+
+fn interpretar_gpu(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut opciones) = (Vec::new(), crate::gpu::OpcionesGpu::default());
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--limite" => opciones.limite = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--direccion" => opciones.direccion = numero(a, valor_de(resto, &mut i, a)?)?,
+            "--imagen" => opciones.imagen = Some(valor_de(resto, &mut i, a)?.clone()),
+            "--ampliar" => {
+                opciones.ampliar = (numero(a, valor_de(resto, &mut i, a)?)? as u32).clamp(1, 64)
+            }
+            "--texto" => opciones.texto = true,
+            "--pixel" => {
+                let v = valor_de(resto, &mut i, a)?;
+                let par = v.split_once(',').and_then(|(x, y)| {
+                    Some((x.trim().parse::<i64>().ok()?, y.trim().parse::<i64>().ok()?))
+                });
+                opciones
+                    .pixeles
+                    .push(par.ok_or_else(|| ErrorUso::PixelInvalido(v.clone()))?);
+            }
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let maquina = it.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = it.next().ok_or(ErrorUso::Falta("programa"))?;
+    Ok(Orden::Gpu {
+        maquina,
+        programa,
         opciones,
     })
 }

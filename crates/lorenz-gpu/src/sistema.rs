@@ -190,11 +190,9 @@ impl SistemaGrafico {
             .unwrap_or_default();
         self.leidas += nuevas.len();
         for w in nuevas {
-            if self.pendiente.is_empty() {
-                if Comando::palabras_necesarias(w as i64).is_none() {
-                    self.error = true;
-                    continue;
-                }
+            if self.pendiente.is_empty() && Comando::palabras_necesarias(w as i64).is_none() {
+                self.error = true;
+                continue;
             }
             self.pendiente.push(w);
             let op = self.pendiente[0] as i64;

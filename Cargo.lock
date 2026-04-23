@@ -58,6 +58,7 @@ dependencies = [
  "lorenz-dbg",
  "lorenz-emu",
  "lorenz-ens",
+ "lorenz-gpu",
  "lorenz-sgt",
  "lorenz-tst",
  "serde_json",
