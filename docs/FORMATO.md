@@ -274,6 +274,13 @@ anular una línea ajena. Exige `[cache]` (RF-CIC-024). Ver `docs/CICLOS.md`.
 Solo las leen `lorenz restricciones` y `lorenz variantes`. Cada una tiene `metrica` y un `maximo`, un
 `minimo` o ambos, y puede llevar `nombre` (RF-CIC-033). Ver `docs/CICLOS.md`.
 
+## `[gpu]`
+
+Declara una unidad gráfica: resolución, color, cola de comandos, costes y, en `[gpu.hilos]`, el
+modelo de warps. Solo la leen `lorenz gpu`, `lorenz kernel`, `lorenz depurar-kernel` y
+`lorenz comparar-gpu`; el emulador funcional la ignora (RF-GPU-001, RF-GPU-021). Ver
+`docs/GPU.md`.
+
 ## Comentarios y documentación
 
 `lorenz documentar maquina.toml -o isa.md` genera la documentación de la arquitectura: resumen,
