@@ -4,8 +4,8 @@ use std::io::Cursor;
 use std::path::PathBuf;
 
 use lorenz_cli::{
-    ejecutar_cli, ejecutar_cli_con_entrada, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO,
-    SALIDA_LIMITE, SALIDA_OK,
+    ejecutar_cli, ejecutar_cli_con_entrada, SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION,
+    SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
 };
 
 fn ruta(r: &str) -> String {
@@ -138,7 +138,7 @@ fn comparar_avisa_si_los_resultados_difieren() {
         "--resultado",
         "0x4020:32:4",
     ]);
-    assert_eq!(c, SALIDA_ERROR_EJECUCION);
+    assert_eq!(c, SALIDA_DIFIEREN);
     assert!(s.contains("palabras distintas"), "{s}");
     assert!(s.contains("posicion 0: la CPU da 11 y la GPU 0"), "{s}");
 }

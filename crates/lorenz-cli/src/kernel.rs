@@ -9,7 +9,9 @@ use lorenz_gpu::{
 };
 
 use crate::ciclos::cargar_con_lineas;
-use crate::ordenes::{SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK};
+use crate::ordenes::{
+    SALIDA_DIFIEREN, SALIDA_ERROR_EJECUCION, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK,
+};
 
 /// Instrucciones de warp que se permiten por omision antes de cortar un kernel.
 pub const LIMITE_EMISIONES: u64 = 50_000_000;
@@ -318,7 +320,7 @@ pub fn comparar_cli(
                     &format!("  posicion {k}: la CPU da {a} y la GPU {b}\n"),
                 );
             }
-            codigo = SALIDA_ERROR_EJECUCION;
+            codigo = SALIDA_DIFIEREN;
         }
     }
     codigo
