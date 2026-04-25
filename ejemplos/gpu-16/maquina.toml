@@ -1,0 +1,74 @@
+# risc-16 con una unidad grafica. La CPU manda comandos a la GPU escribiendo palabras en el
+# puerto `comando`; lee su situacion en `estado` y la reconoce escribiendo en `control`.
+# La seccion [gpu] fija la resolucion y la temporizacion de la unidad (ver docs/GPU.md).
+
+[maquina]
+hereda = "../risc-16/maquina.toml"
+nombre = "gpu-16"
+formato = "0.1"
+
+# El vector es la direccion de una palabra de la tabla, que guarda la de la rutina.
+[maquina.interrupciones]
+vectores = { 3 = 0x0100 }
+habilitadas_al_arrancar = true
+
+# Las interrupciones guardan la direccion de retorno en la pila.
+[[registro]]
+nombre = "SP"
+bits = 16
+rol = "sp"
+inicial = 0xFFFF
+
+# HLT pasa a ocupar el subcodigo 000 del grupo 1111, para dejar sitio a OUT e IN.
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 000 ........."
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+
+[[instruccion]]
+mnemonico = "OUT"
+sintaxis  = "OUT {port}, {rs}"
+codigo    = "1111 001 rs:3 port:6"
+semantica = "out[port] = rs"
+ciclos    = 2
+descripcion = "Escribe un registro en un puerto."
+  [[instruccion.operando]]
+  nombre = "port"
+  tipo = "puerto"
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "IN"
+sintaxis  = "IN {rd}, {port}"
+codigo    = "1111 010 rd:3 port:6"
+semantica = "rd = in[port]"
+ciclos    = 2
+descripcion = "Lee un puerto en un registro."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "port"
+  tipo = "puerto"
+
+[[dispositivo]]
+nombre       = "gpu0"
+tipo         = "generico"
+puertos      = { comando = 0x20, estado = 0x21, control = 0x22 }
+interrupcion = 3
+
+[gpu]
+dispositivo = "gpu0"
+ancho       = 32
+alto        = 24
+color       = 16
+profundidad = true
+cola        = 8
+interrupcion = 3

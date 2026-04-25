@@ -54,3 +54,25 @@ fusion `--no-ff`, commits pequenos que compilan solos, cada historia deja su fil
 
 **Para el siguiente sprint:** el entorno grafico y la unidad grafica, o ampliar lo hecho (inferencia
 de tipos en los genericos, MESI, propagar el DMA entre nucleos).
+
+## Sprint 2 — Unidad gráfica
+
+**Fecha:** 2026-10-16. **Versión que lo cierra:** 0.4.0.
+
+**Objetivo:** que la unidad gráfica exista y se pueda usar sin entorno gráfico: dibujar, recibir
+comandos de la CPU, ejecutar hilos en warps y compararse con la CPU.
+
+| Orden | Historia | Requisitos | Criterio de hecho |
+| --- | --- | --- | --- |
+| 1 | Superficie y primitivas | RF-GPU-002, 005 a 009 | Framebuffer configurable; relleno, líneas, triángulos planos e interpolados, profundidad. |
+| 2 | Volcado e inspección | RF-GPU-004, 022 | PNG y PPM ampliados; descripción de un pixel. |
+| 3 | Comandos, cola y ciclos | RF-GPU-010 a 012, 017 | Comandos con codificación y guion; cola con profundidad; ciclos propios. |
+| 4 | Acople a la CPU | RF-GPU-001, 010, 012, 021 | Puertos, estado e interrupción; sin `[gpu]` no hay costo. |
+| 5 | Hilos en warps | RF-GPU-013 a 016 | Kernels, divergencia visible, memoria compartida, barreras. |
+| 6 | Herramientas | RF-GPU-018 a 020 | Depurador por hilo, comparación CPU↔GPU, tres ejemplos. |
+| 7 | Cierre | todos | Pruebas y clippy, documentación, versión 0.4.0 en `main`. |
+
+**Fuera del sprint:** visor en tiempo real (RF-GPU-003) y todo el IDE.
+
+**Riesgos:** unir el modo gráfico y el de hilos en una sola memoria (se aplaza, D-108); modelar la
+reconvergencia con precisión de hardware (se simplifica, D-102).

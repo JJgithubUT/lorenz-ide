@@ -58,6 +58,7 @@ dependencies = [
  "lorenz-dbg",
  "lorenz-emu",
  "lorenz-ens",
+ "lorenz-gpu",
  "lorenz-sgt",
  "lorenz-tst",
  "serde_json",
@@ -93,6 +94,17 @@ dependencies = [
  "lorenz-emu",
  "serde",
  "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "lorenz-gpu"
+version = "0.3.0"
+dependencies = [
+ "lorenz-arch",
+ "lorenz-emu",
+ "lorenz-ens",
+ "serde",
  "toml",
 ]
 
