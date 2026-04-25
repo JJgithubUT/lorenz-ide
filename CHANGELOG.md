@@ -1,5 +1,38 @@
 # Registro de cambios
 
+## 0.4.0 — 2026-10-16 — Unidad grafica
+
+Anade la unidad grafica (GPU) al nucleo, sin entorno grafico: lo unico que queda pendiente de ella
+es el visor del framebuffer en tiempo real (RF-GPU-003), que es del IDE.
+
+### Modo grafico
+
+- `[gpu]`: framebuffer de 1x1 a 4096x4096 con color de 8, 16 o 24 bits y buffer de profundidad
+  opcional; cola de comandos con profundidad configurable; costes en ciclos propios.
+- Relleno, lineas, triangulos de color plano e interpolado y prueba de profundidad.
+- La CPU manda comandos por un puerto, lee el estado por otro y recibe una interrupcion al terminar
+  un lote. Los ciclos de la CPU y de la GPU se cuentan por separado.
+- `lorenz gpu`: ejecuta un programa o un guion `.gpu`, da metricas y vuelca el framebuffer a PNG o
+  PPM ampliado; describe pixeles (`--pixel`) y dibuja con caracteres (`--texto`).
+
+### Modo de hilos
+
+- `[gpu.hilos]`: hilos agrupados en warps con divergencia visible, unidades de ejecucion,
+  latencias de memoria, memoria compartida por grupo y barreras. Lenguaje propio de kernels.
+- `lorenz kernel` (con `--traza` que marca que hilos trabajan en cada instruccion de warp),
+  `lorenz depurar-kernel` (paso a paso, hilo por hilo) y `lorenz comparar-gpu` (el mismo problema en
+  la CPU y en la GPU, con resultados y ciclos).
+- Maquina de ejemplo `ejemplos/gpu-16` con tres kernels y un guion grafico.
+
+### Otros cambios
+
+- Un dispositivo `generico` sin script registra lo que el programa escribe en sus puertos, en vez de
+  descartarlo.
+- Las pruebas de la CLI escriben sus archivos temporales de forma atomica.
+
+Detalle en `docs/GPU.md`, `docs/FORMATO.md` y `docs/BITACORA.md`; el plan del sprint, en
+`docs/SPRINTS.md`.
+
 ## 0.3.0 — 2026-10-16 — Cierre de la fase 6 sin IDE ni GPU
 
 Completa lo opcional que quedaba en el nucleo, el modelo de ciclos y el lenguaje. Lo unico que sigue

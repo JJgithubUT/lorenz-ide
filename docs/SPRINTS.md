@@ -76,3 +76,28 @@ comandos de la CPU, ejecutar hilos en warps y compararse con la CPU.
 
 **Riesgos:** unir el modo gráfico y el de hilos en una sola memoria (se aplaza, D-108); modelar la
 reconvergencia con precisión de hardware (se simplifica, D-102).
+
+### Registro de cierre del sprint 2
+
+**Resultado:** las siete historias se hicieron; solo queda fuera el visor en tiempo real, que estaba
+fuera del sprint.
+
+| Historia | Requisitos | Estado | Decisiones |
+| --- | --- | --- | --- |
+| Superficie y primitivas | RF-GPU-002, 005 a 009 | Hecha | D-105 |
+| Volcado e inspeccion | RF-GPU-004, 022 | Hecha | D-106 |
+| Comandos, cola y ciclos | RF-GPU-010 a 012, 017 | Hecha | D-101 |
+| Acople a la CPU | RF-GPU-001, 010, 012, 021 | Hecha | D-103, D-104 |
+| Hilos en warps | RF-GPU-013 a 016 | Hecha | D-102, D-108 |
+| Herramientas | RF-GPU-018 a 020 | Hecha | D-107 |
+| Cierre | todos | Hecha: version 0.4.0 | |
+
+**Lo que sale del sprint:**
+
+- Pruebas del workspace: 1979, todas verdes; clippy sin avisos.
+- 21 de los 22 requisitos RF-GPU pasan a Hecho; queda RF-GPU-003 (visor en tiempo real).
+- Un fallo propio encontrado y corregido: la carrera de archivos temporales de las pruebas de la CLI
+  volvio a aparecer en `nucleos`; ahora se escriben de forma atomica.
+
+**Para el siguiente sprint:** las fases del ecosistema que no necesitan interfaz (paquetes,
+exportaciones, importar maquinas existentes, ejercicios guiados) o el IDE.
