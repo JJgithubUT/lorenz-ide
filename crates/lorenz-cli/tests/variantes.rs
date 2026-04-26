@@ -27,7 +27,10 @@ fn temporal(nombre: &str, texto: &str) -> String {
     let d = std::env::temp_dir().join(format!("lorenz-variantes-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     let r = d.join(nombre);
-    std::fs::write(&r, texto).unwrap();
+    // Escritura atomica: otra prueba puede estar leyendo este mismo archivo ahora.
+    let tmp = d.join(format!("{nombre}.{:?}.tmp", std::thread::current().id()));
+    std::fs::write(&tmp, texto).unwrap();
+    std::fs::rename(&tmp, &r).unwrap();
     r.to_string_lossy().into_owned()
 }
 

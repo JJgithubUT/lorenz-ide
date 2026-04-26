@@ -1,0 +1,12 @@
+; Suma de vectores: c[i] = a[i] + b[i] para 16 elementos.
+; a esta en la direccion 0, b en 16 y c en 32 de la memoria global. Cada hilo suma un elemento.
+.global 48
+.dato 0   1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+.dato 16  10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160
+.lanzar 2 8                  ; 2 grupos de 8 hilos
+        gid   r0             ; r0 = indice global del hilo
+        ld    r1, [r0+0]     ; a[i]
+        ld    r2, [r0+16]    ; b[i]
+        add   r3, r1, r2
+        st    [r0+32], r3    ; c[i]
+        exit
