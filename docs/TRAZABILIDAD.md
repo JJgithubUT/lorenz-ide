@@ -331,6 +331,28 @@ conocida, escrita en la columna de evidencia.
 | RF-SGT-041 | Biblioteca de apoyo en SGT | Hecho | `biblioteca` (`__mul`, `__divmod`, `mem_*`, `cad_*`, rutinas por ancho), `podar` |
 | RF-SGT-018 | Modulos con importacion explicita de simbolos | Hecho | `analisis` (nombres por modulo), `compilar::compilar_con`, `tests/modulos.rs`, `crates/lorenz-cli/tests/compilar.rs` |
 | RF-SGT-021 | Genericos sencillos sobre enteros | Hecho | `genericos::expandir`, `tests/genericos.rs`, `docs/SGT.md` |
+| RF-GPU-001 | Declarar una unidad grafica como componente | Hecho | `config::cargar_config`, `[gpu]`, `ejemplos/gpu-16`, `tests/config.rs` |
+| RF-GPU-002 | Framebuffer de resolucion y profundidad configurable | Hecho | `Superficie`, `ProfundidadColor`, `tests/primitivas.rs` |
+| RF-GPU-003 | Mostrar el framebuffer en tiempo real | Pendiente | fase del IDE; hoy se vuelca a archivo (`lorenz gpu --imagen`) |
+| RF-GPU-004 | Volcar el framebuffer a una imagen | Hecho | `imagen::a_png`, `a_ppm`, `lorenz gpu --imagen`, `tests/imagen.rs` |
+| RF-GPU-005 | Llenado de superficie | Hecho | `raster::rellenar`, comandos `limpiar` y `rellenar` |
+| RF-GPU-006 | Trazado de lineas | Hecho | `raster::linea` |
+| RF-GPU-007 | Triangulos de color plano | Hecho | `raster::triangulo` |
+| RF-GPU-008 | Interpolacion de color entre vertices | Hecho | `raster::triangulo` con `interpolar` |
+| RF-GPU-009 | Prueba de profundidad opcional | Hecho | `Superficie::poner`, comandos `profundidad` y `prueba_z` |
+| RF-GPU-010 | La CPU envia comandos por puertos | Hecho | `SistemaGrafico`, `Comando`, `tests/sistema.rs` |
+| RF-GPU-011 | Cola de comandos con profundidad configurable | Hecho | `Gpu::enviar`, `[gpu] cola`, `tests/unidad.rs` |
+| RF-GPU-012 | Interrupcion al terminar un lote | Hecho | `fin_lote`, `[gpu] interrupcion`, `tests/sistema.rs` |
+| RF-GPU-013 | Hilos agrupados en warps | Hecho | `EjecucionHilos`, `kernel::ensamblar`, `tests/hilos.rs` |
+| RF-GPU-014 | Tamano de warp y unidades de ejecucion | Hecho | `[gpu.hilos] tamano_warp`, `unidades` |
+| RF-GPU-015 | Memoria compartida por grupo | Hecho | `lds`, `sts`, `bar`, `kernels/reduccion.kgpu` |
+| RF-GPU-016 | Mostrar la divergencia de ramas | Hecho | `Emision::mascara`, `lorenz kernel --traza`, `tests/kernel.rs` |
+| RF-GPU-017 | Ciclos de la GPU separados de los de la CPU | Hecho | `Metricas`, `SistemaGrafico::ciclos_cpu`, `MetricasHilos` |
+| RF-GPU-018 | Mismo problema en CPU y GPU, con comparacion | Hecho | `lorenz comparar-gpu`, `tests/kernel.rs` |
+| RF-GPU-019 | Depurar un programa de GPU hilo por hilo | Hecho | `lorenz depurar-kernel`, `EjecucionHilos::paso`, `registros_de` |
+| RF-GPU-020 | Al menos tres programas de ejemplo | Hecho | `ejemplos/gpu-16/kernels/*.kgpu`, `programas/*.gpu`, `*.s` |
+| RF-GPU-021 | Simular sin GPU sin penalizacion | Hecho | sin `[gpu]` no hay unidad; el emulador funcional ignora la seccion |
+| RF-GPU-022 | Ampliar e inspeccionar pixeles | Hecho | `--ampliar`, `--pixel`, `imagen::inspeccionar`; el visor grafico los consumira en el IDE |
 
 ## Concordancia con los commits anteriores
 

@@ -17,6 +17,52 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Unidad gráfica
+
+Sprint 2: la GPU, sin entorno gráfico (RF-GPU-001 a 022, salvo el visor en tiempo real).
+
+**Hecho:** crate `lorenz-gpu` con framebuffer, primitivas, cola de comandos, ciclos propios, acople a
+la CPU por puertos e interrupción, hilos en warps con divergencia, memoria compartida y barreras,
+depurador por hilo y comparación CPU↔GPU. Órdenes `gpu`, `kernel`, `depurar-kernel` y
+`comparar-gpu`. Máquina de ejemplo `gpu-16` con tres kernels. Documentado en `docs/GPU.md`.
+
+**Decisiones:**
+
+- **D-101** — El efecto de un comando se aplica al tomarlo de la cola y el coste se paga después
+  como tiempo ocupado. Evita guardar comandos a medio hacer; el resultado final y el tiempo total no
+  cambian, solo el instante en que se ve un pixel.
+- **D-102** — La divergencia se resuelve con *menor contador de programa*: el warp emite la
+  instrucción del menor contador entre sus hilos vivos y activa solo los que coinciden. Es más
+  sencillo que una pila de reconvergencia, no necesita analizar el kernel y reagrupa solo; a cambio,
+  una reconvergencia tardía puede dejar caminos duplicados donde una GPU real no los tendría.
+- **D-103** — La GPU no es un `TipoDispositivo` nuevo: vive en `[gpu]` y se une a la máquina por un
+  dispositivo `generico` sin script. Para eso, los puertos de un genérico sin script ahora
+  *registran* lo que se escribe (antes se descartaba), y es lo que recoge `SistemaGrafico`. Así no se
+  toca el formato de dispositivos ni las 52 coincidencias del modelo, y el emulador funcional ignora
+  `[gpu]` (RF-GPU-021).
+- **D-104** — Las palabras que llegan por el puerto se leen con el ancho de la máquina: argumentos
+  con signo extendido y colores en el formato nativo (RGB332, RGB565, `0xRRGGBB`). Una máquina de 8
+  bits puede dibujar sin necesitar 24 bits por color.
+- **D-105** — El framebuffer guarda 24 bits y redondea al escribir según `color`; la profundidad es
+  una por primitiva, no por vértice. La prueba es «menor gana».
+- **D-106** — El PNG se escribe sin comprimir (bloques *stored* de deflate) con CRC y Adler propios:
+  pesa más pero no añade dependencias. Validado contra `zlib` de Python.
+- **D-107** — Los kernels usan el repertorio de la GPU, no la ISA de la máquina, y su memoria global
+  es aparte de la de la CPU. `comparar-gpu` los une por las direcciones que se le indican. Se
+  prefirió a compilar SGT a kernels, que habría tocado el generador y el optimizador.
+- **D-108** — Los dos modos (gráfico y de hilos) no comparten estado. Es una limitación consciente:
+  unirlos pide un modelo de memoria común que la fase 7 no necesita.
+
+**Fallo propio encontrado y corregido:** una prueba de `nucleos` falló una vez por la misma carrera
+de la 0.3.0: varias pruebas reescribían el mismo archivo temporal a la vez. Ahora los archivos
+temporales de las pruebas de la CLI se escriben a un nombre único y se renombran.
+
+**Pendiente:** el visor del framebuffer en tiempo real (RF-GPU-003), que es del IDE; el IDE mismo.
+**Requisitos:** RF-GPU-001, 002, 004 a 022.
+**Commits:** rama `feature/gpu-superficie`.
+
+---
+
 ## 2026-10-16 — Versión 0.3.0
 
 Cierre del sprint 1: la fase 6 queda completa salvo la parte gráfica.

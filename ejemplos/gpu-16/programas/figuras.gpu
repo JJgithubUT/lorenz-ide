@@ -1,0 +1,14 @@
+; Guion de comandos para la unidad grafica: fondo, un rectangulo, una linea y un triangulo con
+; el color interpolado, con prueba de profundidad.
+prueba_z 1
+color #101830
+limpiar
+profundidad 9
+color #D0A030
+rellenar 2 2 12 8
+profundidad 5
+color #E0E0E0
+linea 0 23 31 0
+profundidad 3
+triangulo_color 16 4 #FF0000 30 10 #00FF00 20 22 #0000FF
+fin_lote

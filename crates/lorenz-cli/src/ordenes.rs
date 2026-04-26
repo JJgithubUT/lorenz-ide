@@ -41,6 +41,11 @@ Uso:
   lorenz sugerir <maquina.toml> <programa>... [--limite N] [--direccion A] [--minima N] [--maxima N]
                [--cuantas N]
   lorenz nucleos <maquina.toml> <programa>... [--limite N] [--direccion A]
+  lorenz kernel <maquina.toml> <kernel.kgpu> [--grupos N] [--hilos N] [--traza] [--volcar DESDE:CANTIDAD] [--limite N]
+  lorenz depurar-kernel <maquina.toml> <kernel.kgpu> [--guion ARCHIVO]
+  lorenz comparar-gpu <maquina.toml> <programa> <kernel.kgpu> [--resultado DIR_CPU:DIR_GPU:CANTIDAD] [--limite N]
+  lorenz gpu <maquina.toml> <programa | guion.gpu> [--limite N] [--direccion A] [--imagen ARCHIVO.png|.ppm]
+             [--ampliar N] [--pixel X,Y]... [--texto]
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
@@ -243,6 +248,34 @@ pub fn ejecutar_cli_con_entrada(
             programas,
             opciones,
         } => crate::nucleos::nucleos_cli(&maquina, &programas, &opciones, salida, errores),
+        Orden::Gpu {
+            maquina,
+            programa,
+            opciones,
+        } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Kernel {
+            maquina,
+            kernel,
+            opciones,
+        } => crate::kernel::kernel_cli(&maquina, &kernel, &opciones, salida, errores),
+        Orden::DepurarKernel {
+            maquina,
+            kernel,
+            guion,
+        } => crate::kernel::depurar_kernel_cli(
+            &maquina,
+            &kernel,
+            guion.as_deref(),
+            entrada,
+            salida,
+            errores,
+        ),
+        Orden::CompararGpu {
+            maquina,
+            programa,
+            kernel,
+            opciones,
+        } => crate::kernel::comparar_cli(&maquina, &programa, &kernel, &opciones, salida, errores),
         Orden::Restricciones {
             maquina,
             programa,
