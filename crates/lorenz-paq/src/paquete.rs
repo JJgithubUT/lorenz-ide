@@ -334,7 +334,7 @@ impl Paquete {
             }
             let fin = siguiente
                 .checked_add(largo)
-                .filter(|x| x + 1 <= b.len())
+                .filter(|x| *x < b.len())
                 .ok_or_else(|| f("termina dentro de un archivo: esta truncado"))?;
             let datos = &b[siguiente..fin];
             if b[fin] != b'\n' {
