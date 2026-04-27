@@ -109,6 +109,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-paq"
+version = "0.4.0"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "lorenz-sgt"
 version = "0.4.0"
 dependencies = [
