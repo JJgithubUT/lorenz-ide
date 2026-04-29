@@ -239,11 +239,18 @@ Pruebas declarativas (001-015), conformidad y cobertura (016-023), generacion al
 
 ## Requisitos del ecosistema (RF-ECO)
 
-Solo se listan los de las fases ya trabajadas. El resto del ecosistema (paquetes, comunidad,
-extensiones) llega con su fase.
+Solo se listan los de las fases ya trabajadas. El resto del ecosistema (distribucion en red,
+comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.md`.
 
 | Requisito | Resumen | Estado | Donde |
 | --- | --- | --- | --- |
+| RF-ECO-001 | Empaquetar una arquitectura con nombre y version | Hecho | `Paquete::desde_carpeta`, `lorenz paquete crear` |
+| RF-ECO-002 | Manifiesto con autor, licencia y tipo | Hecho | `Manifiesto::leer`, `Tipo` |
+| RF-ECO-003 | Instalar un paquete en el almacen local | Hecho | `Almacen::instalar`, `lorenz paquete instalar` |
+| RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `tests/almacen.rs` |
+| RF-ECO-006 | Versiones semanticas con requisitos | Hecho | `Version`, `Requisito` (`=`, `>=`, `>`, `<=`, `<`, `^`, `*`) |
+| RF-ECO-007 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
+| RF-ECO-008 | Verificar la integridad | Hecho | SHA-256 por archivo y total; `lorenz paquete verificar` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
 | RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |
 | RF-ECO-019 | Diagrama de codificacion por instruccion | Hecho | `diagrama`: una caja por palabra, con numeracion de bits |
@@ -251,6 +258,7 @@ extensiones) llega con su fase.
 | RF-ECO-021 | Tabla de registros y banderas | Hecho | seccion "Registros y banderas", con pares |
 | RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
 | RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
+| RF-ECO-025 | Exportar la documentacion a HTML | Hecho | `html::markdown_a_html`, `lorenz documentar -o ARCHIVO.html` |
 | RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
 | RF-ECO-027 | Ejemplo de sistema operativo completo | Hecho | `ejemplos/so-ejemplo`, `tests/so_ejemplo.rs` |
 | RF-ECO-039 | Ejemplo en varios modulos con pantalla y teclado | Hecho | `ejemplos/so-ejemplo/*.sgt` |
