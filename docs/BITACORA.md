@@ -17,6 +17,40 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Paquetes y exportación a HTML
+
+Sprint 3: el ecosistema que no necesita interfaz (RF-ECO-001 a 003, 005 a 008 y 025).
+
+**Hecho:** crate `lorenz-paq` con SHA-256 propio, versiones semánticas y requisitos, manifiesto,
+formato `.lpkg` determinista con verificación de integridad, almacén local con resolución de
+dependencias y la orden `lorenz paquete` (`crear`, `verificar`, `info`, `instalar`, `listar`).
+`lorenz documentar -o ARCHIVO.html` exporta la documentación de la ISA como página autónoma.
+Documentado en `docs/PAQUETES.md`.
+
+**Decisiones:**
+
+- **D-109** — Un paquete es un solo archivo de texto con cabecera, entradas `ARCHIVO ruta largo suma`
+  y un pie con la suma total. Sin compresión ni dependencias externas: es legible, determinista (el
+  mismo contenido da los mismos bytes) y fácil de verificar. Pesa más que un zip; los paquetes de
+  arquitecturas didácticas son pequeños.
+- **D-110** — Se elige siempre la versión más alta que cumple el requisito, sin retroceso: una sola
+  versión de cada paquete por resolución. Si dos dependientes exigen rangos incompatibles, la
+  segunda instalación falla con el motivo. Un solucionador completo (SAT) no compensa para este
+  tamaño de ecosistema.
+- **D-111** — SHA-256 se implementa en el propio crate y se valida con los vectores oficiales (incluido
+  el millón de «a»), para no añadir dependencias a una pieza de seguridad tan pequeña.
+- **D-112** — El HTML se genera con un convertidor mínimo de lo que `documentar` produce, no con un
+  procesador de Markdown general; todo el texto se escapa.
+
+**Pendiente:** instalar desde la web (RF-ECO-004), exportar a PDF (RF-ECO-024), ejercicios, desafíos,
+importación de JDH-8/Astro-8 y exportaciones a Verilog/Logisim.
+
+**Requisitos:** RF-ECO-001 a 003, 005 a 008, 025.
+
+**Commits:** rama `feature/paquetes` (595 a 599 y siguientes).
+
+---
+
 ## 2026-10-16 — Unidad gráfica
 
 Sprint 2: la GPU, sin entorno gráfico (RF-GPU-001 a 022, salvo el visor en tiempo real).
