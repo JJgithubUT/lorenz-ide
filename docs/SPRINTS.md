@@ -101,3 +101,26 @@ fuera del sprint.
 
 **Para el siguiente sprint:** las fases del ecosistema que no necesitan interfaz (paquetes,
 exportaciones, importar maquinas existentes, ejercicios guiados) o el IDE.
+
+## Sprint 3 — Paquetes y exportaciones
+
+**Fecha:** 2026-10-16. **Versión que lo cierra:** 0.5.0.
+
+**Objetivo:** que una arquitectura se pueda empaquetar, verificar, instalar con sus dependencias y
+documentar en HTML, todo sin interfaz.
+
+| Orden | Historia | Requisitos | Criterio de hecho |
+| --- | --- | --- | --- |
+| 1 | Versiones y suma | RF-ECO-006, 008 | SHA-256 y requisitos de versión con pruebas. |
+| 2 | Formato de paquete | RF-ECO-001, 002, 007, 008 | Manifiesto, `.lpkg` determinista, rutas seguras, alteración detectada. |
+| 3 | Almacén y dependencias | RF-ECO-003, 005 | Instalación por versión, resolución, ciclos y faltantes. |
+| 4 | Orden `paquete` | RF-ECO-001 a 003, 005 | `crear`, `verificar`, `info`, `instalar`, `listar`. |
+| 5 | Exportar a HTML | RF-ECO-025 | `documentar -o x.html`. |
+| 6 | Cierre | todos | Pruebas y clippy, documentación, versión 0.5.0 en `main`. |
+
+**Fuera del sprint:** instalación desde la web (RF-ECO-004), PDF, ejercicios, desafíos, importadores
+y exportaciones a otros formatos; todo el IDE.
+
+**Riesgos:** el formato de paquete queda fijado desde aquí (cabecera con versión `1` para poder
+evolucionarlo).
+

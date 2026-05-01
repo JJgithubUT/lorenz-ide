@@ -119,6 +119,11 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Crear, verificar, inspeccionar, instalar y listar paquetes.
+    Paquete {
+        accion: crate::paquete::AccionPaquete,
+        opciones: crate::paquete::OpcionesPaquete,
+    },
     /// Listar el historico de mediciones de ciclos.
     HistorialCiclos {
         archivo: String,
@@ -324,6 +329,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "kernel" => interpretar_kernel(resto),
         "depurar-kernel" => interpretar_depurar_kernel(resto),
         "comparar-gpu" => interpretar_comparar_gpu(resto),
+        "paquete" => interpretar_paquete(resto),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -1240,4 +1246,54 @@ fn interpretar_disparo(texto: &str) -> Result<Disparo, ErrorUso> {
         linea: u32::try_from(linea).map_err(|_| invalido())?,
         instruccion: numero("--interrumpir", instruccion)?,
     })
+}
+
+fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::paquete::{AccionPaquete, OpcionesPaquete};
+    let sub = resto.first().ok_or(ErrorUso::Falta("accion"))?;
+    let resto = &resto[1..];
+    let mut opciones = OpcionesPaquete {
+        en: None,
+        repositorios: Vec::new(),
+    };
+    let (mut posicionales, mut salida) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--en" => opciones.en = Some(valor_de(resto, &mut i, a)?.to_string()),
+            "--repositorio" => opciones
+                .repositorios
+                .push(valor_de(resto, &mut i, a)?.to_string()),
+            "-o" | "--salida" => salida = Some(valor_de(resto, &mut i, a)?.to_string()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let accion = match sub.as_str() {
+        "crear" => AccionPaquete::Crear {
+            carpeta: it.next().ok_or(ErrorUso::Falta("carpeta"))?,
+            salida: salida.take(),
+        },
+        "verificar" => AccionPaquete::Verificar {
+            archivo: it.next().ok_or(ErrorUso::Falta("archivo"))?,
+        },
+        "info" => AccionPaquete::Info {
+            archivo: it.next().ok_or(ErrorUso::Falta("archivo"))?,
+        },
+        "instalar" => AccionPaquete::Instalar {
+            archivo: it.next().ok_or(ErrorUso::Falta("archivo"))?,
+        },
+        "listar" => AccionPaquete::Listar,
+        otra => return Err(ErrorUso::OrdenDesconocida(format!("paquete {otra}"))),
+    };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    if let Some(s) = salida {
+        return Err(ErrorUso::OpcionDesconocida(format!("-o {s}")));
+    }
+    Ok(Orden::Paquete { accion, opciones })
 }
