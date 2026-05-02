@@ -46,6 +46,10 @@ Uso:
   lorenz comparar-gpu <maquina.toml> <programa> <kernel.kgpu> [--resultado DIR_CPU:DIR_GPU:CANTIDAD] [--limite N]
   lorenz gpu <maquina.toml> <programa | guion.gpu> [--limite N] [--direccion A] [--imagen ARCHIVO.png|.ppm]
              [--ampliar N] [--pixel X,Y]... [--texto]
+  lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
+  lorenz paquete verificar|info <archivo.lpkg>
+  lorenz paquete instalar <archivo.lpkg> [--en DIR] [--repositorio DIR]...
+  lorenz paquete listar [--en DIR]
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
@@ -253,6 +257,9 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Paquete { accion, opciones } => {
+            crate::paquete::paquete_cli(&accion, &opciones, salida, errores)
+        }
         Orden::Kernel {
             maquina,
             kernel,
