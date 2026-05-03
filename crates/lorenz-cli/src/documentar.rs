@@ -24,6 +24,17 @@ pub fn generar(ruta: &str, texto: &str) -> Result<String, String> {
     Ok(documentar(&maquina, &Comentarios::leer(texto)))
 }
 
+/// El documento tal como se escribe en `destino`: HTML si termina en `.html` o `.htm`.
+fn para_destino(destino: &str, doc: String) -> String {
+    let ext = std::path::Path::new(destino)
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase());
+    match ext.as_deref() {
+        Some("html" | "htm") => crate::html::markdown_a_html(&doc),
+        _ => doc,
+    }
+}
+
 /// Huella de la descripcion y de todas las que hereda.
 fn huella(ruta: &str) -> Option<u64> {
     let mut h = DefaultHasher::new();
@@ -72,7 +83,7 @@ impl Vigilante {
         }
         self.ultima = h;
         match generar(&self.maquina, &texto) {
-            Ok(doc) => match std::fs::write(&self.salida, doc) {
+            Ok(doc) => match std::fs::write(&self.salida, para_destino(&self.salida, doc)) {
                 Ok(()) => Pasada::Regenerada,
                 Err(e) => Pasada::Fallo(format!("{}: no se pudo escribir: {e}", self.salida)),
             },
@@ -120,7 +131,7 @@ pub fn documentar_cli(
     };
     match salida_ruta {
         Some(destino) => {
-            if let Err(e) = std::fs::write(destino, doc) {
+            if let Err(e) = std::fs::write(destino, para_destino(destino, doc)) {
                 escribir(errores, &format!("{destino}: no se pudo escribir: {e}\n"));
                 return SALIDA_ERROR_USO;
             }

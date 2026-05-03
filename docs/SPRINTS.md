@@ -101,3 +101,48 @@ fuera del sprint.
 
 **Para el siguiente sprint:** las fases del ecosistema que no necesitan interfaz (paquetes,
 exportaciones, importar maquinas existentes, ejercicios guiados) o el IDE.
+
+## Sprint 3 — Paquetes y exportaciones
+
+**Fecha:** 2026-10-16. **Versión que lo cierra:** 0.5.0.
+
+**Objetivo:** que una arquitectura se pueda empaquetar, verificar, instalar con sus dependencias y
+documentar en HTML, todo sin interfaz.
+
+| Orden | Historia | Requisitos | Criterio de hecho |
+| --- | --- | --- | --- |
+| 1 | Versiones y suma | RF-ECO-006, 008 | SHA-256 y requisitos de versión con pruebas. |
+| 2 | Formato de paquete | RF-ECO-001, 002, 007, 008 | Manifiesto, `.lpkg` determinista, rutas seguras, alteración detectada. |
+| 3 | Almacén y dependencias | RF-ECO-003, 005 | Instalación por versión, resolución, ciclos y faltantes. |
+| 4 | Orden `paquete` | RF-ECO-001 a 003, 005 | `crear`, `verificar`, `info`, `instalar`, `listar`. |
+| 5 | Exportar a HTML | RF-ECO-025 | `documentar -o x.html`. |
+| 6 | Cierre | todos | Pruebas y clippy, documentación, versión 0.5.0 en `main`. |
+
+**Fuera del sprint:** instalación desde la web (RF-ECO-004), PDF, ejercicios, desafíos, importadores
+y exportaciones a otros formatos; todo el IDE.
+
+**Riesgos:** el formato de paquete queda fijado desde aquí (cabecera con versión `1` para poder
+evolucionarlo).
+
+### Registro de cierre del sprint 3
+
+**Resultado:** las seis historias se hicieron.
+
+| Historia | Requisitos | Estado | Decisiones |
+| --- | --- | --- | --- |
+| Versiones y suma | RF-ECO-006, 008 | Hecha | D-111 |
+| Formato de paquete | RF-ECO-001, 002, 007, 008 | Hecha | D-109 |
+| Almacen y dependencias | RF-ECO-003, 005 | Hecha | D-110 |
+| Orden `paquete` | RF-ECO-001 a 003, 005 | Hecha | |
+| Exportar a HTML | RF-ECO-025 | Hecha | D-112 |
+| Cierre | todos | Hecha: version 0.5.0 | |
+
+**Lo que sale del sprint:**
+
+- Pruebas del workspace: 2004, todas verdes; clippy sin avisos.
+- Un fallo propio encontrado y corregido: las pruebas del almacen compartian carpetas temporales y
+  fallaban de vez en cuando; ahora cada carpeta lleva un contador unico.
+
+**Para el siguiente sprint:** exportar a PDF (RF-ECO-024), ejercicios guiados, desafios, importar
+JDH-8 y Astro-8, o el IDE.
+

@@ -131,3 +131,20 @@ fn si_la_descripcion_desaparece_se_avisa() {
     );
     assert!(matches!(v.pasar(), Pasada::Fallo(_)));
 }
+
+#[test]
+fn exporta_a_html_cuando_el_destino_termina_en_html() {
+    let destino = carpeta().join("isa.html");
+    let (c, _, _) = correr(&[
+        "documentar",
+        &ejemplo("pila-8"),
+        "-o",
+        &destino.to_string_lossy(),
+    ]);
+    assert_eq!(c, 0);
+    let doc = std::fs::read_to_string(destino).unwrap();
+    assert!(doc.starts_with("<!DOCTYPE html>") && doc.contains("<title>pila-8</title>"));
+    assert!(doc.contains("<table>") && doc.contains("<pre><code>"));
+    // Nada del Markdown queda sin convertir.
+    assert!(!doc.contains("\n## ") && !doc.contains("```"));
+}

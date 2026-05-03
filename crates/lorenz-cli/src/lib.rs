@@ -58,6 +58,8 @@ pub mod variantes;
 /// La unidad grafica.
 pub mod gpu;
 /// Los hilos de la unidad grafica.
+pub mod html;
 pub mod kernel;
 /// Varios nucleos sobre memoria compartida.
 pub mod nucleos;
+pub mod paquete;
