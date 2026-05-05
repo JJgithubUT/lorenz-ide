@@ -1,5 +1,25 @@
 # Registro de cambios
 
+## 0.5.0 — 2026-10-16 — Paquetes
+
+Anade el sistema de paquetes y la exportacion de la documentacion a HTML. Todo funciona desde la
+linea de comandos; la distribucion por red (RF-ECO-004) queda para mas adelante.
+
+### Paquetes
+
+- Crate `lorenz-paq`: un paquete es un solo archivo `.lpkg` con manifiesto (`nombre`, `version`,
+  `autor`, `licencia`, `tipo`, dependencias), suma SHA-256 por archivo y suma total. El mismo
+  contenido da siempre los mismos bytes.
+- Versiones semanticas y requisitos (`=`, `>=`, `>`, `<=`, `<`, `^`, `*`).
+- Rutas seguras y limites de tamano; un archivo alterado o truncado se rechaza.
+- Almacen local `nombre/version/` con resolucion de dependencias desde carpetas de repositorio
+  (version mas alta que cumple), deteccion de ciclos y faltantes, e instalacion atomica.
+- `lorenz paquete crear|verificar|info|instalar|listar`. Ver `docs/PAQUETES.md`.
+
+### Documentacion
+
+- `lorenz documentar -o ARCHIVO.html` exporta la documentacion de la ISA como pagina autonoma.
+
 ## 0.4.0 — 2026-10-16 — Unidad grafica
 
 Anade la unidad grafica (GPU) al nucleo, sin entorno grafico: lo unico que queda pendiente de ella

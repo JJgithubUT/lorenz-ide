@@ -124,3 +124,25 @@ y exportaciones a otros formatos; todo el IDE.
 **Riesgos:** el formato de paquete queda fijado desde aquí (cabecera con versión `1` para poder
 evolucionarlo).
 
+### Registro de cierre del sprint 3
+
+**Resultado:** las seis historias se hicieron.
+
+| Historia | Requisitos | Estado | Decisiones |
+| --- | --- | --- | --- |
+| Versiones y suma | RF-ECO-006, 008 | Hecha | D-111 |
+| Formato de paquete | RF-ECO-001, 002, 007, 008 | Hecha | D-109 |
+| Almacen y dependencias | RF-ECO-003, 005 | Hecha | D-110 |
+| Orden `paquete` | RF-ECO-001 a 003, 005 | Hecha | |
+| Exportar a HTML | RF-ECO-025 | Hecha | D-112 |
+| Cierre | todos | Hecha: version 0.5.0 | |
+
+**Lo que sale del sprint:**
+
+- Pruebas del workspace: 2004, todas verdes; clippy sin avisos.
+- Un fallo propio encontrado y corregido: las pruebas del almacen compartian carpetas temporales y
+  fallaban de vez en cuando; ahora cada carpeta lleva un contador unico.
+
+**Para el siguiente sprint:** exportar a PDF (RF-ECO-024), ejercicios guiados, desafios, importar
+JDH-8 y Astro-8, o el IDE.
+
