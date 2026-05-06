@@ -247,9 +247,9 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-001 | Empaquetar una arquitectura con nombre y version | Hecho | `Paquete::desde_carpeta`, `lorenz paquete crear` |
 | RF-ECO-002 | Manifiesto con autor, licencia y tipo | Hecho | `Manifiesto::leer`, `Tipo` |
 | RF-ECO-003 | Instalar un paquete en el almacen local | Hecho | `Almacen::instalar`, `lorenz paquete instalar` |
-| RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `tests/almacen.rs` |
-| RF-ECO-006 | Versiones semanticas con requisitos | Hecho | `Version`, `Requisito` (`=`, `>=`, `>`, `<=`, `<`, `^`, `*`) |
-| RF-ECO-007 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
+| RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `Version`, `Requisito`; `tests/almacen.rs` |
+| RF-ECO-006 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
+| RF-ECO-007 | Empaquetar el proyecto actual | Hecho | `lorenz paquete crear`, `Paquete::a_bytes` |
 | RF-ECO-008 | Verificar la integridad | Hecho | SHA-256 por archivo y total; `lorenz paquete verificar` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
 | RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |
