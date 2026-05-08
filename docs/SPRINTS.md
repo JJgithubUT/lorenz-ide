@@ -147,66 +147,116 @@ evolucionarlo).
 JDH-8 y Astro-8, o el IDE.
 
 
-## Sprint 4 — Proyectos, herramientas didácticas y exportaciones (planificado)
+## Sprint 4 — De 306 a 378 requisitos (planificado)
 
-**Fecha prevista:** 2026-10-17 en adelante. **Versión que lo cierra:** 0.6.0.
+**Fecha prevista:** 2026-10-17 en adelante. **Versiones que lo cierran:** 0.6.0, 0.7.0, 0.8.0 y 0.9.0,
+una por hito. **Objetivo:** llevar el proyecto de 306 a **378 de 380 requisitos terminados (99,5 %)**,
+incluidos el IDE, el depurador gráfico, el editor visual, el visor de la GPU y la versión web.
+Estimación: unos 480 commits (de 611 a unos 1090), con lo que se supera el mínimo de 1000.
 
-**Objetivo:** cerrar todo lo que el núcleo puede ofrecer sin interfaz gráfica: proyectos con tareas,
-ejercicios y desafíos, importadores, exportaciones (PDF, Verilog, Logisim), periféricos externos,
-explicación de trazas y el núcleo preparado para la web. Es un sprint pesado: 11 historias, unos
-35 requisitos y entre 150 y 200 commits (de 609 a unos 790).
+**Decisión de base (D-113): la interfaz es una aplicación web local.** `lorenz ide` levanta un
+servidor HTTP (solo biblioteca estándar) que ofrece una API sobre el núcleo y una página única
+(HTML, CSS y JS sin dependencias) embebida en el binario; se abre en el navegador. Motivos: se puede
+probar de verdad aquí con el Chromium instalado (capturas y pruebas de interfaz), reutiliza el
+núcleo nativo sin compilar a WebAssembly, y el mismo servidor sirve la versión «web», los enlaces
+compartidos y la galería. Se descartan las bibliotecas de ventanas nativas porque aquí no se podrían
+ver ni probar.
 
-**Estado de partida** (tras corregir el informe, que no contaba los RF-SGT ya hechos): 306 de 380
-requisitos terminados, 73 faltantes y 1 por verificar. Faltan 38 de IDE, 4 de editor visual, 7 de
-depurador gráfico y RF-GPU-003; todos esos necesitan una interfaz y quedan fuera de este sprint.
+**Estado de partida:** 306 terminados, 73 faltantes, 1 por verificar (RF-DEP-022).
 
-### Historias, en orden de ejecución
+### Hito A — Núcleo sin interfaz → v0.6.0 (306 → 329, 86,6 %)
 
 | # | Historia | Requisitos | Criterio de hecho | Commits |
 | --- | --- | --- | --- | --- |
-| 1 | Proyecto con configuración | RF-IDE-001 a 006 | `proyecto.toml` con arquitecturas (una activa), fuentes en orden, dispositivos y tareas con nombre; `lorenz proyecto info`, `lorenz tarea <nombre>`. | 18 |
-| 2 | Plantillas y recientes | RF-IDE-007 a 009 | Plantillas de programa simple, SO mínimo y SGT; lista de proyectos recientes en `~/.lorenz`. | 8 |
-| 3 | Ejercicios guiados | RF-ECO-016 | `ejercicio.toml` con enunciado, pistas y verificación automática; `lorenz ejercicio listar\|verificar`; 12 ejercicios incluidos. | 20 |
-| 4 | Desafíos | RF-ECO-014 | Desafío con métricas objetivas (ciclos, bytes); `lorenz desafio comparar` ordena soluciones. | 12 |
-| 5 | Importadores | RF-ECO-015 | JDH-8 y Astro-8 a TOML desde su documentación, con prueba de que ejecutan sus programas de ejemplo. | 18 |
-| 6 | Sistema operativo de ejemplo | RF-ECO-041 | Planificador de tareas por interrupción de reloj en Lorenz OS, con prueba. | 10 |
-| 7 | Exportar a PDF | RF-ECO-024 | Escritor de PDF propio (sin dependencias); `documentar -o x.pdf` con tablas y diagramas. | 14 |
-| 8 | Exportar a Verilog y Logisim | RF-ECO-034 a 036 | Módulo Verilog desde la descripción, banco de pruebas desde las pruebas de conformidad, `.circ` básico; validado con `iverilog` si está. | 28 |
-| 9 | Periféricos externos y aislamiento | RF-ECO-037, 038, 009 | Dispositivo `externo` por proceso o TCP con protocolo documentado en `docs/EXTERNOS.md`; modo seguro que prohíbe lo que toca el disco. | 22 |
-| 10 | Explicar trazas y marcar lo generado | RF-ECO-044, 046 | `lorenz explicar` redacta la traza en español sin modelos de IA y todo texto generado lleva su marca. | 14 |
-| 11 | Núcleo listo para la web | RF-ECO-029 a 033 | Crate `lorenz-web` con interfaz de texto/JSON probada en nativo, banderas para quitar el disco y el reloj, guion para compilar a WASM. | 20 |
-| 12 | Instalar desde dirección web | RF-ECO-004 | `paquete instalar http(s)://…` con cliente propio probado contra un servidor local. | 10 |
-| 13 | Cierre | todos | Pruebas y clippy, documentación, trazabilidad, informe, respaldo, versión 0.6.0 en `main`. | 8 |
+| A1 | Proyecto con configuración y tareas | RF-IDE-001 a 006 | `proyecto.toml` con arquitecturas (una activa), fuentes en orden, dispositivos y tareas con nombre; `lorenz proyecto`, `lorenz tarea`. | 18 |
+| A2 | Plantillas y recientes | RF-IDE-007 a 009 | Plantillas de programa simple, SO mínimo y SGT; lista de recientes. | 8 |
+| A3 | Ejercicios guiados y desafíos | RF-ECO-016, 014 | `ejercicio.toml` con enunciado y verificación; 12 ejercicios; desafíos con métricas y ranking. | 30 |
+| A4 | Importadores | RF-ECO-015 | JDH-8 y Astro-8 a TOML con prueba de ejecución. | 18 |
+| A5 | Planificador en Lorenz OS | RF-ECO-041 | Tareas por interrupción de reloj. | 10 |
+| A6 | Exportaciones | RF-ECO-024, 034 a 036 | PDF con escritor propio; Verilog y banco de pruebas; `.circ` básico. | 42 |
+| A7 | Periféricos externos y modo seguro | RF-ECO-037, 038, 009 | Dispositivo `externo` por proceso o TCP, protocolo en `docs/EXTERNOS.md`, modo que prohíbe tocar el disco. | 22 |
+| A8 | Explicar trazas y marcar lo generado | RF-ECO-044, 046 | `lorenz explicar` determinista; marca en todo texto generado. | 14 |
+| A9 | Instalar desde dirección web | RF-ECO-004 | Cliente HTTP(S) propio probado contra servidor local. | 10 |
 
-### Línea de corte
+### Hito B — Servidor y API → parte de v0.7.0 (sin requisitos propios)
 
-- **Obligatorio (historias 1 a 7 y 13):** proyectos, ejercicios, desafíos, importadores, planificador
-  y PDF. Sin esto el sprint no se considera logrado.
-- **Deseable (8 a 10):** exportaciones, periféricos y explicación. Se recortan por orden inverso si
-  el tiempo aprieta; Logisim es lo primero que se cae.
-- **Extensión (11 y 12):** web y descarga por red. Cada una cierra solo lo que se pueda probar aquí.
+| # | Historia | Criterio de hecho | Commits |
+| --- | --- | --- | --- |
+| B1 | Servidor HTTP y JSON | Servidor con rutas, límites y cierre ordenado; JSON mínimo con pruebas. | 10 |
+| B2 | API del núcleo | Proyecto, archivos, ensamblar, compilar, ejecutar, paso a paso, registros, memoria, trazas, puntos de parada, GPU; sesiones independientes. | 24 |
+| B3 | Banco de pruebas de interfaz | Chromium sin cabeza dentro de las pruebas: abrir, pulsar, leer el DOM y capturar. | 6 |
 
-### Riesgos y decisiones por tomar
+### Hito C — IDE → v0.7.0 (329 → 358, 94,2 %)
 
-- **WebAssembly:** este entorno no puede instalar el objetivo `wasm32` (no hay red hacia el
-  repositorio de Rust). La historia 11 prepara y prueba el núcleo en nativo, y RF-ECO-029 queda
-  «por verificar» hasta compilar el módulo en tu equipo.
-- **Importadores:** JDH-8 y Astro-8 se describen a partir de su documentación pública; si la
-  documentación es ambigua, la descripción importada se marca con avisos en vez de adivinar.
-- **Descarga por red:** HTTPS necesita TLS. Se decide entre una dependencia (`rustls`) o limitarse a
-  HTTP y verificar por SHA-256 publicado aparte (D-113, pendiente).
-- **IA:** RF-ECO-045 (borrador de arquitectura desde lenguaje natural) y la parte de lenguaje
-  natural libre de RF-ECO-044 exigen un modelo; el sprint solo hace la versión determinista, porque
-  RF-ECO-043 obliga a que todo funcione sin IA.
-- **Tamaño:** si una historia crece más del doble de lo estimado se parte y lo sobrante pasa al
-  sprint 5 en vez de comprometer el cierre.
+| # | Historia | Requisitos | Commits |
+| --- | --- | --- | --- |
+| C1 | Estructura: paneles acoplables, disposición recordada, atajos reasignables | RF-IDE-017 a 020 | 16 |
+| C2 | Editor: resaltado de ensamblador y SGT, autocompletado, codificación bajo el cursor, errores en línea, ir a definición, buscar y reemplazar | RF-IDE-010 a 016 | 36 |
+| C3 | Instrumentos: registros como lámparas, consola de teletipo, pantalla con efecto de monitor y sus interruptores | RF-IDE-021 a 024 | 20 |
+| C4 | Apariencia: tema sobrio, marcas de diseño, temas propios | RF-IDE-025 a 027 | 14 |
+| C5 | Sonido: relé, teclado y campanilla, silencio por familia, todo funciona sin sonido | RF-IDE-028 a 030 | 8 |
+| C6 | Accesibilidad: tamaño de texto, alto contraste, depurar solo con teclado, no depender del color | RF-IDE-031 a 034 | 16 |
+| C7 | Robustez: progreso en operaciones largas, autoguardado antes de compilar, recuperación tras cierre, documentación de la arquitectura dentro del programa | RF-IDE-035 a 038 | 18 |
+
+### Hito D — Depuración gráfica y visor de la GPU → v0.8.0 (358 → 366)
+
+| # | Historia | Requisitos | Commits |
+| --- | --- | --- | --- |
+| D1 | Control deslizante sobre la traza (cierra RF-DEP-022) y ejecución lenta con animación | RF-DEP-022, 034 | 10 |
+| D2 | Animación del dato entre memoria, registros y unidad aritmética | RF-DEP-033 | 12 |
+| D3 | Mapa de memoria gráfico, editor hexadecimal en vivo, línea de tiempo de interrupciones y E/S | RF-DEP-036 a 038 | 20 |
+| D4 | Paridad con el depurador de línea de comandos (cada orden con su equivalente gráfico, comprobado por una prueba que las compara) | RF-DEP-044 | 8 |
+| D5 | Visor del framebuffer en tiempo real | RF-GPU-003 | 8 |
+
+### Hito E — Editor visual de arquitectura → v0.8.0 (366 → 370)
+
+| # | Historia | Requisitos | Commits |
+| --- | --- | --- | --- |
+| E1 | Lectura y escritura del TOML que conserva comentarios y formato (decisión D-114: dependencia `toml_edit` o analizador propio) | base de RF-ARQ-040 | 16 |
+| E2 | Diagrama de bloques que se compone arrastrando | RF-ARQ-038 | 14 |
+| E3 | Sincronía texto ↔ diagrama en ambos sentidos | RF-ARQ-039, 040 | 12 |
+| E4 | Errores del cargador señalados en el diagrama | RF-ARQ-041 | 6 |
+
+### Hito F — Versión web, compartir y galería → v0.9.0 (370 → 378, 99,5 %)
+
+| # | Historia | Requisitos | Commits |
+| --- | --- | --- | --- |
+| F1 | Modo `lorenz servir`: IDE alojado, sin instalar nada; editar, ensamblar y ejecutar | RF-ECO-030 | 10 |
+| F2 | Trabajo conservado entre sesiones y exportación del proyecto a `.lpkg` para el escritorio | RF-ECO-031, 032 | 10 |
+| F3 | Aviso claro de las funciones no disponibles frente al escritorio | RF-ECO-033 | 4 |
+| F4 | Enlaces compartidos con identificador por contenido; ejecución en el navegador | RF-ECO-010, 011 | 14 |
+| F5 | Derivar una copia propia | RF-ECO-012 | 6 |
+| F6 | Galería de máquinas publicadas con búsqueda | RF-ECO-013 | 12 |
+| F7 | Cierre final: pruebas, clippy, informe, respaldo, tag | todos | 10 |
+
+### Qué queda fuera y por qué (2 de 380)
+
+- **RF-ECO-045** (borrador de arquitectura desde lenguaje natural): exige un modelo de IA y
+  RF-ECO-043 obliga a que todo funcione sin ella. Se deja pendiente.
+- **RF-ECO-029** (núcleo como módulo de navegador): este entorno no puede instalar el objetivo
+  `wasm32`. Se prepara el núcleo y un guion de compilación, y el requisito queda «por verificar»
+  hasta compilarlo en tu equipo. Los demás requisitos web se cumplen con el servidor.
+
+### Riesgos
+
+- **Tamaño del IDE:** C2 y E3 son las historias más inciertas (editor con resaltado propio y
+  sincronía bidireccional). Si una crece más del doble, se parte y se entrega la versión mínima que
+  cumpla el requisito.
+- **Servidor público:** `servir` guarda programas de terceros. Se ejecutan con los límites de
+  ciclos y memoria del emulador, sin acceso a disco ni red (A7) y con cuotas por sesión.
+- **Pruebas de interfaz:** dependen del Chromium del entorno; si no está, esas pruebas se omiten
+  con aviso en vez de fallar.
+- **Importadores:** se basan en la documentación pública de JDH-8 y Astro-8; si es ambigua, la
+  descripción importada lleva avisos.
+- **HTTPS en A9:** dependencia TLS o solo HTTP con SHA-256 publicado (D-115, pendiente).
+
+### Línea de corte si el tiempo aprieta
+
+Se recorta de abajo hacia arriba: F6, F5, E, D2, A6 (Logisim), A9. Los hitos A, B y C no se tocan:
+sin ellos no hay IDE.
 
 ### Definición de terminado
 
-Cada historia entra con su rama `feature/*`, commits pequeños que compilan, pruebas propias,
-fila de trazabilidad y entrada en la bitácora. El sprint se cierra con todas las pruebas en verde,
-clippy sin avisos, informe y respaldo renovados y el tag `v0.6.0`.
-
-**Fuera del sprint:** IDE completo (RF-IDE-010 a 038), editor visual (RF-ARQ-038 a 041), depurador
-gráfico (RF-DEP-033 a 044), visor de la GPU (RF-GPU-003), galería y enlaces compartidos
-(RF-ECO-010 a 013, necesitan servidor) y RF-ECO-045.
+Cada historia entra por una rama `feature/*`, con commits pequeños que compilan, pruebas propias,
+fila de trazabilidad y entrada en la bitácora. Cada hito termina con todas las pruebas en verde,
+clippy sin avisos, informe y respaldo renovados y su tag.
