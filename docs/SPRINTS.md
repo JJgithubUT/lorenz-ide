@@ -146,3 +146,67 @@ evolucionarlo).
 **Para el siguiente sprint:** exportar a PDF (RF-ECO-024), ejercicios guiados, desafios, importar
 JDH-8 y Astro-8, o el IDE.
 
+
+## Sprint 4 — Proyectos, herramientas didácticas y exportaciones (planificado)
+
+**Fecha prevista:** 2026-10-17 en adelante. **Versión que lo cierra:** 0.6.0.
+
+**Objetivo:** cerrar todo lo que el núcleo puede ofrecer sin interfaz gráfica: proyectos con tareas,
+ejercicios y desafíos, importadores, exportaciones (PDF, Verilog, Logisim), periféricos externos,
+explicación de trazas y el núcleo preparado para la web. Es un sprint pesado: 11 historias, unos
+35 requisitos y entre 150 y 200 commits (de 609 a unos 790).
+
+**Estado de partida** (tras corregir el informe, que no contaba los RF-SGT ya hechos): 306 de 380
+requisitos terminados, 73 faltantes y 1 por verificar. Faltan 38 de IDE, 4 de editor visual, 7 de
+depurador gráfico y RF-GPU-003; todos esos necesitan una interfaz y quedan fuera de este sprint.
+
+### Historias, en orden de ejecución
+
+| # | Historia | Requisitos | Criterio de hecho | Commits |
+| --- | --- | --- | --- | --- |
+| 1 | Proyecto con configuración | RF-IDE-001 a 006 | `proyecto.toml` con arquitecturas (una activa), fuentes en orden, dispositivos y tareas con nombre; `lorenz proyecto info`, `lorenz tarea <nombre>`. | 18 |
+| 2 | Plantillas y recientes | RF-IDE-007 a 009 | Plantillas de programa simple, SO mínimo y SGT; lista de proyectos recientes en `~/.lorenz`. | 8 |
+| 3 | Ejercicios guiados | RF-ECO-016 | `ejercicio.toml` con enunciado, pistas y verificación automática; `lorenz ejercicio listar\|verificar`; 12 ejercicios incluidos. | 20 |
+| 4 | Desafíos | RF-ECO-014 | Desafío con métricas objetivas (ciclos, bytes); `lorenz desafio comparar` ordena soluciones. | 12 |
+| 5 | Importadores | RF-ECO-015 | JDH-8 y Astro-8 a TOML desde su documentación, con prueba de que ejecutan sus programas de ejemplo. | 18 |
+| 6 | Sistema operativo de ejemplo | RF-ECO-041 | Planificador de tareas por interrupción de reloj en Lorenz OS, con prueba. | 10 |
+| 7 | Exportar a PDF | RF-ECO-024 | Escritor de PDF propio (sin dependencias); `documentar -o x.pdf` con tablas y diagramas. | 14 |
+| 8 | Exportar a Verilog y Logisim | RF-ECO-034 a 036 | Módulo Verilog desde la descripción, banco de pruebas desde las pruebas de conformidad, `.circ` básico; validado con `iverilog` si está. | 28 |
+| 9 | Periféricos externos y aislamiento | RF-ECO-037, 038, 009 | Dispositivo `externo` por proceso o TCP con protocolo documentado en `docs/EXTERNOS.md`; modo seguro que prohíbe lo que toca el disco. | 22 |
+| 10 | Explicar trazas y marcar lo generado | RF-ECO-044, 046 | `lorenz explicar` redacta la traza en español sin modelos de IA y todo texto generado lleva su marca. | 14 |
+| 11 | Núcleo listo para la web | RF-ECO-029 a 033 | Crate `lorenz-web` con interfaz de texto/JSON probada en nativo, banderas para quitar el disco y el reloj, guion para compilar a WASM. | 20 |
+| 12 | Instalar desde dirección web | RF-ECO-004 | `paquete instalar http(s)://…` con cliente propio probado contra un servidor local. | 10 |
+| 13 | Cierre | todos | Pruebas y clippy, documentación, trazabilidad, informe, respaldo, versión 0.6.0 en `main`. | 8 |
+
+### Línea de corte
+
+- **Obligatorio (historias 1 a 7 y 13):** proyectos, ejercicios, desafíos, importadores, planificador
+  y PDF. Sin esto el sprint no se considera logrado.
+- **Deseable (8 a 10):** exportaciones, periféricos y explicación. Se recortan por orden inverso si
+  el tiempo aprieta; Logisim es lo primero que se cae.
+- **Extensión (11 y 12):** web y descarga por red. Cada una cierra solo lo que se pueda probar aquí.
+
+### Riesgos y decisiones por tomar
+
+- **WebAssembly:** este entorno no puede instalar el objetivo `wasm32` (no hay red hacia el
+  repositorio de Rust). La historia 11 prepara y prueba el núcleo en nativo, y RF-ECO-029 queda
+  «por verificar» hasta compilar el módulo en tu equipo.
+- **Importadores:** JDH-8 y Astro-8 se describen a partir de su documentación pública; si la
+  documentación es ambigua, la descripción importada se marca con avisos en vez de adivinar.
+- **Descarga por red:** HTTPS necesita TLS. Se decide entre una dependencia (`rustls`) o limitarse a
+  HTTP y verificar por SHA-256 publicado aparte (D-113, pendiente).
+- **IA:** RF-ECO-045 (borrador de arquitectura desde lenguaje natural) y la parte de lenguaje
+  natural libre de RF-ECO-044 exigen un modelo; el sprint solo hace la versión determinista, porque
+  RF-ECO-043 obliga a que todo funcione sin IA.
+- **Tamaño:** si una historia crece más del doble de lo estimado se parte y lo sobrante pasa al
+  sprint 5 en vez de comprometer el cierre.
+
+### Definición de terminado
+
+Cada historia entra con su rama `feature/*`, commits pequeños que compilan, pruebas propias,
+fila de trazabilidad y entrada en la bitácora. El sprint se cierra con todas las pruebas en verde,
+clippy sin avisos, informe y respaldo renovados y el tag `v0.6.0`.
+
+**Fuera del sprint:** IDE completo (RF-IDE-010 a 038), editor visual (RF-ARQ-038 a 041), depurador
+gráfico (RF-DEP-033 a 044), visor de la GPU (RF-GPU-003), galería y enlaces compartidos
+(RF-ECO-010 a 013, necesitan servidor) y RF-ECO-045.
