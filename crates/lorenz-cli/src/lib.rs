@@ -63,3 +63,4 @@ pub mod kernel;
 /// Varios nucleos sobre memoria compartida.
 pub mod nucleos;
 pub mod paquete;
+pub mod proyecto;

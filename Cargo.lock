@@ -62,6 +62,7 @@ dependencies = [
  "lorenz-paq",
  "lorenz-sgt",
  "lorenz-tst",
+ "serde",
  "serde_json",
  "thiserror",
  "toml",
