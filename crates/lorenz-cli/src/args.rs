@@ -119,6 +119,17 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Mostrar y comprobar un proyecto (`proyecto.toml`).
+    Proyecto {
+        ruta: String,
+        arquitectura: Option<String>,
+    },
+    /// Listar o ejecutar las tareas de un proyecto.
+    Tarea {
+        ruta: String,
+        nombre: Option<String>,
+        arquitectura: Option<String>,
+    },
     /// Crear, verificar, inspeccionar, instalar y listar paquetes.
     Paquete {
         accion: crate::paquete::AccionPaquete,
@@ -330,6 +341,8 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "depurar-kernel" => interpretar_depurar_kernel(resto),
         "comparar-gpu" => interpretar_comparar_gpu(resto),
         "paquete" => interpretar_paquete(resto),
+        "proyecto" => interpretar_proyecto(resto, false),
+        "tarea" => interpretar_proyecto(resto, true),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -1296,4 +1309,33 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::OpcionDesconocida(format!("-o {s}")));
     }
     Ok(Orden::Paquete { accion, opciones })
+}
+
+fn interpretar_proyecto(resto: &[String], tarea: bool) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut arquitectura) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--arquitectura" => arquitectura = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let ruta = it.next().ok_or(ErrorUso::Falta("proyecto"))?;
+    let nombre = if tarea { it.next() } else { None };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(if tarea {
+        Orden::Tarea {
+            ruta,
+            nombre,
+            arquitectura,
+        }
+    } else {
+        Orden::Proyecto { ruta, arquitectura }
+    })
 }

@@ -46,6 +46,8 @@ Uso:
   lorenz comparar-gpu <maquina.toml> <programa> <kernel.kgpu> [--resultado DIR_CPU:DIR_GPU:CANTIDAD] [--limite N]
   lorenz gpu <maquina.toml> <programa | guion.gpu> [--limite N] [--direccion A] [--imagen ARCHIVO.png|.ppm]
              [--ampliar N] [--pixel X,Y]... [--texto]
+  lorenz proyecto <carpeta | proyecto.toml> [--arquitectura NOMBRE]
+  lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
   lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
   lorenz paquete verificar|info <archivo.lpkg>
   lorenz paquete instalar <archivo.lpkg> [--en DIR] [--repositorio DIR]...
@@ -257,6 +259,20 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Proyecto { ruta, arquitectura } => {
+            crate::proyecto::proyecto_cli(&ruta, arquitectura.as_deref(), salida, errores)
+        }
+        Orden::Tarea {
+            ruta,
+            nombre,
+            arquitectura,
+        } => crate::proyecto::tarea_cli(
+            &ruta,
+            nombre.as_deref(),
+            arquitectura.as_deref(),
+            salida,
+            errores,
+        ),
         Orden::Paquete { accion, opciones } => {
             crate::paquete::paquete_cli(&accion, &opciones, salida, errores)
         }

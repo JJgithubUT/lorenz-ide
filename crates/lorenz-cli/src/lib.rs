@@ -64,3 +64,4 @@ pub mod kernel;
 pub mod nucleos;
 pub mod paquete;
 pub mod proyecto;
+pub mod tareas;

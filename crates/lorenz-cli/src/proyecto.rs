@@ -250,3 +250,218 @@ impl Proyecto {
             .unwrap_or(SALIDA_POR_OMISION)
     }
 }
+
+/// Un proyecto leido de una carpeta, listo para comprobarse y usarse.
+#[derive(Debug, Clone)]
+pub struct Abierto {
+    pub carpeta: std::path::PathBuf,
+    pub proyecto: Proyecto,
+}
+
+/// Resultado de comprobar un proyecto contra el disco y la maquina activa.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Comprobacion {
+    pub avisos: Vec<String>,
+}
+
+impl Abierto {
+    /// Abre `ruta`, que es una carpeta con `proyecto.toml` o el propio archivo.
+    pub fn abrir(ruta: &str) -> Result<Self, String> {
+        let r = std::path::Path::new(ruta);
+        let archivo = if r.is_dir() {
+            r.join(NOMBRE_ARCHIVO)
+        } else {
+            r.to_path_buf()
+        };
+        let texto = std::fs::read_to_string(&archivo)
+            .map_err(|e| format!("{}: no se pudo leer: {e}", archivo.display()))?;
+        let proyecto = Proyecto::leer(&texto)?;
+        let carpeta = match archivo.parent() {
+            Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+            _ => std::path::PathBuf::from("."),
+        };
+        Ok(Self { carpeta, proyecto })
+    }
+
+    pub fn ruta(&self, relativa: &str) -> std::path::PathBuf {
+        self.carpeta.join(relativa)
+    }
+
+    /// Ruta de la maquina de la arquitectura activa (o de la pedida).
+    pub fn ruta_maquina(&self, pedida: Option<&str>) -> Result<std::path::PathBuf, String> {
+        Ok(self.ruta(&self.proyecto.activa(pedida)?.ruta))
+    }
+
+    /// Comprueba que los archivos existen, que la maquina activa carga y que los dispositivos
+    /// declarados existen en ella y admiten entrada. Las demas arquitecturas que no cargan solo
+    /// dan aviso: no impiden trabajar con la activa.
+    pub fn comprobar(&self, pedida: Option<&str>) -> Result<Comprobacion, String> {
+        let p = &self.proyecto;
+        let activa = p.activa(pedida)?;
+        let mut c = Comprobacion::default();
+        let maquina =
+            lorenz_arch::cargar_archivo(self.ruta(&activa.ruta).to_str().unwrap_or(""))
+                .map_err(|e| format!("arquitectura `{}` ({}): {e}", activa.nombre, activa.ruta))?;
+        for otra in p.arquitecturas.iter().filter(|a| a.nombre != activa.nombre) {
+            let ruta = self.ruta(&otra.ruta);
+            if let Err(e) = lorenz_arch::cargar_archivo(ruta.to_str().unwrap_or("")) {
+                c.avisos.push(format!(
+                    "arquitectura `{}` ({}): {e}",
+                    otra.nombre, otra.ruta
+                ));
+            }
+        }
+        for f in &p.fuentes {
+            if !self.ruta(&f.ruta).is_file() {
+                return Err(format!("fuente `{}`: no existe", f.ruta));
+            }
+        }
+        if let Some(pr) = &p.proyecto.pruebas {
+            if !self.ruta(pr).is_file() {
+                return Err(format!("pruebas `{pr}`: no existe"));
+            }
+        }
+        for d in &p.dispositivos {
+            let Some(real) = maquina.dispositivos.iter().find(|x| x.nombre == d.nombre) else {
+                let hay: Vec<&str> = maquina
+                    .dispositivos
+                    .iter()
+                    .map(|x| x.nombre.as_str())
+                    .collect();
+                return Err(format!(
+                    "dispositivo `{}`: la maquina `{}` no lo tiene (tiene: {})",
+                    d.nombre,
+                    activa.nombre,
+                    if hay.is_empty() {
+                        "ninguno".to_string()
+                    } else {
+                        hay.join(", ")
+                    }
+                ));
+            };
+            if d.entrada.is_some() && entrada_con(&real.tipo).is_none() {
+                return Err(format!(
+                    "dispositivo `{}`: solo los teclados y las lineas serie reciben entrada",
+                    d.nombre
+                ));
+            }
+        }
+        Ok(c)
+    }
+}
+
+/// La opcion de `lorenz ejecutar` que da entrada a un dispositivo de ese tipo.
+pub fn entrada_con(tipo: &lorenz_arch::TipoDispositivo) -> Option<&'static str> {
+    match tipo {
+        lorenz_arch::TipoDispositivo::Teclado => Some("--teclas"),
+        lorenz_arch::TipoDispositivo::Uart => Some("--serie"),
+        _ => None,
+    }
+}
+
+fn mostrar(a: &Abierto, activa: &str, salida: &mut dyn std::io::Write) {
+    let p = &a.proyecto;
+    let _ = writeln!(salida, "proyecto {}", p.proyecto.nombre);
+    let _ = writeln!(salida, "  arquitecturas:");
+    for ar in &p.arquitecturas {
+        let marca = if ar.nombre == activa { "*" } else { " " };
+        let _ = writeln!(salida, "   {marca} {} ({})", ar.nombre, ar.ruta);
+    }
+    let _ = writeln!(salida, "  fuentes (en orden de compilacion):");
+    for f in &p.fuentes {
+        let _ = writeln!(salida, "    {}", f.ruta);
+    }
+    if !p.dispositivos.is_empty() {
+        let _ = writeln!(salida, "  dispositivos:");
+        for d in &p.dispositivos {
+            match &d.entrada {
+                Some(e) => {
+                    let _ = writeln!(salida, "    {} (entrada: {e:?})", d.nombre);
+                }
+                None => {
+                    let _ = writeln!(salida, "    {}", d.nombre);
+                }
+            }
+        }
+    }
+    if !p.tareas.is_empty() {
+        let _ = writeln!(salida, "  tareas:");
+        for t in &p.tareas {
+            let _ = writeln!(
+                salida,
+                "    {}: {}{}",
+                t.nombre,
+                t.pasos.join(" -> "),
+                t.descripcion
+                    .as_ref()
+                    .map_or(String::new(), |d| format!("  # {d}"))
+            );
+        }
+    }
+}
+
+/// `lorenz proyecto`: muestra el proyecto y lo comprueba.
+pub fn proyecto_cli(
+    ruta: &str,
+    arquitectura: Option<&str>,
+    salida: &mut dyn std::io::Write,
+    errores: &mut dyn std::io::Write,
+) -> i32 {
+    use crate::ordenes::{SALIDA_ERROR_USO, SALIDA_OK};
+    let r = Abierto::abrir(ruta).and_then(|a| {
+        let activa = a.proyecto.activa(arquitectura)?.nombre.clone();
+        let c = a.comprobar(arquitectura)?;
+        Ok((a, c, activa))
+    });
+    match r {
+        Ok((a, c, activa)) => {
+            mostrar(&a, &activa, salida);
+            for av in &c.avisos {
+                let _ = writeln!(errores, "aviso: {av}");
+            }
+            SALIDA_OK
+        }
+        Err(e) => {
+            let _ = writeln!(errores, "{e}");
+            SALIDA_ERROR_USO
+        }
+    }
+}
+
+/// `lorenz tarea`: sin nombre lista las tareas; con nombre la ejecuta.
+pub fn tarea_cli(
+    ruta: &str,
+    nombre: Option<&str>,
+    arquitectura: Option<&str>,
+    salida: &mut dyn std::io::Write,
+    errores: &mut dyn std::io::Write,
+) -> i32 {
+    use crate::ordenes::{SALIDA_ERROR_USO, SALIDA_OK};
+    let a = match Abierto::abrir(ruta) {
+        Ok(a) => a,
+        Err(e) => {
+            let _ = writeln!(errores, "{e}");
+            return SALIDA_ERROR_USO;
+        }
+    };
+    match nombre {
+        Some(n) => crate::tareas::ejecutar_tarea(&a, n, arquitectura, salida, errores),
+        None => {
+            if a.proyecto.tareas.is_empty() {
+                let _ = writeln!(salida, "el proyecto no declara tareas");
+            }
+            for t in &a.proyecto.tareas {
+                let _ = writeln!(
+                    salida,
+                    "{}: {}{}",
+                    t.nombre,
+                    t.pasos.join(" -> "),
+                    t.descripcion
+                        .as_ref()
+                        .map_or(String::new(), |d| format!("  # {d}"))
+                );
+            }
+            SALIDA_OK
+        }
+    }
+}
