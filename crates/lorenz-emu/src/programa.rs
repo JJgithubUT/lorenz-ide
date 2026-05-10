@@ -1,8 +1,8 @@
 //! Lectura de programas en texto hexadecimal.
 //!
 //! Un programa es una lista de palabras separadas por espacios, comas o saltos de linea. Cada
-//! palabra es hexadecimal (`2A`, `0x2A`) o binaria (`0b101010`). Todo lo que sigue a `#` en una
-//! linea es comentario.
+//! palabra es hexadecimal (`2A`, `0x2A`) o binaria (`0b101010`, con `0b` en minuscula). Todo lo
+//! que sigue a `#` en una linea es comentario.
 
 use thiserror::Error;
 
@@ -35,10 +35,9 @@ pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> 
                 linea: linea_numero,
                 texto: token.to_string(),
             };
-            let valor = if let Some(b) = token
-                .strip_prefix("0b")
-                .or_else(|| token.strip_prefix("0B"))
-            {
+            // Solo `0b` en minuscula marca un binario: `escribir_palabras` emite hexadecimal en
+            // mayusculas y una palabra como `0B80` es suya, no un binario.
+            let valor = if let Some(b) = token.strip_prefix("0b") {
                 u64::from_str_radix(b, 2).map_err(|_| invalida())?
             } else {
                 let h = token

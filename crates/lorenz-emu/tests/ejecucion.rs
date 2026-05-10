@@ -284,3 +284,15 @@ fn avanzar_propaga_los_errores_de_ejecucion() {
         Err(ErrorEjecucion::InstruccionInvalida { .. })
     ));
 }
+
+/// `escribir_palabras` emite hexadecimal en mayusculas: una palabra como `0B80` no es un binario.
+#[test]
+fn las_palabras_escritas_se_leen_igual() {
+    use lorenz_emu::programa::{escribir_palabras, leer_palabras};
+    let palabras = [0x0B80, 0x0B10, 0x0B, 0xFFFF, 0x0000, 0x0BAD];
+    let texto = escribir_palabras(&palabras, 16, 4);
+    assert!(texto.contains("0B80") && texto.contains("0B10"), "{texto}");
+    assert_eq!(leer_palabras(&texto, 16).unwrap(), palabras);
+    // El prefijo binario sigue siendo `0b` en minuscula.
+    assert_eq!(leer_palabras("0b101 0x0b 0B", 16).unwrap(), [5, 0x0B, 0x0B]);
+}
