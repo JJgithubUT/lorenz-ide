@@ -1,8 +1,9 @@
 //! Lectura de programas en texto hexadecimal.
 //!
 //! Un programa es una lista de palabras separadas por espacios, comas o saltos de linea. Cada
-//! palabra es hexadecimal (`2A`, `0x2A`) o binaria (`0b101010`, con `0b` en minuscula). Todo lo
-//! que sigue a `#` en una linea es comentario.
+//! palabra es hexadecimal (`2A`, `0x2A`) o binaria (`0b101010`). Una palabra hexadecimal que
+//! empiece por `0B` se escribe `0x0B..`, porque sin el `0x` pasaria por un binario. Todo lo que
+//! sigue a `#` en una linea es comentario.
 
 use thiserror::Error;
 
@@ -35,9 +36,10 @@ pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> 
                 linea: linea_numero,
                 texto: token.to_string(),
             };
-            // Solo `0b` en minuscula marca un binario: `escribir_palabras` emite hexadecimal en
-            // mayusculas y una palabra como `0B80` es suya, no un binario.
-            let valor = if let Some(b) = token.strip_prefix("0b") {
+            let valor = if let Some(b) = token
+                .strip_prefix("0b")
+                .or_else(|| token.strip_prefix("0B"))
+            {
                 u64::from_str_radix(b, 2).map_err(|_| invalida())?
             } else {
                 let h = token
@@ -59,6 +61,17 @@ pub fn leer_palabras(texto: &str, bits: u32) -> Result<Vec<u64>, ErrorPrograma> 
     Ok(palabras)
 }
 
+/// Una palabra en hexadecimal. Si empezara por `0B`, que `leer_palabras` toma por el prefijo de un
+/// binario, lleva el prefijo `0x` para que no haya duda.
+fn palabra_hex(p: u64, digitos: usize) -> String {
+    let t = format!("{p:0digitos$X}");
+    if t.starts_with("0B") {
+        format!("0x{t}")
+    } else {
+        t
+    }
+}
+
 /// Escribe palabras de `bits` bits como texto hexadecimal, `por_linea` por linea, con la misma
 /// sintaxis que `leer_palabras` entiende (RF-EMU-024).
 pub fn escribir_palabras(palabras: &[u64], bits: u32, por_linea: usize) -> String {
@@ -66,7 +79,7 @@ pub fn escribir_palabras(palabras: &[u64], bits: u32, por_linea: usize) -> Strin
     let por_linea = por_linea.max(1);
     let mut texto = String::new();
     for fila in palabras.chunks(por_linea) {
-        let fila: Vec<String> = fila.iter().map(|p| format!("{p:0digitos$X}")).collect();
+        let fila: Vec<String> = fila.iter().map(|p| palabra_hex(*p, digitos)).collect();
         texto.push_str(&fila.join(" "));
         texto.push('\n');
     }
