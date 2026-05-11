@@ -1,0 +1,21 @@
+# Proyecto para disenar una arquitectura: edita maquina.toml y prueba tus cambios.
+#
+#   lorenz validar maquina.toml
+#   lorenz documentar maquina.toml -o documentacion.html
+#   lorenz tarea . correr
+
+[proyecto]
+nombre = "__NOMBRE__"
+
+[[arquitectura]]
+nombre = "mia"
+ruta = "maquina.toml"
+
+[[fuente]]
+ruta = "programas/principal.s"
+
+[[tarea]]
+nombre = "correr"
+descripcion = "ensambla y ejecuta el programa de ejemplo"
+pasos = ["ensamblar", "ejecutar"]
+limite = 1000

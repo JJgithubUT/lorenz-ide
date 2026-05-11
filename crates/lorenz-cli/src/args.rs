@@ -119,6 +119,8 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Listar las plantillas de proyecto incluidas.
+    Plantillas,
     /// Mostrar y comprobar un proyecto (`proyecto.toml`).
     Proyecto {
         ruta: String,
@@ -341,6 +343,10 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "depurar-kernel" => interpretar_depurar_kernel(resto),
         "comparar-gpu" => interpretar_comparar_gpu(resto),
         "paquete" => interpretar_paquete(resto),
+        "plantillas" => match resto {
+            [] => Ok(Orden::Plantillas),
+            [extra, ..] => Err(ErrorUso::Sobra(extra.clone())),
+        },
         "proyecto" => interpretar_proyecto(resto, false),
         "tarea" => interpretar_proyecto(resto, true),
         "restricciones" => interpretar_variantes(resto, false),

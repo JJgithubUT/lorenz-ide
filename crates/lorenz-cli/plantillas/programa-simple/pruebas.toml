@@ -1,0 +1,11 @@
+# Pruebas del proyecto; se ejecutan con `lorenz tarea . verificar`.
+formato = "lorenz-pruebas-0.1"
+maquina = "maquina.toml"
+
+[[prueba]]
+nombre   = "suma con acarreo"
+programa = "programas/principal.s"
+limite   = 100
+[prueba.espera]
+registros = { A = 44 }
+banderas  = { C = true }

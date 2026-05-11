@@ -46,6 +46,8 @@ Uso:
   lorenz comparar-gpu <maquina.toml> <programa> <kernel.kgpu> [--resultado DIR_CPU:DIR_GPU:CANTIDAD] [--limite N]
   lorenz gpu <maquina.toml> <programa | guion.gpu> [--limite N] [--direccion A] [--imagen ARCHIVO.png|.ppm]
              [--ampliar N] [--pixel X,Y]... [--texto]
+  lorenz nuevo <plantilla | carpeta-plantilla> <destino> [--nombre NOMBRE]
+  lorenz plantillas
   lorenz proyecto <carpeta | proyecto.toml> [--arquitectura NOMBRE]
   lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
   lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
@@ -55,7 +57,6 @@ Uso:
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
-  lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
@@ -259,6 +260,7 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Plantillas => crate::nuevo::plantillas_cli(salida),
         Orden::Proyecto { ruta, arquitectura } => {
             crate::proyecto::proyecto_cli(&ruta, arquitectura.as_deref(), salida, errores)
         }
