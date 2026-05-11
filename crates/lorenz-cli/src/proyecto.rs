@@ -57,6 +57,9 @@ pub struct Tarea {
     pub pasos: Vec<String>,
     /// Limite de instrucciones al ejecutar.
     pub limite: Option<u64>,
+    /// Para programas que no terminan (un sistema operativo): llegar al limite no es un fallo.
+    #[serde(default)]
+    pub hasta_el_limite: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

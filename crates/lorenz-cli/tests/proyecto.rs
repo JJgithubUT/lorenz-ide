@@ -158,3 +158,17 @@ fn una_tarea_puede_repetirse_en_pasos_sin_ser_ciclo() {
     );
     assert!(Proyecto::leer(&t).is_ok());
 }
+
+#[test]
+fn hasta_el_limite_es_opcional_y_falso_por_omision() {
+    let p = Proyecto::leer(BASE).unwrap();
+    assert!(!p.tarea("correr").unwrap().hasta_el_limite);
+    let t = BASE.replace("limite = 5000", "limite = 5000\nhasta_el_limite = true");
+    assert!(
+        Proyecto::leer(&t)
+            .unwrap()
+            .tarea("correr")
+            .unwrap()
+            .hasta_el_limite
+    );
+}

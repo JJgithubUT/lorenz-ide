@@ -7,13 +7,16 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::ordenes::{ejecutar_cli, SALIDA_ERROR_USO, SALIDA_OK};
+use crate::ordenes::{ejecutar_cli, SALIDA_ERROR_USO, SALIDA_LIMITE, SALIDA_OK};
 use crate::proyecto::{entrada_con, Abierto, Proyecto, PASOS_BASICOS};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Paso {
     Ensamblar,
-    Ejecutar { limite: Option<u64> },
+    Ejecutar {
+        limite: Option<u64>,
+        hasta_el_limite: bool,
+    },
     Probar,
 }
 
@@ -49,7 +52,10 @@ fn expandir(p: &Proyecto, nombre: &str, fuera: &mut Vec<Paso>) -> Result<(), Str
     for paso in &t.pasos {
         match paso.as_str() {
             "ensamblar" => fuera.push(Paso::Ensamblar),
-            "ejecutar" => fuera.push(Paso::Ejecutar { limite: t.limite }),
+            "ejecutar" => fuera.push(Paso::Ejecutar {
+                limite: t.limite,
+                hasta_el_limite: t.hasta_el_limite,
+            }),
             "probar" => fuera.push(Paso::Probar),
             otra if PASOS_BASICOS.contains(&otra) => unreachable!(),
             otra => expandir(p, otra, fuera)?,
@@ -223,7 +229,18 @@ pub fn ejecutar_tarea(
         let _ = writeln!(salida, "> {}", paso.nombre());
         let c = match paso {
             Paso::Ensamblar => marcha.construir(salida, errores),
-            Paso::Ejecutar { limite } => marcha.ejecutar(limite, salida, errores),
+            Paso::Ejecutar {
+                limite,
+                hasta_el_limite,
+            } => {
+                let c = marcha.ejecutar(limite, salida, errores);
+                if c == SALIDA_LIMITE && hasta_el_limite {
+                    let _ = writeln!(salida, "(se alcanzo el limite, como se esperaba)");
+                    SALIDA_OK
+                } else {
+                    c
+                }
+            }
             Paso::Probar => marcha.probar(salida, errores),
         };
         if c != SALIDA_OK {

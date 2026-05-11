@@ -310,3 +310,20 @@ fn uso_incorrecto() {
     assert_eq!(c, SALIDA_ERROR_USO);
     assert!(e.contains("no se pudo leer"), "{e}");
 }
+
+#[test]
+fn llegar_al_limite_solo_es_normal_si_la_tarea_lo_dice() {
+    let infinito = "LDI A, 0\nLDI B, 0\nADD A, B\ninicio: JZ inicio\n";
+    for (extra, esperado) in [
+        ("", lorenz_cli::SALIDA_LIMITE),
+        ("hasta_el_limite = true\n", SALIDA_OK),
+    ] {
+        let d = carpeta();
+        copiar("ejemplo-8/maquina.toml", &d, "maquina.toml");
+        escribir(&d, "uno.s", infinito);
+        escribir(&d, "proyecto.toml", &format!("{BASE}[[tarea]]\nnombre = \"t\"\npasos = [\"ensamblar\", \"ejecutar\"]\nlimite = 100\n{extra}"));
+        let (c, s, e) = correr(&["tarea", d.to_str().unwrap(), "t"]);
+        assert_eq!(c, esperado, "{extra}: {s}{e}");
+        assert_eq!(s.contains("como se esperaba"), esperado == SALIDA_OK);
+    }
+}
