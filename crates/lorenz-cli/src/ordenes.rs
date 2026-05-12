@@ -48,6 +48,7 @@ Uso:
              [--ampliar N] [--pixel X,Y]... [--texto]
   lorenz nuevo <plantilla | carpeta-plantilla> <destino> [--nombre NOMBRE]
   lorenz plantillas
+  lorenz recientes [listar | abrir N | olvidar N|todos] [--en ARCHIVO]
   lorenz proyecto <carpeta | proyecto.toml> [--arquitectura NOMBRE]
   lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
   lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
@@ -260,6 +261,9 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Recientes { accion, en } => {
+            crate::recientes::recientes_cli(&accion, en.as_deref(), salida, errores)
+        }
         Orden::Plantillas => crate::nuevo::plantillas_cli(salida),
         Orden::Proyecto { ruta, arquitectura } => {
             crate::proyecto::proyecto_cli(&ruta, arquitectura.as_deref(), salida, errores)

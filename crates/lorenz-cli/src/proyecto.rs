@@ -418,6 +418,7 @@ pub fn proyecto_cli(
     });
     match r {
         Ok((a, c, activa)) => {
+            crate::recientes::registrar(ruta);
             mostrar(&a, &activa, salida);
             for av in &c.avisos {
                 let _ = writeln!(errores, "aviso: {av}");
@@ -447,6 +448,7 @@ pub fn tarea_cli(
             return SALIDA_ERROR_USO;
         }
     };
+    crate::recientes::registrar(ruta);
     match nombre {
         Some(n) => crate::tareas::ejecutar_tarea(&a, n, arquitectura, salida, errores),
         None => {

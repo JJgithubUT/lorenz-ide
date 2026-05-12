@@ -98,7 +98,11 @@ pub fn nuevo_cli(
             || crate::plantillas::nombre_de_proyecto(destino),
             str::to_string,
         );
-        return desde_incluida(p, destino_ruta, &nombre, salida, errores);
+        let c = desde_incluida(p, destino_ruta, &nombre, salida, errores);
+        if c == SALIDA_OK {
+            crate::recientes::registrar(destino);
+        }
+        return c;
     }
     let mut lista = Vec::new();
     if let Err(e) = archivos(origen, Path::new(""), &mut lista) {
@@ -128,6 +132,9 @@ pub fn nuevo_cli(
         salida,
         &format!("proyecto nuevo en {destino} ({} archivos)\n", lista.len()),
     );
+    if destino_ruta.join(crate::proyecto::NOMBRE_ARCHIVO).is_file() {
+        crate::recientes::registrar(destino);
+    }
     SALIDA_OK
 }
 
