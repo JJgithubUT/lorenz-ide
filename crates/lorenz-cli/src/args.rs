@@ -119,6 +119,24 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Listar, abrir u olvidar los proyectos recientes.
+    Recientes {
+        accion: crate::recientes::AccionRecientes,
+        en: Option<String>,
+    },
+    /// Listar las plantillas de proyecto incluidas.
+    Plantillas,
+    /// Mostrar y comprobar un proyecto (`proyecto.toml`).
+    Proyecto {
+        ruta: String,
+        arquitectura: Option<String>,
+    },
+    /// Listar o ejecutar las tareas de un proyecto.
+    Tarea {
+        ruta: String,
+        nombre: Option<String>,
+        arquitectura: Option<String>,
+    },
     /// Crear, verificar, inspeccionar, instalar y listar paquetes.
     Paquete {
         accion: crate::paquete::AccionPaquete,
@@ -330,6 +348,13 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "depurar-kernel" => interpretar_depurar_kernel(resto),
         "comparar-gpu" => interpretar_comparar_gpu(resto),
         "paquete" => interpretar_paquete(resto),
+        "recientes" => interpretar_recientes(resto),
+        "plantillas" => match resto {
+            [] => Ok(Orden::Plantillas),
+            [extra, ..] => Err(ErrorUso::Sobra(extra.clone())),
+        },
+        "proyecto" => interpretar_proyecto(resto, false),
+        "tarea" => interpretar_proyecto(resto, true),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -1296,4 +1321,70 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::OpcionDesconocida(format!("-o {s}")));
     }
     Ok(Orden::Paquete { accion, opciones })
+}
+
+fn interpretar_proyecto(resto: &[String], tarea: bool) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut arquitectura) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--arquitectura" => arquitectura = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let ruta = it.next().ok_or(ErrorUso::Falta("proyecto"))?;
+    let nombre = if tarea { it.next() } else { None };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(if tarea {
+        Orden::Tarea {
+            ruta,
+            nombre,
+            arquitectura,
+        }
+    } else {
+        Orden::Proyecto { ruta, arquitectura }
+    })
+}
+
+fn interpretar_recientes(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::recientes::AccionRecientes;
+    let (mut posicionales, mut en) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--en" => en = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let numero_de = |t: String| -> Result<usize, ErrorUso> {
+        t.parse::<usize>().map_err(|_| ErrorUso::NumeroInvalido {
+            opcion: "numero".into(),
+            valor: t,
+        })
+    };
+    let accion = match it.next().as_deref() {
+        None | Some("listar") => AccionRecientes::Listar,
+        Some("abrir") => {
+            AccionRecientes::Abrir(numero_de(it.next().ok_or(ErrorUso::Falta("numero"))?)?)
+        }
+        Some("olvidar") => match it.next().ok_or(ErrorUso::Falta("numero"))?.as_str() {
+            "todos" => AccionRecientes::OlvidarTodo,
+            n => AccionRecientes::Olvidar(numero_de(n.to_string())?),
+        },
+        Some(otra) => return Err(ErrorUso::OrdenDesconocida(format!("recientes {otra}"))),
+    };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::Recientes { accion, en })
 }

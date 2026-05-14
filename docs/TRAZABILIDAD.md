@@ -362,6 +362,22 @@ conocida, escrita en la columna de evidencia.
 | RF-GPU-021 | Simular sin GPU sin penalizacion | Hecho | sin `[gpu]` no hay unidad; el emulador funcional ignora la seccion |
 | RF-GPU-022 | Ampliar e inspeccionar pixeles | Hecho | `--ampliar`, `--pixel`, `imagen::inspeccionar`; el visor grafico los consumira en el IDE |
 
+## Requisitos del entorno (RF-IDE)
+
+Solo los que no necesitan interfaz; el resto llega con el IDE. Ver `docs/PROYECTOS.md`.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-IDE-001 | Proyectos con archivo de configuracion | Hecho | `proyecto::Proyecto`, `proyecto.toml`, `lorenz proyecto` |
+| RF-IDE-002 | El proyecto declara su arquitectura | Hecho | `[[arquitectura]]` |
+| RF-IDE-003 | Varias arquitecturas y una activa | Hecho | `Proyecto::activa`, `--arquitectura` |
+| RF-IDE-004 | Fuentes y orden de compilacion | Hecho | `[[fuente]]`, `tareas::Marcha::construir` |
+| RF-IDE-005 | Dispositivos conectados y su configuracion | Hecho | `[[dispositivo]]`, `Abierto::comprobar` |
+| RF-IDE-006 | Tareas de compilacion y ejecucion con nombre | Hecho | `[[tarea]]`, `tareas::ejecutar_tarea`, `lorenz tarea` |
+| RF-IDE-007 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `nuevo::desde_incluida` |
+| RF-IDE-008 | Plantillas de programa, sistema operativo y arquitectura | Hecho | `plantillas::PLANTILLAS`, `lorenz plantillas` |
+| RF-IDE-009 | Abrir un proyecto reciente | Hecho | `recientes::Recientes`, `lorenz recientes` |
+
 ## Concordancia con los commits anteriores
 
 Los commits entre el 59 y el 126 citaron, en dispositivos, interrupciones y linea de comandos,

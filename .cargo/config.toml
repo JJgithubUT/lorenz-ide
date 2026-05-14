@@ -1,0 +1,4 @@
+# Las pruebas y `cargo run` guardan los datos de usuario (proyectos recientes) dentro de `target`,
+# para no tocar la carpeta personal de quien desarrolla.
+[env]
+LORENZ_HOME = { value = "target/lorenz-home", relative = true }
