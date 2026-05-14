@@ -48,6 +48,12 @@ Uso:
              [--ampliar N] [--pixel X,Y]... [--texto]
   lorenz nuevo <plantilla | carpeta-plantilla> <destino> [--nombre NOMBRE]
   lorenz plantillas
+  lorenz ejercicio listar <carpeta-de-ejercicios>
+  lorenz ejercicio ver <ejercicio> [--pista N]
+  lorenz ejercicio verificar <ejercicio> [--solucion ARCHIVO]
+  lorenz desafio ver <desafio>
+  lorenz desafio evaluar <desafio> <solucion>
+  lorenz desafio comparar <desafio> <solucion>...
   lorenz recientes [listar | abrir N | olvidar N|todos] [--en ARCHIVO]
   lorenz proyecto <carpeta | proyecto.toml> [--arquitectura NOMBRE]
   lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
@@ -261,6 +267,8 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Ejercicio { accion } => crate::ejercicios::ejercicio_cli(&accion, salida, errores),
+        Orden::Desafio { accion } => crate::desafios::desafio_cli(&accion, salida, errores),
         Orden::Recientes { accion, en } => {
             crate::recientes::recientes_cli(&accion, en.as_deref(), salida, errores)
         }

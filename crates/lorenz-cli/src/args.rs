@@ -119,6 +119,14 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Ver, listar y verificar ejercicios guiados.
+    Ejercicio {
+        accion: crate::ejercicios::AccionEjercicio,
+    },
+    /// Ver, evaluar y comparar soluciones de un desafio.
+    Desafio {
+        accion: crate::desafios::AccionDesafio,
+    },
     /// Listar, abrir u olvidar los proyectos recientes.
     Recientes {
         accion: crate::recientes::AccionRecientes,
@@ -349,6 +357,8 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "comparar-gpu" => interpretar_comparar_gpu(resto),
         "paquete" => interpretar_paquete(resto),
         "recientes" => interpretar_recientes(resto),
+        "ejercicio" => interpretar_ejercicio(resto),
+        "desafio" => interpretar_desafio(resto),
         "plantillas" => match resto {
             [] => Ok(Orden::Plantillas),
             [extra, ..] => Err(ErrorUso::Sobra(extra.clone())),
@@ -1387,4 +1397,76 @@ fn interpretar_recientes(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::Sobra(sobra));
     }
     Ok(Orden::Recientes { accion, en })
+}
+
+fn interpretar_ejercicio(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::ejercicios::AccionEjercicio;
+    let sub = resto.first().ok_or(ErrorUso::Falta("accion"))?;
+    let resto = &resto[1..];
+    let (mut posicionales, mut pista, mut solucion) = (Vec::new(), None, None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--pista" => pista = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize),
+            "--solucion" => solucion = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let carpeta = it.next().ok_or(ErrorUso::Falta("carpeta"))?;
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    let con_solucion = solucion.is_some();
+    let accion = match sub.as_str() {
+        "listar" => AccionEjercicio::Listar { raiz: carpeta },
+        "ver" => AccionEjercicio::Ver { carpeta, pista },
+        "verificar" => AccionEjercicio::Verificar { carpeta, solucion },
+        otra => return Err(ErrorUso::OrdenDesconocida(format!("ejercicio {otra}"))),
+    };
+    let sobra = |o: &str| ErrorUso::OpcionDesconocida(o.to_string());
+    match &accion {
+        AccionEjercicio::Verificar { .. } if pista.is_some() => Err(sobra("--pista")),
+        AccionEjercicio::Ver { .. } | AccionEjercicio::Listar { .. } if con_solucion => {
+            Err(sobra("--solucion"))
+        }
+        AccionEjercicio::Listar { .. } if pista.is_some() => Err(sobra("--pista")),
+        _ => Ok(Orden::Ejercicio { accion }),
+    }
+}
+
+fn interpretar_desafio(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::desafios::AccionDesafio;
+    let sub = resto.first().ok_or(ErrorUso::Falta("accion"))?;
+    let resto = &resto[1..];
+    if let Some(o) = resto.iter().find(|a| a.starts_with('-')) {
+        return Err(ErrorUso::OpcionDesconocida(o.clone()));
+    }
+    let mut it = resto.iter().cloned();
+    let carpeta = it.next().ok_or(ErrorUso::Falta("carpeta"))?;
+    let accion = match sub.as_str() {
+        "ver" => AccionDesafio::Ver { carpeta },
+        "evaluar" => AccionDesafio::Evaluar {
+            carpeta,
+            solucion: it.next().ok_or(ErrorUso::Falta("solucion"))?,
+        },
+        "comparar" => {
+            let soluciones: Vec<String> = it.by_ref().collect();
+            if soluciones.is_empty() {
+                return Err(ErrorUso::Falta("solucion"));
+            }
+            AccionDesafio::Comparar {
+                carpeta,
+                soluciones,
+            }
+        }
+        otra => return Err(ErrorUso::OrdenDesconocida(format!("desafio {otra}"))),
+    };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::Desafio { accion })
 }

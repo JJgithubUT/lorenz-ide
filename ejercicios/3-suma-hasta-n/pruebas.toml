@@ -1,0 +1,48 @@
+# Pruebas del ejercicio. Cada una parte de un estado distinto y comprueba el resultado.
+formato = "lorenz-pruebas-0.1"
+maquina = "../maquina.toml"
+
+[[prueba]]
+nombre = "N = 0"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R1 = 0 }
+[prueba.espera]
+registros = { R2 = 0 }
+
+[[prueba]]
+nombre = "N = 1"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R1 = 1 }
+[prueba.espera]
+registros = { R2 = 1 }
+
+[[prueba]]
+nombre = "N = 5"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R1 = 5 }
+[prueba.espera]
+registros = { R2 = 15 }
+
+[[prueba]]
+nombre = "N = 10"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R1 = 10 }
+[prueba.espera]
+registros = { R2 = 55 }
+
+[[prueba]]
+nombre = "N = 20"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R1 = 20 }
+[prueba.espera]
+registros = { R2 = 210 }

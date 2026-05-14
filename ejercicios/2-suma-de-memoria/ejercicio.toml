@@ -1,0 +1,12 @@
+[ejercicio]
+id = "suma-de-memoria"
+titulo = "Sumar dos palabras de la memoria"
+nivel = 2
+tema = "memoria"
+enunciado = """
+R6 apunta al principio de la RAM. Las dos primeras palabras que hay ahi son numeros: deja en R1 su suma.
+"""
+pistas = [
+  "LW rd, [rs+desp] lee la palabra que esta en la direccion rs + desp.",
+  "Lee las dos palabras en dos registros distintos y luego sumalos.",
+]
