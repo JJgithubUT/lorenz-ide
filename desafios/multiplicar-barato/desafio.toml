@@ -1,0 +1,11 @@
+[desafio]
+id = "multiplicar-barato"
+titulo = "Multiplicar con las menos instrucciones"
+metrica = "instrucciones"
+enunciado = """
+R1 y R2 traen dos numeros (R2 de 0 a 12). Deja en R3 el producto R1 x R2.
+
+Todas las soluciones correctas entran en la tabla; gana la que ejecuta menos instrucciones en el
+conjunto de pruebas. Prueba a bajar el contador de R2 en vez de usar un registro aparte, o a
+acortar el cuerpo del bucle.
+"""

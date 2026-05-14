@@ -1,0 +1,13 @@
+[ejercicio]
+id = "fibonacci"
+titulo = "Fibonacci"
+nivel = 4
+tema = "bucles"
+enunciado = """
+R1 trae un numero N (de 0 a 20). Deja en R2 el N-esimo numero de Fibonacci: 0, 1, 1, 2, 3, 5, 8, 13... (el de la posicion 0 es 0 y el de la 1 es 1).
+"""
+pistas = [
+  "Guarda dos valores consecutivos de la serie, a y b, empezando por 0 y 1.",
+  "En cada vuelta, el nuevo par es (b, a + b). Tras N vueltas, a es el resultado.",
+  "Necesitas un registro de paso para calcular a + b antes de sobrescribir.",
+]

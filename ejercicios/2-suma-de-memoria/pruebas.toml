@@ -1,0 +1,33 @@
+# Pruebas del ejercicio. Cada una parte de un estado distinto y comprueba el resultado.
+formato = "lorenz-pruebas-0.1"
+maquina = "../maquina.toml"
+
+[[prueba]]
+nombre = "1 + 2 en la memoria"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R6 = 16384 }
+memoria = [ { direccion = 16384, palabras = [1, 2] } ]
+[prueba.espera]
+registros = { R1 = 3 }
+
+[[prueba]]
+nombre = "1000 + 2345 en la memoria"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R6 = 16384 }
+memoria = [ { direccion = 16384, palabras = [1000, 2345] } ]
+[prueba.espera]
+registros = { R1 = 3345 }
+
+[[prueba]]
+nombre = "40000 + 30000 en la memoria"
+programa = "solucion.s"
+limite = 1000
+[prueba.inicial]
+registros = { R6 = 16384 }
+memoria = [ { direccion = 16384, palabras = [40000, 30000] } ]
+[prueba.espera]
+registros = { R1 = 4464 }

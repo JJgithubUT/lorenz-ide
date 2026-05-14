@@ -56,6 +56,8 @@ pub mod cotejar;
 pub mod variantes;
 
 /// La unidad grafica.
+pub mod desafios;
+pub mod ejercicios;
 pub mod gpu;
 /// Los hilos de la unidad grafica.
 pub mod html;
