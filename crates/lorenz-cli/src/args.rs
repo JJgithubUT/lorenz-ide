@@ -165,6 +165,11 @@ pub enum Orden {
         maquina: String,
         salida: Option<String>,
     },
+    /// Importar una arquitectura desde una tabla de instrucciones.
+    Importar {
+        archivo: String,
+        salida: Option<String>,
+    },
     /// Generar la documentacion de una arquitectura.
     Documentar {
         maquina: String,
@@ -344,6 +349,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ensamblar" => interpretar_ensamblar(resto),
         "enlazar" => interpretar_enlazar(resto),
         "documentar" => interpretar_documentar(resto),
+        "importar" => interpretar_importar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -1469,4 +1475,27 @@ fn interpretar_desafio(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::Sobra(sobra));
     }
     Ok(Orden::Desafio { accion })
+}
+
+fn interpretar_importar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut archivo, mut salida) = (None, None);
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" | "--salida" => {
+                salida = Some(
+                    it.next()
+                        .ok_or(ErrorUso::OpcionSinValor(a.clone()))?
+                        .clone(),
+                );
+            }
+            o if o.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ if archivo.is_none() => archivo = Some(a.clone()),
+            _ => return Err(ErrorUso::Sobra(a.clone())),
+        }
+    }
+    Ok(Orden::Importar {
+        archivo: archivo.ok_or(ErrorUso::Falta("tabla"))?,
+        salida,
+    })
 }

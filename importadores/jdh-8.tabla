@@ -1,0 +1,19 @@
+# JDH-8: CPU de 8 bits con 4 registros, ALU con banderas Z y C, y direcciones de 16 bits.
+# Tabla reducida a partir de la documentacion publica; los codigos son los de esta tabla, no
+# necesariamente los del hardware original.
+maquina: jdh-8 palabra=8 direccion=16 endian=little arranque=0
+registros: A B C D
+sp: SP 16 0xEFFF
+pc: PC 16
+bandera: Z 0 resultado igual a cero
+bandera: C 1 acarreo
+region: rom 0x0000 0x7FFF r
+region: ram 0x8000 0xEFFF rw
+instruccion: NOP ; 0000 .... ; ; 1
+instruccion: MOV {rd}, {rs} ; 0001 rd:2 rs:2 ; rd = rs ; 1
+instruccion: LDI {rd}, {imm} ; 0010 rd:2 .. | imm:8 ; rd = imm ; 2
+instruccion: ADD {rd}, {rs} ; 0011 rd:2 rs:2 ; rd = rd + rs ; 2 ; Z C
+instruccion: LD {rd}, [{dir}] ; 0100 rd:2 .. | dir:8 | dir:8 ; rd = mem[dir] ; 4
+instruccion: ST [{dir}], {rs} ; 0101 rs:2 .. | dir:8 | dir:8 ; mem[dir] = rs ; 4
+instruccion: JZ {dir} ; 0110 .... | dir:8 | dir:8 ; si Z: pc = dir ; 3/2
+instruccion: HLT ; 1111 .... ; detener ; 1
