@@ -68,6 +68,7 @@ Uso:
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz importar <tabla> [-o maquina.toml]
   lorenz documentar <maquina.toml> [-o DOCUMENTACION.md] [--vigilar]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
@@ -335,6 +336,10 @@ pub fn ejecutar_cli_con_entrada(
             maquina,
             salida: archivo,
         } => crate::compilar::convencion_cli(&maquina, archivo.as_deref(), salida, errores),
+        Orden::Importar {
+            archivo,
+            salida: destino,
+        } => crate::importar::importar_cli(&archivo, destino.as_deref(), salida, errores),
         Orden::Documentar {
             maquina,
             salida: archivo,
