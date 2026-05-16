@@ -9,10 +9,12 @@ pub mod documentar;
 pub mod error;
 mod herencia;
 mod localizar;
+pub mod logisim;
 pub mod modelo;
 pub mod plantilla;
 pub mod semantica;
 pub mod validacion;
+pub mod verilog;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
 pub use carga::{cargar, cargar_archivo, mezclar_archivo};
