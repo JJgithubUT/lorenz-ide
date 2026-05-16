@@ -253,6 +253,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-008 | Verificar la integridad | Hecho | SHA-256 por archivo y total; `lorenz paquete verificar` |
 | RF-ECO-014 | Desafios con metrica y ranking | Hecho | `desafios::ranking` (empates comparten puesto), `lorenz desafio`; `desafios/multiplicar-barato`; `tests/ejercicios.rs` |
 | RF-ECO-015 | Importar arquitecturas de otros formatos | Hecho | `importar::importar_texto`, `lorenz importar`; `importadores/{jdh-8,astro-8}.tabla`; `tests/importar.rs` |
+| RF-ECO-041 | Planificador de tareas en Lorenz OS | Hecho | `ejemplos/so-ejemplo/planificador.sgt`, orden `TAREAS`; `tests/so_ejemplo.rs` |
 | RF-ECO-016 | Ejercicios guiados con verificacion | Hecho | `ejercicios::Ejercicio`, `lorenz ejercicio listar/ver/verificar`; 12 ejercicios en `ejercicios/` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
 | RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |

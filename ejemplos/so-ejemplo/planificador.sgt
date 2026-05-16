@@ -1,0 +1,95 @@
+// Planificador de tareas periodicas (RF-ECO-041).
+//
+// Es cooperativo y lo mueve el reloj: cada tic de `reloj.sgt` llama a `tic`, que descuenta el
+// tiempo de cada tarea y deja marcada la que ya toca. El nucleo pregunta con `siguiente` en su
+// bucle principal y ejecuta la tarea que le diga; asi las tareas nunca corren dentro de la
+// interrupcion, y solo se pisan entre si si una dura mas que su periodo (entonces se pierden
+// tics, no se acumulan).
+
+const MAX_TAREAS: u16 = 4;
+const NINGUNA: u16 = 65535;
+
+var periodo: [u16; 4];
+var restante: [u16; 4];
+var lista: [u16; 4];
+var veces: [u16; 4];
+var en_uso: [u16; 4];
+
+/// Da de alta una tarea que toca cada `cada` tics. Devuelve su numero o `NINGUNA` si no hay sitio.
+funcion crear(cada: u16) -> u16 {
+    si cada == 0 {
+        devolver NINGUNA;
+    }
+    var i: u16 = 0;
+    mientras i < MAX_TAREAS {
+        si en_uso[i] == 0 {
+            asm("DI");
+            periodo[i] = cada;
+            restante[i] = cada;
+            lista[i] = 0;
+            veces[i] = 0;
+            en_uso[i] = 1;
+            asm("EI");
+            devolver i;
+        }
+        i += 1;
+    }
+    devolver NINGUNA;
+}
+
+/// Da de baja una tarea.
+funcion cancelar(t: u16) {
+    si t < MAX_TAREAS {
+        asm("DI");
+        en_uso[t] = 0;
+        lista[t] = 0;
+        asm("EI");
+    }
+}
+
+/// Lo llama el reloj en cada tic.
+funcion tic() {
+    var i: u16 = 0;
+    mientras i < MAX_TAREAS {
+        si en_uso[i] != 0 {
+            restante[i] -= 1;
+            si restante[i] == 0 {
+                restante[i] = periodo[i];
+                lista[i] = 1;
+            }
+        }
+        i += 1;
+    }
+}
+
+/// Numero de la primera tarea que ya toca (y la deja de marcar), o `NINGUNA`.
+funcion siguiente() -> u16 {
+    var i: u16 = 0;
+    mientras i < MAX_TAREAS {
+        si lista[i] != 0 {
+            asm("DI");
+            lista[i] = 0;
+            veces[i] += 1;
+            asm("EI");
+            devolver i;
+        }
+        i += 1;
+    }
+    devolver NINGUNA;
+}
+
+/// Cuantas veces ha tocado la tarea.
+funcion ejecuciones(t: u16) -> u16 {
+    si t < MAX_TAREAS {
+        devolver veces[t];
+    }
+    devolver 0;
+}
+
+/// La tarea esta dada de alta.
+funcion activa(t: u16) -> bool {
+    si t < MAX_TAREAS {
+        devolver en_uso[t] != 0;
+    }
+    devolver falso;
+}

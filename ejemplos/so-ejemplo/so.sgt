@@ -9,7 +9,9 @@
 
 importar arranque { arrancar };
 importar pantalla { borrar, escribir, escribir_texto, escribir_numero, nueva_linea };
-importar teclado { leer };
+importar teclado { leer, hay_tecla };
+importar planificador { crear, siguiente, ejecuciones, activa };
+importar pantalla { poner_pixel };
 importar reloj { tics_desde_el_arranque };
 
 const TAMANO_LINEA: u16 = 15;
@@ -20,7 +22,9 @@ var largo: u16;
 var cmd_limpiar: [u16; 8] = "LIMPIAR";
 var cmd_hora: [u16; 8] = "HORA";
 var cmd_ayuda: [u16; 8] = "AYUDA";
+var cmd_tareas: [u16; 8] = "TAREAS";
 var txt_ayuda: [u16; 24] = "HORA LIMPIAR";
+var txt_ayuda2: [u16; 8] = "TAREAS";
 var txt_desconocido: [u16; 8] = "NO SE";
 var indicador: [u16; 4] = ">";
 
@@ -36,6 +40,33 @@ funcion mostrar_indicador() {
     escribir_texto(&indicador[0]);
 }
 
+var latido_encendido: u16;
+var segundos: u16;
+
+/// Tarea 0: parpadea el pixel de la esquina inferior derecha.
+funcion latido() {
+    latido_encendido = 1 - latido_encendido;
+    poner_pixel(63, 31, latido_encendido);
+}
+
+/// Tarea 1: cuenta segundos de reloj.
+funcion cuenta_segundos() {
+    segundos += 1;
+}
+
+/// Escribe, por cada tarea activa, cuantas veces ha tocado.
+funcion listar_tareas() {
+    var t: u16 = 0;
+    mientras t < 4 {
+        si activa(t) {
+            escribir_numero(ejecuciones(t));
+            escribir(32);
+        }
+        t += 1;
+    }
+    nueva_linea();
+}
+
 /// Ejecuta la orden que hay en `linea`.
 funcion ejecutar() {
     linea[largo] = 0;
@@ -47,8 +78,12 @@ funcion ejecutar() {
     } sino si cad_comparar(&linea[0], &cmd_hora[0]) == 0 {
         escribir_numero(tics_desde_el_arranque());
         nueva_linea();
+    } sino si cad_comparar(&linea[0], &cmd_tareas[0]) == 0 {
+        listar_tareas();
     } sino si cad_comparar(&linea[0], &cmd_ayuda[0]) == 0 {
         escribir_texto(&txt_ayuda[0]);
+        nueva_linea();
+        escribir_texto(&txt_ayuda2[0]);
         nueva_linea();
     } sino {
         escribir_texto(&txt_desconocido[0]);
@@ -59,7 +94,18 @@ funcion ejecutar() {
 funcion principal() {
     arrancar();
     mostrar_indicador();
+    crear(5);
+    crear(50);
     bucle {
+        var tarea: u16 = siguiente();
+        si tarea == 0 {
+            latido();
+        } sino si tarea == 1 {
+            cuenta_segundos();
+        }
+        si !hay_tecla() {
+            continuar;
+        }
         var c: u16 = mayuscula(leer());
         si c == 10 {
             nueva_linea();
