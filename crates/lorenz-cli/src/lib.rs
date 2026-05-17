@@ -3,6 +3,10 @@
 //! La logica vive en esta biblioteca para poder probarla sin lanzar procesos; `main.rs` solo
 //! conecta la salida estandar y devuelve el codigo de salida.
 
+pub mod exportar;
+
+pub mod pdf;
+
 pub mod importar;
 
 pub mod programa;
