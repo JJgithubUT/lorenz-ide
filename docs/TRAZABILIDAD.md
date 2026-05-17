@@ -253,6 +253,9 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-008 | Verificar la integridad | Hecho | SHA-256 por archivo y total; `lorenz paquete verificar` |
 | RF-ECO-014 | Desafios con metrica y ranking | Hecho | `desafios::ranking` (empates comparten puesto), `lorenz desafio`; `desafios/multiplicar-barato`; `tests/ejercicios.rs` |
 | RF-ECO-015 | Importar arquitecturas de otros formatos | Hecho | `importar::importar_texto`, `lorenz importar`; `importadores/{jdh-8,astro-8}.tabla`; `tests/importar.rs` |
+| RF-ECO-034 | Exportar la maquina a Verilog | Hecho | `verilog::exportar`, `lorenz exportar verilog`; comparado con el emulador usando `iverilog` |
+| RF-ECO-035 | Banco de pruebas Verilog | Hecho | `<maquina>_tb.v` con `programa.mem`; escribe los registros finales |
+| RF-ECO-036 | Exportar a Logisim | Hecho | `logisim::exportar`, `lorenz exportar logisim` (bloques sin cablear) |
 | RF-ECO-041 | Planificador de tareas en Lorenz OS | Hecho | `ejemplos/so-ejemplo/planificador.sgt`, orden `TAREAS`; `tests/so_ejemplo.rs` |
 | RF-ECO-016 | Ejercicios guiados con verificacion | Hecho | `ejercicios::Ejercicio`, `lorenz ejercicio listar/ver/verificar`; 12 ejercicios en `ejercicios/` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
@@ -262,6 +265,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-021 | Tabla de registros y banderas | Hecho | seccion "Registros y banderas", con pares |
 | RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
 | RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
+| RF-ECO-024 | Exportar la documentacion a PDF | Hecho | `pdf::markdown_a_pdf` (escritor propio), `lorenz exportar pdf`; `tests/exportar.rs` |
 | RF-ECO-025 | Exportar la documentacion a HTML | Hecho | `html::markdown_a_html`, `lorenz documentar -o ARCHIVO.html` |
 | RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
 | RF-ECO-027 | Ejemplo de sistema operativo completo | Hecho | `ejemplos/so-ejemplo`, `tests/so_ejemplo.rs` |

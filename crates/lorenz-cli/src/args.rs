@@ -165,6 +165,13 @@ pub enum Orden {
         maquina: String,
         salida: Option<String>,
     },
+    /// Exportar una maquina a Verilog, PDF o Logisim.
+    Exportar {
+        formato: crate::exportar::Formato,
+        maquina: String,
+        programa: Option<String>,
+        salida: Option<String>,
+    },
     /// Importar una arquitectura desde una tabla de instrucciones.
     Importar {
         archivo: String,
@@ -350,6 +357,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "enlazar" => interpretar_enlazar(resto),
         "documentar" => interpretar_documentar(resto),
         "importar" => interpretar_importar(resto),
+        "exportar" => interpretar_exportar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -1496,6 +1504,40 @@ fn interpretar_importar(resto: &[String]) -> Result<Orden, ErrorUso> {
     }
     Ok(Orden::Importar {
         archivo: archivo.ok_or(ErrorUso::Falta("tabla"))?,
+        salida,
+    })
+}
+
+fn interpretar_exportar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut salida = None;
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" | "--salida" => {
+                salida = Some(
+                    it.next()
+                        .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?
+                        .clone(),
+                );
+            }
+            o if o.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => posicionales.push(a.clone()),
+        }
+    }
+    let mut p = posicionales.into_iter();
+    let nombre = p.next().ok_or(ErrorUso::Falta("formato"))?;
+    let formato = crate::exportar::Formato::desde(&nombre)
+        .ok_or(ErrorUso::OrdenDesconocida(format!("exportar {nombre}")))?;
+    let maquina = p.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = p.next();
+    if let Some(extra) = p.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Exportar {
+        formato,
+        maquina,
+        programa,
         salida,
     })
 }
