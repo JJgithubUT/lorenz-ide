@@ -306,6 +306,11 @@ fn dispositivos(s: &mut String, m: &Maquina, c: &Comentarios) {
                 tamano_bloque,
                 cantidad_bloques,
             } => format!("bloques ({cantidad_bloques} de {tamano_bloque} palabras)"),
+            TipoDispositivo::Externo { orden, direccion } => match (orden, direccion) {
+                (Some(o), _) => format!("externo (proceso `{o}`)"),
+                (_, Some(d)) => format!("externo (TCP {d})"),
+                _ => "externo".into(),
+            },
             TipoDispositivo::Generico { .. } => "generico".into(),
         };
         let puertos = if d.puertos.is_empty() {

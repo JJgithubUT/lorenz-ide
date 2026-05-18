@@ -487,6 +487,38 @@ fn dispositivos_citados(m: &Maquina, fallos: &mut Vec<FalloValidacion>) {
     }
 
     for dispositivo in &m.dispositivos {
+        if let TipoDispositivo::Externo { orden, direccion } = &dispositivo.tipo {
+            let vacio = |t: &Option<String>| t.as_deref().is_some_and(|t| t.trim().is_empty());
+            if orden.is_some() == direccion.is_some() || vacio(orden) || vacio(direccion) {
+                fallos.push(fallo(
+                    Regla::ValorFueraDeRango,
+                    format!(
+                        "el dispositivo externo '{}' necesita exactamente una de `orden` o `direccion`",
+                        dispositivo.nombre
+                    ),
+                ));
+            } else if direccion.as_deref().is_some_and(|d| {
+                !d.rsplit_once(':')
+                    .is_some_and(|(h, p)| !h.is_empty() && p.parse::<u16>().is_ok())
+            }) {
+                fallos.push(fallo(
+                    Regla::ValorFueraDeRango,
+                    format!(
+                        "la direccion de '{}' debe ser host:puerto",
+                        dispositivo.nombre
+                    ),
+                ));
+            }
+            if dispositivo.puertos.is_empty() {
+                fallos.push(fallo(
+                    Regla::ValorFueraDeRango,
+                    format!(
+                        "el dispositivo externo '{}' no declara puertos",
+                        dispositivo.nombre
+                    ),
+                ));
+            }
+        }
         if let TipoDispositivo::Temporizador { periodo: 0 } = dispositivo.tipo {
             fallos.push(fallo(
                 Regla::ValorFueraDeRango,
