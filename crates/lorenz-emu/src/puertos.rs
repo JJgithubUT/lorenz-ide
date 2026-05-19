@@ -89,6 +89,8 @@ struct Puerto {
     estado_de: Option<(u64, u64)>,
     /// Valor que un dispositivo publica en el puerto; leerlo no lo consume.
     publicado: Option<u64>,
+    /// Dispositivo externo al que se le pasa cada lectura y escritura.
+    externo: Option<usize>,
 }
 
 /// Colas de entrada y registro de salida de cada puerto.
@@ -101,6 +103,7 @@ pub struct Puertos {
     almacenes: Vec<Almacen>,
     scripts: Vec<Script>,
     dmas: Vec<Dma>,
+    externos: Vec<crate::externo::Externo>,
     /// Transferencias DMA pedidas que el emulador aun no realizo.
     solicitudes: Vec<usize>,
     /// Lineas de interrupcion que los scripts pidieron y el emulador aun no recogio.
@@ -114,6 +117,7 @@ impl Puertos {
         let mut almacenes = Vec::new();
         let mut scripts = Vec::new();
         let mut dmas = Vec::new();
+        let mut externos = Vec::new();
         for d in &maquina.dispositivos {
             for numero in d.puertos.values() {
                 puertos.insert(*numero, Puerto::default());
@@ -141,6 +145,19 @@ impl Puertos {
                 ] {
                     if let Some(p) = d.puertos.get(nombre).and_then(|n| puertos.get_mut(n)) {
                         p.almacen = Some((indice, papel));
+                    }
+                }
+            }
+            if let TipoDispositivo::Externo { orden, direccion } = &d.tipo {
+                let indice = externos.len();
+                externos.push(crate::externo::Externo::nuevo(
+                    &d.nombre,
+                    orden.clone(),
+                    direccion.clone(),
+                ));
+                for numero in d.puertos.values() {
+                    if let Some(p) = puertos.get_mut(numero) {
+                        p.externo = Some(indice);
                     }
                 }
             }
@@ -207,6 +224,7 @@ impl Puertos {
             almacenes,
             scripts,
             dmas,
+            externos,
             solicitudes: Vec::new(),
             pedidas: Vec::new(),
             mascara: mascara_de(maquina.bits_palabra),
@@ -249,6 +267,15 @@ impl Puertos {
                 PapelDma::Estado => 1 | (u64::from(d.error) << 1),
             });
         }
+        if let Some(i) = self.puerto(numero)?.externo {
+            let e = &self.externos[i];
+            return e.leer(numero).map(|v| v & self.mascara).map_err(|motivo| {
+                ErrorEjecucion::DispositivoExterno {
+                    dispositivo: e.nombre.clone(),
+                    motivo,
+                }
+            });
+        }
         if let Some(valor) = self.puerto(numero)?.publicado {
             return Ok(valor);
         }
@@ -287,6 +314,15 @@ impl Puertos {
         }
         if let Some(i) = self.puerto(numero)?.script {
             return self.ejecutar_script(i, numero, valor & mascara);
+        }
+        if let Some(i) = self.puerto(numero)?.externo {
+            let e = &self.externos[i];
+            return e.escribir(numero, valor & mascara).map_err(|motivo| {
+                ErrorEjecucion::DispositivoExterno {
+                    dispositivo: e.nombre.clone(),
+                    motivo,
+                }
+            });
         }
         self.puerto(numero)?.salida.push(valor & mascara);
         Ok(())
