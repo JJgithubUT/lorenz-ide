@@ -5,6 +5,8 @@
 
 pub mod exportar;
 
+pub mod seguro;
+
 pub mod pdf;
 
 pub mod importar;
