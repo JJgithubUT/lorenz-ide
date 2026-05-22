@@ -61,9 +61,9 @@ fn un_proceso_externo_atiende_los_puertos() {
         eprintln!("python3 no esta instalado: se omite");
         return;
     }
-    let m = maquina_con(&format!(
-        "[[dispositivo]]\nnombre = \"acumulador\"\ntipo = \"externo\"\norden = \"python3 ../../ejemplos/externo-8/acumulador.py\"\npuertos = {{ datos = 0x10 }}"
-    ));
+    let m = maquina_con(
+        "[[dispositivo]]\nnombre = \"acumulador\"\ntipo = \"externo\"\norden = \"python3 ../../ejemplos/externo-8/acumulador.py\"\npuertos = { datos = 0x10 }",
+    );
     let (c, s, e) = correr(&["ejecutar", m.to_str().unwrap(), SUMA]);
     assert_eq!(c, SALIDA_OK, "{e}");
     assert!(s.contains("B=0xc"), "{s}");
