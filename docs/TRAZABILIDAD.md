@@ -256,6 +256,9 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-034 | Exportar la maquina a Verilog | Hecho | `verilog::exportar`, `lorenz exportar verilog`; comparado con el emulador usando `iverilog` |
 | RF-ECO-035 | Banco de pruebas Verilog | Hecho | `<maquina>_tb.v` con `programa.mem`; escribe los registros finales |
 | RF-ECO-036 | Exportar a Logisim | Hecho | `logisim::exportar`, `lorenz exportar logisim` (bloques sin cablear) |
+| RF-ECO-009 | Modo seguro que prohibe tocar el disco | Hecho | `seguro::comprobar`, `--seguro` y `LORENZ_SEGURO`; `tests/externos.rs` |
+| RF-ECO-037 | Dispositivos externos por proceso o TCP | Hecho | `TipoDispositivo::Externo`, `lorenz_emu::externo`; `ejemplos/externo-8` |
+| RF-ECO-038 | Protocolo documentado para dispositivos externos | Hecho | `docs/EXTERNOS.md` |
 | RF-ECO-041 | Planificador de tareas en Lorenz OS | Hecho | `ejemplos/so-ejemplo/planificador.sgt`, orden `TAREAS`; `tests/so_ejemplo.rs` |
 | RF-ECO-016 | Ejercicios guiados con verificacion | Hecho | `ejercicios::Ejercicio`, `lorenz ejercicio listar/ver/verificar`; 12 ejercicios en `ejercicios/` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |

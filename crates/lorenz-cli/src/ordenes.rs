@@ -69,6 +69,7 @@ Uso:
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz exportar <verilog|pdf|logisim> <maquina.toml> [programa] -o SALIDA
+  lorenz --seguro <orden> ...   (sin escribir archivos ni abrir procesos o conexiones)
   lorenz importar <tabla> [-o maquina.toml]
   lorenz documentar <maquina.toml> [-o DOCUMENTACION.md] [--vigilar]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
@@ -116,12 +117,23 @@ pub fn ejecutar_cli_con_entrada(
     salida: &mut dyn Write,
     errores: &mut dyn Write,
 ) -> i32 {
+    let (args, seguro) = crate::seguro::extraer(args);
+    let args = &args[..];
     let orden = match interpretar(args) {
         Ok(o) => o,
         Err(e) => {
             escribir(errores, &format!("error: {e}\n"));
             return SALIDA_ERROR_USO;
         }
+    };
+    let _guardia = if seguro || crate::seguro::pedido_por_entorno() {
+        if let Err(e) = crate::seguro::comprobar(&orden) {
+            escribir(errores, &format!("error: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
+        Some(crate::seguro::Guardia::activar())
+    } else {
+        None
     };
     match orden {
         Orden::Ayuda => {
