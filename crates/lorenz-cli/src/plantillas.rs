@@ -61,6 +61,10 @@ pub const PLANTILLAS: &[Plantilla] = &[
                 include_str!("../../../ejemplos/so-ejemplo/reloj.sgt"),
             ),
             (
+                "planificador.sgt",
+                include_str!("../../../ejemplos/so-ejemplo/planificador.sgt"),
+            ),
+            (
                 "teclado.sgt",
                 include_str!("../../../ejemplos/so-ejemplo/teclado.sgt"),
             ),
