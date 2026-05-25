@@ -230,8 +230,8 @@ fn operandos(i: &Instruccion, regs: &[String]) -> Result<String, String> {
 fn generar(t: &Tabla) -> Result<String, String> {
     let mut o = String::new();
     o.push_str(&format!(
-        "# Importada con `lorenz importar`. Revisa la semantica antes de usarla.\n\n[maquina]\nnombre = {}\nformato = \"0.1\"\nbits_palabra = {}\nbits_direccion = {}\nendianness = {}\narranque = {}\npila = \"descendente\"\n\n",
-        comillas(&t.nombre), t.palabra, t.direccion, comillas(&t.endian), t.arranque
+        "# {} Revisa la semantica antes de usarla.\n\n[maquina]\nnombre = {}\nformato = \"0.1\"\nbits_palabra = {}\nbits_direccion = {}\nendianness = {}\narranque = {}\npila = \"descendente\"\n\n",
+        lorenz_arch::marca_generado("lorenz importar"), comillas(&t.nombre), t.palabra, t.direccion, comillas(&t.endian), t.arranque
     ));
     if !t.banderas.is_empty() {
         o.push_str("[flags]\n");

@@ -28,3 +28,12 @@ pub use modelo::{
 
 /// Version del formato de descripcion que esta biblioteca entiende.
 pub const VERSION_FORMATO: &str = "0.1";
+
+/// La marca que llevan los textos que Lorenz genera (RF-ECO-046): quien los lee sabe que no los
+/// escribio una persona y con que orden se regeneran.
+pub fn marca_generado(orden: &str) -> String {
+    format!(
+        "Generado por Lorenz {} con `{orden}`. Se regenera: no lo edites a mano.",
+        env!("CARGO_PKG_VERSION")
+    )
+}

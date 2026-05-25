@@ -313,6 +313,10 @@ pub fn markdown_a_pdf(md: &str, titulo: &str) -> Vec<u8> {
     }
     let mut info = b"<< /Producer (Lorenz) /Title (".to_vec();
     info.extend_from_slice(&codificar(titulo));
+    info.extend_from_slice(b") /Subject (");
+    info.extend_from_slice(&codificar(&lorenz_arch::marca_generado(
+        "lorenz exportar pdf",
+    )));
     info.extend_from_slice(b") >>");
     objetos.push(info);
     for (i, flujo) in paginas.iter().enumerate() {

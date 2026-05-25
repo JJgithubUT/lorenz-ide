@@ -450,7 +450,7 @@ pub fn exportar(m: &Maquina) -> Result<Modelo, String> {
     writeln!(o, "      pc <= pcn;\n    end\n  end\nendmodule").unwrap();
 
     let mut b = String::new();
-    writeln!(b, "// Banco de pruebas de {id}_cpu: carga programa.mem y corre hasta que la maquina se detiene.").unwrap();
+    writeln!(b, "// Banco de pruebas de {id}_cpu: carga programa.mem y corre hasta que la maquina se detiene.\n// {}", crate::marca_generado("lorenz exportar verilog")).unwrap();
     writeln!(b, "`timescale 1ns/1ps\nmodule {id}_tb;\n  reg clk = 0;\n  reg rst = 1;\n  wire detenida;\n  integer ciclos = 0;").unwrap();
     writeln!(
         b,
