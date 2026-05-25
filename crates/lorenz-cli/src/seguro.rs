@@ -60,6 +60,7 @@ pub fn comprobar(orden: &Orden) -> Result<(), String> {
         | Orden::Validar { .. }
         | Orden::Comparar { .. }
         | Orden::Desensamblar { .. }
+        | Orden::Explicar { .. }
         | Orden::Plantillas
         | Orden::Ejercicio { .. }
         | Orden::Desafio { .. } => Ok(()),
