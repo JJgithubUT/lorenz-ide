@@ -371,8 +371,9 @@ pub fn exportar(m: &Maquina) -> Result<Modelo, String> {
     let mut o = String::new();
     writeln!(
         o,
-        "// Modelo de simulacion de {} generado por `lorenz exportar verilog`.",
-        m.nombre
+        "// Modelo de simulacion de {}. {}",
+        m.nombre,
+        crate::marca_generado("lorenz exportar verilog")
     )
     .unwrap();
     writeln!(
