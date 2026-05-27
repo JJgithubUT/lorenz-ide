@@ -165,6 +165,12 @@ pub enum Orden {
         maquina: String,
         salida: Option<String>,
     },
+    /// Contar en palabras lo que hace un programa, instruccion a instruccion.
+    Explicar {
+        maquina: String,
+        programa: String,
+        opciones: crate::explicar::OpcionesExplicar,
+    },
     /// Exportar una maquina a Verilog, PDF o Logisim.
     Exportar {
         formato: crate::exportar::Formato,
@@ -358,6 +364,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "documentar" => interpretar_documentar(resto),
         "importar" => interpretar_importar(resto),
         "exportar" => interpretar_exportar(resto),
+        "explicar" => interpretar_explicar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -1539,5 +1546,39 @@ fn interpretar_exportar(resto: &[String]) -> Result<Orden, ErrorUso> {
         maquina,
         programa,
         salida,
+    })
+}
+
+fn interpretar_explicar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut opciones = crate::explicar::OpcionesExplicar::default();
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--limite" | "--direccion" => {
+                let valor = it
+                    .next()
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                let n = numero(a, valor)?;
+                if a == "--limite" {
+                    opciones.limite = n;
+                } else {
+                    opciones.direccion = Some(n);
+                }
+            }
+            o if o.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => posicionales.push(a.clone()),
+        }
+    }
+    let mut p = posicionales.into_iter();
+    let maquina = p.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = p.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = p.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Explicar {
+        maquina,
+        programa,
+        opciones,
     })
 }

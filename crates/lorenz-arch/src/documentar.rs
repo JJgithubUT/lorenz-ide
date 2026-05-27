@@ -133,6 +133,7 @@ pub fn documentar(m: &Maquina, comentarios: &Comentarios) -> String {
     interrupciones(&mut s, m);
     tabla_de_codigos(&mut s, m);
     detalle(&mut s, m, comentarios);
+    let _ = writeln!(s, "\n---\n*{}*", crate::marca_generado("lorenz documentar"));
     s
 }
 

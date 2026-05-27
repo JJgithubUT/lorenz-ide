@@ -52,6 +52,12 @@ pub fn exportar(m: &Maquina, programa: &[(u64, Vec<u64>)]) -> String {
     let anchura_memoria = m.bits_direccion.min(16);
     let mut o = String::new();
     o.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<project source=\"3.8.0\" version=\"1.0\">\n");
+    writeln!(
+        o,
+        "  <!-- {} -->",
+        xml(&crate::marca_generado("lorenz exportar logisim"))
+    )
+    .unwrap();
     for (i, l) in ["#Wiring", "#Gates", "#Plexers", "#Arithmetic", "#Memory"]
         .iter()
         .enumerate()

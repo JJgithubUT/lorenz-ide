@@ -68,6 +68,7 @@ Uso:
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz explicar <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz exportar <verilog|pdf|logisim> <maquina.toml> [programa] -o SALIDA
   lorenz --seguro <orden> ...   (sin escribir archivos ni abrir procesos o conexiones)
   lorenz importar <tabla> [-o maquina.toml]
@@ -349,6 +350,11 @@ pub fn ejecutar_cli_con_entrada(
             maquina,
             salida: archivo,
         } => crate::compilar::convencion_cli(&maquina, archivo.as_deref(), salida, errores),
+        Orden::Explicar {
+            maquina,
+            programa,
+            opciones,
+        } => crate::explicar::explicar_cli(&maquina, &programa, &opciones, salida, errores),
         Orden::Exportar {
             formato,
             maquina,
