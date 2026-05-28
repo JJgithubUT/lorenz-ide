@@ -31,6 +31,8 @@ pub struct OpcionesPaquete {
     /// Raiz del almacen; por omision `$LORENZ_PAQUETES` o `~/.lorenz/paquetes`.
     pub en: Option<String>,
     pub repositorios: Vec<String>,
+    /// Huella SHA-256 que debe tener el paquete; obligatoria si se instala desde una direccion web.
+    pub sha256: Option<String>,
 }
 
 pub fn raiz_por_omision() -> PathBuf {
@@ -46,6 +48,33 @@ pub fn raiz_por_omision() -> PathBuf {
 fn leer(archivo: &str) -> Result<Paquete, String> {
     let bytes = std::fs::read(archivo).map_err(|e| format!("{archivo}: {e}"))?;
     Paquete::desde_bytes(&bytes).map_err(|e| format!("{archivo}: {e}"))
+}
+
+/// Lee el paquete de un archivo o de una direccion `http://`, comprobando la huella si se dio.
+///
+/// Desde la red la huella es obligatoria: es lo unico que garantiza que el paquete es el esperado
+/// (no hay TLS, decision D-115).
+fn leer_origen(origen: &str, huella: Option<&str>) -> Result<Paquete, String> {
+    let bytes = if lorenz_paq::descarga::es_url(origen) {
+        if huella.is_none() {
+            return Err(format!(
+                "{origen}: para instalar desde la red hay que dar la huella con --sha256 (el paquete no se descarga por un canal cifrado)"
+            ));
+        }
+        lorenz_paq::descarga::descargar(origen)?
+    } else {
+        std::fs::read(origen).map_err(|e| format!("{origen}: {e}"))?
+    };
+    if let Some(esperada) = huella {
+        let real = lorenz_paq::sha256_hex(&bytes);
+        if !real.eq_ignore_ascii_case(esperada.trim()) {
+            return Err(format!(
+                "{origen}: la huella SHA-256 no coincide\n  esperada: {}\n  real:     {real}",
+                esperada.trim().to_ascii_lowercase()
+            ));
+        }
+    }
+    Paquete::desde_bytes(&bytes).map_err(|e| format!("{origen}: {e}"))
 }
 
 pub fn paquete_cli(
@@ -118,7 +147,7 @@ pub fn paquete_cli(
                 }
             }
             AccionPaquete::Instalar { archivo } => {
-                let p = leer(archivo)?;
+                let p = leer_origen(archivo, opciones.sha256.as_deref())?;
                 let repos: Vec<PathBuf> = opciones.repositorios.iter().map(PathBuf::from).collect();
                 let inf = almacen().instalar(&p, &repos).map_err(|e| e.to_string())?;
                 for (n, v) in &inf.instalados {

@@ -1311,6 +1311,7 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut opciones = OpcionesPaquete {
         en: None,
         repositorios: Vec::new(),
+        sha256: None,
     };
     let (mut posicionales, mut salida) = (Vec::new(), None);
     let mut i = 0;
@@ -1321,6 +1322,7 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
             "--repositorio" => opciones
                 .repositorios
                 .push(valor_de(resto, &mut i, a)?.to_string()),
+            "--sha256" => opciones.sha256 = Some(valor_de(resto, &mut i, a)?.to_string()),
             "-o" | "--salida" => salida = Some(valor_de(resto, &mut i, a)?.to_string()),
             _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
             _ => posicionales.push(a.clone()),
