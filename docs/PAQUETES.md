@@ -87,3 +87,19 @@ orden esta mal escrita.
 
 Instalar desde un sitio web o un registro remoto (RF-ECO-004) y la firma de autores quedan para
 cuando exista una red de distribucion; hoy los repositorios son carpetas locales.
+
+## Instalar desde una direccion web
+
+```
+lorenz paquete instalar http://servidor/paquete.lpkg --sha256 HUELLA [--en DIR]
+```
+
+Lorenz trae su propio cliente HTTP (sin dependencias) y **no trae TLS**: no hay `https://`. Como el
+canal no es de fiar, la huella SHA-256 del paquete es obligatoria desde la red y el paquete se
+rechaza si no coincide; la huella la publica quien ofrece el paquete por un canal distinto (en su
+pagina, en el commit...). Si el sitio solo ofrece HTTPS, baja el archivo con otro programa y
+instalalo desde el disco (`--sha256` tambien comprueba un archivo local).
+
+El cliente soporta `Content-Length`, `Transfer-Encoding: chunked`, el cierre de la conexion y hasta
+cinco redirecciones a direcciones `http://`; acepta paquetes de hasta 32 MiB y espera 10 segundos
+como maximo por cada operacion de red. En modo seguro (`--seguro`) no esta disponible.
