@@ -247,6 +247,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-001 | Empaquetar una arquitectura con nombre y version | Hecho | `Paquete::desde_carpeta`, `lorenz paquete crear` |
 | RF-ECO-002 | Manifiesto con autor, licencia y tipo | Hecho | `Manifiesto::leer`, `Tipo` |
 | RF-ECO-003 | Instalar un paquete en el almacen local | Hecho | `Almacen::instalar`, `lorenz paquete instalar` |
+| RF-ECO-004 | Instalar un paquete desde una direccion web | Hecho | `lorenz_paq::descarga`, `paquete instalar URL --sha256` (D-115: sin TLS, huella obligatoria); `tests/descarga.rs` |
 | RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `Version`, `Requisito`; `tests/almacen.rs` |
 | RF-ECO-006 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
 | RF-ECO-007 | Empaquetar el proyecto actual | Hecho | `lorenz paquete crear`, `Paquete::a_bytes` |

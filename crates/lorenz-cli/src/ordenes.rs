@@ -59,7 +59,7 @@ Uso:
   lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
   lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
   lorenz paquete verificar|info <archivo.lpkg>
-  lorenz paquete instalar <archivo.lpkg> [--en DIR] [--repositorio DIR]...
+  lorenz paquete instalar <archivo.lpkg | http://...> [--sha256 HUELLA] [--en DIR] [--repositorio DIR]...
   lorenz paquete listar [--en DIR]
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
