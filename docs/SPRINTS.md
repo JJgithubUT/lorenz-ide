@@ -147,7 +147,7 @@ evolucionarlo).
 JDH-8 y Astro-8, o el IDE.
 
 
-## Sprint 4 — De 306 a 378 requisitos (planificado)
+## Sprint 4 — De 306 a 378 requisitos (en curso)
 
 **Fecha prevista:** 2026-10-17 en adelante. **Versiones que lo cierran:** 0.6.0, 0.7.0, 0.8.0 y 0.9.0,
 una por hito. **Objetivo:** llevar el proyecto de 306 a **378 de 380 requisitos terminados (99,5 %)**,
@@ -164,7 +164,7 @@ ver ni probar.
 
 **Estado de partida:** 306 terminados, 73 faltantes, 1 por verificar (RF-DEP-022).
 
-### Hito A — Núcleo sin interfaz → v0.6.0 (306 → 329, 86,6 %)
+### Hito A — Núcleo sin interfaz → v0.6.0 (306 → 329, 86,6 %) — **terminado**
 
 | # | Historia | Requisitos | Criterio de hecho | Commits |
 | --- | --- | --- | --- | --- |

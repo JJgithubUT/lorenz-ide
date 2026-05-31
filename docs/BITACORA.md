@@ -17,6 +17,48 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Hito A del sprint 4: el núcleo sin interfaz
+
+Sprint 4, hito A (v0.6.0): 23 requisitos que no necesitan interfaz, de 306 a 329 terminados.
+
+**Hecho:** proyectos con tareas (`lorenz proyecto`, `lorenz tarea`), plantillas y recientes, doce
+ejercicios guiados y desafíos con ranking, importadores de JDH-8 y Astro-8, planificador de tareas
+en Lorenz OS, exportación a PDF (escritor propio), Verilog (con banco de pruebas, comparado con el
+emulador usando `iverilog`) y Logisim, dispositivos externos por proceso o TCP, modo seguro,
+`lorenz explicar`, marca de texto generado e instalación de paquetes desde una dirección web.
+
+**Decisiones:**
+
+- **D-113** — La interfaz será una aplicación web local servida por el propio binario (`lorenz ide`),
+  sin WebAssembly: se puede probar de verdad con el Chromium del entorno y reutiliza el núcleo
+  nativo.
+- **D-114** — Pendiente: editar el TOML desde el editor visual con un analizador propio que conserva
+  comentarios o con una biblioteca; se decide al empezar el hito E.
+- **D-115** — Instalar desde la red sin TLS: cliente HTTP propio y huella SHA-256 obligatoria. Un
+  TLS propio sería un riesgo mayor que el que evita; la huella da la integridad que importa.
+- **D-116** — Un proyecto (`proyecto.toml`) nombra sus fuentes, dispositivos y tareas; las tareas
+  llaman a las mismas órdenes del CLI por dentro, así que lo que hace una tarea se puede repetir a
+  mano.
+- **D-117** — Los importadores leen una tabla de instrucciones en texto en vez de formatos propios de
+  cada herramienta: la documentación pública de JDH-8 y Astro-8 es una tabla, y la importación
+  valida la máquina resultante antes de escribirla.
+- **D-118** — El Verilog exportado es un modelo de simulación de una instrucción por ciclo con la
+  semántica del emulador, no un diseño sintetizable; lo que no modela se avisa.
+- **D-119** — Los dispositivos externos hablan un protocolo de líneas de texto (`LEER`, `ESCRIBIR`,
+  `FIN`) y no pueden levantar interrupciones. El modo seguro es un interruptor del proceso que
+  impide lanzarlos y restringe las órdenes a las que no escriben en disco.
+- **D-120** — `lorenz explicar` no usa ningún modelo de lenguaje: la explicación sale de la
+  descripción de la máquina y de lo que la ejecución cambia, y es siempre la misma.
+
+**Pendiente:** hitos B a F: servidor y API, IDE, depurador gráfico, editor visual de arquitectura,
+visor de la GPU y versión web.
+
+**Requisitos:** RF-IDE-001 a 009, RF-ECO-004, 009, 014 a 016, 024, 034 a 038, 041, 044, 046.
+
+**Commits:** ramas `feature/*` del hito A (de 612 a 653).
+
+---
+
 ## 2026-10-16 — Paquetes y exportación a HTML
 
 Sprint 3: el ecosistema que no necesita interfaz (RF-ECO-001 a 003, 005 a 008 y 025).
