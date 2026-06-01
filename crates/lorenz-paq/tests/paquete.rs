@@ -3,8 +3,12 @@ use lorenz_paq::*;
 
 const M: &str = "[paquete]\nnombre = \"mi-cpu\"\nversion = \"1.2.0\"\nautor = \"Ana\"\nlicencia = \"MIT\"\ntipo = \"arquitectura\"\n\n[dependencias]\nbase = \">=1.0\"\n";
 
+static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Carpeta nueva para cada llamada: las pruebas corren en paralelo y no pueden compartirla.
 fn carpeta(nombre: &str) -> std::path::PathBuf {
-    let d = std::env::temp_dir().join(format!("lorenz-paq-{}-{nombre}", std::process::id()));
+    let k = N.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let d = std::env::temp_dir().join(format!("lorenz-paq-{}-{k}-{nombre}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
