@@ -1,0 +1,16 @@
+# Astro-8: computador de 16 bits con 4 registros, instrucciones de una palabra y salto relativo.
+# Tabla reducida a partir de la documentacion publica; los codigos son los de esta tabla.
+maquina: astro-8 palabra=16 direccion=16 endian=big arranque=0
+registros: A B C D
+pc: PC 16
+bandera: Z 0 resultado igual a cero
+region: rom 0x0000 0x3FFF r
+region: ram 0x4000 0xFFFF rw
+instruccion: NOP ; 0000 .... .... .... ; ; 1
+instruccion: LDI {rd}, {imm} ; 0001 rd:2 .. imm:8 ; rd = imm ; 1
+instruccion: ADD {rd}, {rs} ; 0010 rd:2 rs:2 .... .... ; rd = rd + rs ; 1 ; Z
+instruccion: SUB {rd}, {rs} ; 0011 rd:2 rs:2 .... .... ; rd = rd - rs ; 1 ; Z
+instruccion: LD {rd}, [{rs}] ; 0100 rd:2 rs:2 .... .... ; rd = mem[rs] ; 2
+instruccion: ST [{rs}], {rd} ; 0101 rd:2 rs:2 .... .... ; mem[rs] = rd ; 2
+instruccion: JNZ {off} ; 0110 .. .. off:8 ; si !Z: pc = pc + off ; 2/1
+instruccion: HLT ; 1111 .... .... .... ; detener ; 1

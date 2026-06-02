@@ -1,0 +1,12 @@
+[ejercicio]
+id = "doble-y-triple"
+titulo = "Doble y triple"
+nivel = 2
+tema = "aritmetica"
+enunciado = """
+R1 trae un numero. Deja en R2 su doble y en R3 su triple, sin usar multiplicaciones: la maquina no las tiene.
+"""
+pistas = [
+  "Doble es sumar el numero consigo mismo.",
+  "El triple es el doble mas el numero.",
+]

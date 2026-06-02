@@ -1,0 +1,40 @@
+# Proyecto basado en Lorenz OS, un sistema operativo minimo escrito en SGT.
+# Los modulos se importan entre si; el ultimo fuente es el principal.
+#
+#   lorenz proyecto .          muestra y comprueba el proyecto
+#   lorenz tarea . construir   compila el sistema
+#   lorenz tarea . correr      compila y lo ejecuta unos instantes
+
+[proyecto]
+nombre = "__NOMBRE__"
+
+[[arquitectura]]
+nombre = "principal"
+ruta = "maquina.toml"
+
+[[fuente]]
+ruta = "pantalla.sgt"
+
+[[fuente]]
+ruta = "teclado.sgt"
+
+[[fuente]]
+ruta = "reloj.sgt"
+
+[[fuente]]
+ruta = "arranque.sgt"
+
+[[fuente]]
+ruta = "so.sgt"
+
+[[tarea]]
+nombre = "construir"
+descripcion = "compila el sistema"
+pasos = ["ensamblar"]
+
+[[tarea]]
+nombre = "correr"
+descripcion = "compila y ejecuta con un limite de instrucciones"
+pasos = ["construir", "ejecutar"]
+limite = 200000
+hasta_el_limite = true   # un sistema operativo no termina solo

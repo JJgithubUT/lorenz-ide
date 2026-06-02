@@ -119,7 +119,7 @@ fn las_ordenes_responden() {
     emu.avanzar(2_000_000).unwrap();
     teclear(&mut emu, "ayuda\n");
     let t = texto_en_pantalla(&emu);
-    assert_eq!(&t[2..], [">AYUDA", "HORA LIMPIAR", ">"], "{t:?}");
+    assert_eq!(&t[1..], [">AYUDA", "HORA LIMPIAR", "TAREAS", ">"], "{t:?}");
     teclear(&mut emu, "zzz\n");
     let t = texto_en_pantalla(&emu);
     assert_eq!(&t[2..], [">ZZZ", "NO SE", ">"], "{t:?}");
@@ -152,4 +152,34 @@ fn el_texto_sube_cuando_se_llena_la_pantalla() {
         t.iter().filter(|l| l.as_str() == "NO SE").count() >= 2,
         "{t:?}"
     );
+}
+
+#[test]
+fn el_planificador_ejecuta_las_tareas_a_su_ritmo() {
+    let mut emu = arrancar();
+    emu.avanzar(2_000_000).unwrap();
+    teclear(&mut emu, "tareas\n");
+    let t = texto_en_pantalla(&emu);
+    let cuentas: Vec<u32> = t
+        .iter()
+        .find(|l| l.split(' ').count() == 2 && l.split(' ').all(|n| n.parse::<u32>().is_ok()))
+        .unwrap_or_else(|| panic!("no hay cuentas: {t:?}"))
+        .split(' ')
+        .map(|n| n.parse().unwrap())
+        .collect();
+    // La tarea 0 toca cada 5 tics y la 1 cada 50: la primera va unas diez veces por vuelta de la segunda.
+    assert!(cuentas[0] >= 5 && cuentas[1] >= 1, "{cuentas:?}");
+    assert!(cuentas[0] / cuentas[1].max(1) >= 5, "{cuentas:?}");
+}
+
+#[test]
+fn el_latido_parpadea() {
+    let mut emu = arrancar();
+    emu.avanzar(2_000_000).unwrap();
+    let mut vistos = std::collections::BTreeSet::new();
+    for _ in 0..60 {
+        emu.avanzar(1_000).unwrap();
+        vistos.insert(emu.pantalla("pantalla").unwrap().pixel(63, 31).unwrap());
+    }
+    assert!(vistos.len() >= 2, "el pixel no cambia: {vistos:?}");
 }

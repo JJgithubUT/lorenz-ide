@@ -20,6 +20,7 @@ pub mod programa;
 
 pub use estado::Estado;
 
+pub mod externo;
 pub mod puertos;
 pub(crate) mod script;
 

@@ -1,0 +1,13 @@
+[ejercicio]
+id = "suma"
+titulo = "Sumar dos numeros"
+nivel = 1
+tema = "aritmetica"
+enunciado = """
+R1 y R2 traen dos numeros. Deja en R3 su suma.
+
+Los registros son de 16 bits: si la suma no cabe, el resultado da la vuelta (65535 + 2 es 1).
+"""
+pistas = [
+  "ADD rd, rs, rt guarda en rd la suma de rs y rt.",
+]

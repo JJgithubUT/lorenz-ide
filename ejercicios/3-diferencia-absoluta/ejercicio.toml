@@ -1,0 +1,13 @@
+[ejercicio]
+id = "diferencia-absoluta"
+titulo = "Diferencia absoluta"
+nivel = 3
+tema = "saltos"
+enunciado = """
+R1 y R2 traen dos numeros (menores que 32768). Deja en R3 la diferencia entre ellos, sin signo: el mayor menos el menor.
+"""
+pistas = [
+  "SLT rd, rs, rt deja 1 en rd si rs < rt, y 0 si no.",
+  "BNE y BEQ comparan dos registros; para comparar con cero carga un 0 en un registro.",
+  "Hay dos caminos: uno cuando R1 es menor y otro cuando no.",
+]

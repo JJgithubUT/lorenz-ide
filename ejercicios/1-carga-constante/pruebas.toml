@@ -1,0 +1,10 @@
+# Pruebas del ejercicio. Cada una parte de un estado distinto y comprueba el resultado.
+formato = "lorenz-pruebas-0.1"
+maquina = "../maquina.toml"
+
+[[prueba]]
+nombre = "R1 vale 42"
+programa = "solucion.s"
+limite = 1000
+[prueba.espera]
+registros = { R1 = 42 }

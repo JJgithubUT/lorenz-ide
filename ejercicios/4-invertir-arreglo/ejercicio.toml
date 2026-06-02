@@ -1,0 +1,13 @@
+[ejercicio]
+id = "invertir-arreglo"
+titulo = "Invertir un arreglo"
+nivel = 4
+tema = "memoria"
+enunciado = """
+R6 apunta a un arreglo de palabras en la RAM y R1 trae cuantas son (de 1 a 8). Inviertelo en su sitio: la primera palabra pasa a ser la ultima y asi sucesivamente.
+"""
+pistas = [
+  "Usa dos indices: uno al principio y otro al final. Intercambia las palabras y acercalos hasta que se crucen.",
+  "El final es R6 + N - 1.",
+  "Para intercambiar, lee las dos palabras en registros distintos y escribe cada una en el sitio de la otra (LW y SW).",
+]

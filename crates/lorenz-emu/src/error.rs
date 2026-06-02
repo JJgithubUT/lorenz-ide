@@ -76,6 +76,9 @@ pub enum ErrorEjecucion {
     #[error("no se puede atender la interrupcion {linea}: la maquina no tiene puntero de pila")]
     InterrupcionSinPila { linea: u32 },
 
+    #[error("el dispositivo externo '{dispositivo}' fallo: {motivo}")]
+    DispositivoExterno { dispositivo: String, motivo: String },
+
     #[error("la maquina no tiene un dispositivo llamado '{nombre}'")]
     DispositivoInexistente { nombre: String },
 
