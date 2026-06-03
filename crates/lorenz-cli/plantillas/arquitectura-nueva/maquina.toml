@@ -1,0 +1,115 @@
+# Una arquitectura minima para empezar a inventar la tuya.
+#
+# Tiene dos registros de datos, una bandera y seis instrucciones. Para anadir una instruccion
+# copia un bloque `[[instruccion]]`, cambia su `codigo` (los bits fijos, `.` para bits libres y
+# `nombre:ancho` para los campos) y escribe su `semantica`. Comprueba cada cambio con
+# `lorenz validar maquina.toml` y mira el resultado con `lorenz documentar maquina.toml`.
+
+[maquina]
+nombre         = "__NOMBRE__"
+formato        = "0.1"
+bits_palabra   = 8
+bits_direccion = 16
+endianness     = "little"
+arranque       = 0x0000
+pila           = "descendente"
+
+[flags]
+Z = { bit = 0, descripcion = "el ultimo resultado fue cero" }
+
+[[registro]]
+nombre = "A"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "B"
+bits = 8
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+[[registro]]
+nombre = "F"
+bits = 8
+rol = "flags"
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 ...."
+semantica = ""
+ciclos    = 1
+descripcion = "No hace nada."
+
+[[instruccion]]
+mnemonico = "LDA"
+sintaxis  = "LDA {imm}"
+codigo    = "0001 .... | imm:8"
+semantica = "A = imm"
+afecta    = ["Z"]
+ciclos    = 2
+descripcion = "Carga una constante en A."
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+[[instruccion]]
+mnemonico = "LDB"
+sintaxis  = "LDB {imm}"
+codigo    = "0010 .... | imm:8"
+semantica = "B = imm"
+ciclos    = 2
+descripcion = "Carga una constante en B."
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 255]
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD"
+codigo    = "0011 ...."
+semantica = "A = A + B"
+afecta    = ["Z"]
+ciclos    = 1
+descripcion = "Suma B a A."
+
+[[instruccion]]
+mnemonico = "JMP"
+sintaxis  = "JMP {dir}"
+codigo    = "0101 .... | dir:8 | dir:8"
+semantica = "pc = dir"
+ciclos    = 3
+descripcion = "Salta a una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 ...."
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+
+[[region]]
+nombre = "rom"
+desde  = 0x0000
+hasta  = 0x1FFF
+acceso = "r"
+
+[[region]]
+nombre = "ram"
+desde  = 0x2000
+hasta  = 0x3FFF
+acceso = "rw"

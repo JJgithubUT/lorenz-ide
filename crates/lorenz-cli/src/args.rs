@@ -119,6 +119,32 @@ pub enum Orden {
         kernel: String,
         opciones: crate::kernel::OpcionesComparar,
     },
+    /// Ver, listar y verificar ejercicios guiados.
+    Ejercicio {
+        accion: crate::ejercicios::AccionEjercicio,
+    },
+    /// Ver, evaluar y comparar soluciones de un desafio.
+    Desafio {
+        accion: crate::desafios::AccionDesafio,
+    },
+    /// Listar, abrir u olvidar los proyectos recientes.
+    Recientes {
+        accion: crate::recientes::AccionRecientes,
+        en: Option<String>,
+    },
+    /// Listar las plantillas de proyecto incluidas.
+    Plantillas,
+    /// Mostrar y comprobar un proyecto (`proyecto.toml`).
+    Proyecto {
+        ruta: String,
+        arquitectura: Option<String>,
+    },
+    /// Listar o ejecutar las tareas de un proyecto.
+    Tarea {
+        ruta: String,
+        nombre: Option<String>,
+        arquitectura: Option<String>,
+    },
     /// Crear, verificar, inspeccionar, instalar y listar paquetes.
     Paquete {
         accion: crate::paquete::AccionPaquete,
@@ -137,6 +163,24 @@ pub enum Orden {
     /// Escribir la convencion de llamada de SGT en una maquina.
     Convencion {
         maquina: String,
+        salida: Option<String>,
+    },
+    /// Contar en palabras lo que hace un programa, instruccion a instruccion.
+    Explicar {
+        maquina: String,
+        programa: String,
+        opciones: crate::explicar::OpcionesExplicar,
+    },
+    /// Exportar una maquina a Verilog, PDF o Logisim.
+    Exportar {
+        formato: crate::exportar::Formato,
+        maquina: String,
+        programa: Option<String>,
+        salida: Option<String>,
+    },
+    /// Importar una arquitectura desde una tabla de instrucciones.
+    Importar {
+        archivo: String,
         salida: Option<String>,
     },
     /// Generar la documentacion de una arquitectura.
@@ -318,6 +362,9 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "ensamblar" => interpretar_ensamblar(resto),
         "enlazar" => interpretar_enlazar(resto),
         "documentar" => interpretar_documentar(resto),
+        "importar" => interpretar_importar(resto),
+        "exportar" => interpretar_exportar(resto),
+        "explicar" => interpretar_explicar(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -330,6 +377,15 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "depurar-kernel" => interpretar_depurar_kernel(resto),
         "comparar-gpu" => interpretar_comparar_gpu(resto),
         "paquete" => interpretar_paquete(resto),
+        "recientes" => interpretar_recientes(resto),
+        "ejercicio" => interpretar_ejercicio(resto),
+        "desafio" => interpretar_desafio(resto),
+        "plantillas" => match resto {
+            [] => Ok(Orden::Plantillas),
+            [extra, ..] => Err(ErrorUso::Sobra(extra.clone())),
+        },
+        "proyecto" => interpretar_proyecto(resto, false),
+        "tarea" => interpretar_proyecto(resto, true),
         "restricciones" => interpretar_variantes(resto, false),
         "variantes" => interpretar_variantes(resto, true),
         "historial-ciclos" => match resto {
@@ -1255,6 +1311,7 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
     let mut opciones = OpcionesPaquete {
         en: None,
         repositorios: Vec::new(),
+        sha256: None,
     };
     let (mut posicionales, mut salida) = (Vec::new(), None);
     let mut i = 0;
@@ -1265,6 +1322,7 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
             "--repositorio" => opciones
                 .repositorios
                 .push(valor_de(resto, &mut i, a)?.to_string()),
+            "--sha256" => opciones.sha256 = Some(valor_de(resto, &mut i, a)?.to_string()),
             "-o" | "--salida" => salida = Some(valor_de(resto, &mut i, a)?.to_string()),
             _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
             _ => posicionales.push(a.clone()),
@@ -1296,4 +1354,233 @@ fn interpretar_paquete(resto: &[String]) -> Result<Orden, ErrorUso> {
         return Err(ErrorUso::OpcionDesconocida(format!("-o {s}")));
     }
     Ok(Orden::Paquete { accion, opciones })
+}
+
+fn interpretar_proyecto(resto: &[String], tarea: bool) -> Result<Orden, ErrorUso> {
+    let (mut posicionales, mut arquitectura) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--arquitectura" => arquitectura = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let ruta = it.next().ok_or(ErrorUso::Falta("proyecto"))?;
+    let nombre = if tarea { it.next() } else { None };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(if tarea {
+        Orden::Tarea {
+            ruta,
+            nombre,
+            arquitectura,
+        }
+    } else {
+        Orden::Proyecto { ruta, arquitectura }
+    })
+}
+
+fn interpretar_recientes(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::recientes::AccionRecientes;
+    let (mut posicionales, mut en) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--en" => en = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let numero_de = |t: String| -> Result<usize, ErrorUso> {
+        t.parse::<usize>().map_err(|_| ErrorUso::NumeroInvalido {
+            opcion: "numero".into(),
+            valor: t,
+        })
+    };
+    let accion = match it.next().as_deref() {
+        None | Some("listar") => AccionRecientes::Listar,
+        Some("abrir") => {
+            AccionRecientes::Abrir(numero_de(it.next().ok_or(ErrorUso::Falta("numero"))?)?)
+        }
+        Some("olvidar") => match it.next().ok_or(ErrorUso::Falta("numero"))?.as_str() {
+            "todos" => AccionRecientes::OlvidarTodo,
+            n => AccionRecientes::Olvidar(numero_de(n.to_string())?),
+        },
+        Some(otra) => return Err(ErrorUso::OrdenDesconocida(format!("recientes {otra}"))),
+    };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::Recientes { accion, en })
+}
+
+fn interpretar_ejercicio(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::ejercicios::AccionEjercicio;
+    let sub = resto.first().ok_or(ErrorUso::Falta("accion"))?;
+    let resto = &resto[1..];
+    let (mut posicionales, mut pista, mut solucion) = (Vec::new(), None, None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "--pista" => pista = Some(numero(a, valor_de(resto, &mut i, a)?)? as usize),
+            "--solucion" => solucion = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => posicionales.push(a.clone()),
+        }
+        i += 1;
+    }
+    let mut it = posicionales.into_iter();
+    let carpeta = it.next().ok_or(ErrorUso::Falta("carpeta"))?;
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    let con_solucion = solucion.is_some();
+    let accion = match sub.as_str() {
+        "listar" => AccionEjercicio::Listar { raiz: carpeta },
+        "ver" => AccionEjercicio::Ver { carpeta, pista },
+        "verificar" => AccionEjercicio::Verificar { carpeta, solucion },
+        otra => return Err(ErrorUso::OrdenDesconocida(format!("ejercicio {otra}"))),
+    };
+    let sobra = |o: &str| ErrorUso::OpcionDesconocida(o.to_string());
+    match &accion {
+        AccionEjercicio::Verificar { .. } if pista.is_some() => Err(sobra("--pista")),
+        AccionEjercicio::Ver { .. } | AccionEjercicio::Listar { .. } if con_solucion => {
+            Err(sobra("--solucion"))
+        }
+        AccionEjercicio::Listar { .. } if pista.is_some() => Err(sobra("--pista")),
+        _ => Ok(Orden::Ejercicio { accion }),
+    }
+}
+
+fn interpretar_desafio(resto: &[String]) -> Result<Orden, ErrorUso> {
+    use crate::desafios::AccionDesafio;
+    let sub = resto.first().ok_or(ErrorUso::Falta("accion"))?;
+    let resto = &resto[1..];
+    if let Some(o) = resto.iter().find(|a| a.starts_with('-')) {
+        return Err(ErrorUso::OpcionDesconocida(o.clone()));
+    }
+    let mut it = resto.iter().cloned();
+    let carpeta = it.next().ok_or(ErrorUso::Falta("carpeta"))?;
+    let accion = match sub.as_str() {
+        "ver" => AccionDesafio::Ver { carpeta },
+        "evaluar" => AccionDesafio::Evaluar {
+            carpeta,
+            solucion: it.next().ok_or(ErrorUso::Falta("solucion"))?,
+        },
+        "comparar" => {
+            let soluciones: Vec<String> = it.by_ref().collect();
+            if soluciones.is_empty() {
+                return Err(ErrorUso::Falta("solucion"));
+            }
+            AccionDesafio::Comparar {
+                carpeta,
+                soluciones,
+            }
+        }
+        otra => return Err(ErrorUso::OrdenDesconocida(format!("desafio {otra}"))),
+    };
+    if let Some(sobra) = it.next() {
+        return Err(ErrorUso::Sobra(sobra));
+    }
+    Ok(Orden::Desafio { accion })
+}
+
+fn interpretar_importar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut archivo, mut salida) = (None, None);
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" | "--salida" => {
+                salida = Some(
+                    it.next()
+                        .ok_or(ErrorUso::OpcionSinValor(a.clone()))?
+                        .clone(),
+                );
+            }
+            o if o.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ if archivo.is_none() => archivo = Some(a.clone()),
+            _ => return Err(ErrorUso::Sobra(a.clone())),
+        }
+    }
+    Ok(Orden::Importar {
+        archivo: archivo.ok_or(ErrorUso::Falta("tabla"))?,
+        salida,
+    })
+}
+
+fn interpretar_exportar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut salida = None;
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" | "--salida" => {
+                salida = Some(
+                    it.next()
+                        .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?
+                        .clone(),
+                );
+            }
+            o if o.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => posicionales.push(a.clone()),
+        }
+    }
+    let mut p = posicionales.into_iter();
+    let nombre = p.next().ok_or(ErrorUso::Falta("formato"))?;
+    let formato = crate::exportar::Formato::desde(&nombre)
+        .ok_or(ErrorUso::OrdenDesconocida(format!("exportar {nombre}")))?;
+    let maquina = p.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = p.next();
+    if let Some(extra) = p.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Exportar {
+        formato,
+        maquina,
+        programa,
+        salida,
+    })
+}
+
+fn interpretar_explicar(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut opciones = crate::explicar::OpcionesExplicar::default();
+    let mut posicionales: Vec<String> = Vec::new();
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--limite" | "--direccion" => {
+                let valor = it
+                    .next()
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                let n = numero(a, valor)?;
+                if a == "--limite" {
+                    opciones.limite = n;
+                } else {
+                    opciones.direccion = Some(n);
+                }
+            }
+            o if o.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => posicionales.push(a.clone()),
+        }
+    }
+    let mut p = posicionales.into_iter();
+    let maquina = p.next().ok_or(ErrorUso::Falta("maquina"))?;
+    let programa = p.next().ok_or(ErrorUso::Falta("programa"))?;
+    if let Some(extra) = p.next() {
+        return Err(ErrorUso::Sobra(extra));
+    }
+    Ok(Orden::Explicar {
+        maquina,
+        programa,
+        opciones,
+    })
 }

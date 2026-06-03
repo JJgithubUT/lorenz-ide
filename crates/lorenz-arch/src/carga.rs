@@ -185,6 +185,10 @@ struct DispositivoCrudo {
     script: Option<String>,
     #[serde(default)]
     periodo: Option<u64>,
+    #[serde(default)]
+    orden: Option<String>,
+    #[serde(default)]
+    direccion: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -465,6 +469,10 @@ fn convertir(
                 "teclado" => TipoDispositivo::Teclado,
                 "uart" => TipoDispositivo::Uart,
                 "dma" => TipoDispositivo::Dma,
+                "externo" => TipoDispositivo::Externo {
+                    orden: d.orden,
+                    direccion: d.direccion,
+                },
                 "temporizador" => TipoDispositivo::Temporizador {
                     periodo: d.periodo.unwrap_or(1000),
                 },

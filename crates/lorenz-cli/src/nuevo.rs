@@ -61,14 +61,26 @@ pub fn nuevo_cli(
     errores: &mut dyn Write,
 ) -> i32 {
     let origen = Path::new(plantilla);
-    if !origen.join("maquina.toml").is_file() {
+    let destino_ruta = Path::new(destino);
+    let incluida = if origen.is_dir() {
+        None
+    } else {
+        crate::plantillas::buscar(plantilla)
+    };
+    if incluida.is_none() && !origen.join("maquina.toml").is_file() {
+        let hay: Vec<&str> = crate::plantillas::PLANTILLAS
+            .iter()
+            .map(|p| p.nombre)
+            .collect();
         escribir(
             errores,
-            &format!("{plantilla}: no es una plantilla: falta `maquina.toml`\n"),
+            &format!(
+                "{plantilla}: no es una plantilla: no es una carpeta con `maquina.toml` ni una de las incluidas ({})\n",
+                hay.join(", ")
+            ),
         );
         return SALIDA_ERROR_USO;
     }
-    let destino_ruta = Path::new(destino);
     if destino_ruta.exists()
         && destino_ruta
             .read_dir()
@@ -80,6 +92,17 @@ pub fn nuevo_cli(
             &format!("{destino}: ya existe y no esta vacia; elige otra carpeta\n"),
         );
         return SALIDA_ERROR_USO;
+    }
+    if let Some(p) = incluida {
+        let nombre = nombre.map_or_else(
+            || crate::plantillas::nombre_de_proyecto(destino),
+            str::to_string,
+        );
+        let c = desde_incluida(p, destino_ruta, &nombre, salida, errores);
+        if c == SALIDA_OK {
+            crate::recientes::registrar(destino);
+        }
+        return c;
     }
     let mut lista = Vec::new();
     if let Err(e) = archivos(origen, Path::new(""), &mut lista) {
@@ -109,5 +132,49 @@ pub fn nuevo_cli(
         salida,
         &format!("proyecto nuevo en {destino} ({} archivos)\n", lista.len()),
     );
+    if destino_ruta.join(crate::proyecto::NOMBRE_ARCHIVO).is_file() {
+        crate::recientes::registrar(destino);
+    }
+    SALIDA_OK
+}
+
+/// Escribe una plantilla incluida en el programa.
+fn desde_incluida(
+    p: &crate::plantillas::Plantilla,
+    destino: &Path,
+    nombre: &str,
+    salida: &mut dyn Write,
+    errores: &mut dyn Write,
+) -> i32 {
+    let archivos = p.con_nombre(nombre);
+    for (ruta, texto) in &archivos {
+        let a = destino.join(ruta);
+        let r = a
+            .parent()
+            .map_or(Ok(()), std::fs::create_dir_all)
+            .and_then(|()| std::fs::write(&a, texto));
+        if let Err(e) = r {
+            escribir(errores, &format!("{}: {e}\n", a.display()));
+            return SALIDA_ERROR_EJECUCION;
+        }
+        escribir(salida, &format!("{}\n", a.display()));
+    }
+    escribir(
+        salida,
+        &format!(
+            "proyecto nuevo en {} ({} archivos, plantilla {})\n",
+            destino.display(),
+            archivos.len(),
+            p.nombre
+        ),
+    );
+    SALIDA_OK
+}
+
+/// `lorenz plantillas`: las plantillas que trae el programa.
+pub fn plantillas_cli(salida: &mut dyn Write) -> i32 {
+    for p in crate::plantillas::PLANTILLAS {
+        escribir(salida, &format!("{:<20} {}\n", p.nombre, p.descripcion));
+    }
     SALIDA_OK
 }

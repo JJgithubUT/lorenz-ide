@@ -3,6 +3,16 @@
 //! La logica vive en esta biblioteca para poder probarla sin lanzar procesos; `main.rs` solo
 //! conecta la salida estandar y devuelve el codigo de salida.
 
+pub mod explicar;
+
+pub mod exportar;
+
+pub mod seguro;
+
+pub mod pdf;
+
+pub mod importar;
+
 pub mod programa;
 
 pub mod args;
@@ -56,6 +66,8 @@ pub mod cotejar;
 pub mod variantes;
 
 /// La unidad grafica.
+pub mod desafios;
+pub mod ejercicios;
 pub mod gpu;
 /// Los hilos de la unidad grafica.
 pub mod html;
@@ -63,3 +75,7 @@ pub mod kernel;
 /// Varios nucleos sobre memoria compartida.
 pub mod nucleos;
 pub mod paquete;
+pub mod plantillas;
+pub mod proyecto;
+pub mod recientes;
+pub mod tareas;

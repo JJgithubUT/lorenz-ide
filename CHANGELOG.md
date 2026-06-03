@@ -1,5 +1,30 @@
 # Registro de cambios
 
+## 0.6.0 — 2026-10-16 — El nucleo sin interfaz
+
+Primer hito del sprint 4: 23 requisitos que no necesitan interfaz grafica.
+
+### Proyectos y ejercicios
+
+- `proyecto.toml` con arquitecturas, fuentes, dispositivos y tareas; `lorenz proyecto` y
+  `lorenz tarea`. Plantillas de proyecto (`lorenz plantillas`) y lista de recientes. Ver
+  `docs/PROYECTOS.md`.
+- `lorenz ejercicio` (listar, ver con pistas, verificar) y doce ejercicios para `risc-16`;
+  `lorenz desafio` con metricas (ciclos, instrucciones, palabras) y ranking. Ver `docs/EJERCICIOS.md`.
+- `lorenz explicar`: la ejecucion contada instruccion a instruccion, sin modelos de lenguaje.
+
+### Ecosistema
+
+- `lorenz importar`: arquitecturas desde una tabla de instrucciones (JDH-8 y Astro-8 incluidas).
+- `lorenz exportar pdf|verilog|logisim`. El Verilog se comprueba contra el emulador con `iverilog`.
+  Ver `docs/EXPORTAR.md`.
+- Dispositivos externos (`tipo = "externo"`) por proceso o TCP y modo seguro (`--seguro`). Ver
+  `docs/EXTERNOS.md`.
+- `lorenz paquete instalar URL --sha256 HUELLA`: instalacion desde la red sin TLS, con huella
+  obligatoria.
+- Lorenz OS gana un planificador de tareas movido por el reloj (`TAREAS`).
+- Los textos generados llevan la marca "Generado por Lorenz".
+
 ## 0.5.0 — 2026-10-16 — Paquetes
 
 Anade el sistema de paquetes y la exportacion de la documentacion a HTML. Todo funciona desde la

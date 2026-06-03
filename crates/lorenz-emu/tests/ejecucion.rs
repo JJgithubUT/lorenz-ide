@@ -284,3 +284,21 @@ fn avanzar_propaga_los_errores_de_ejecucion() {
         Err(ErrorEjecucion::InstruccionInvalida { .. })
     ));
 }
+
+/// Una palabra como `0B80` o `0B`, escrita en hexadecimal, no debe leerse como un binario `0B...`.
+#[test]
+fn las_palabras_escritas_se_leen_igual() {
+    use lorenz_emu::programa::{escribir_palabras, leer_palabras};
+    for (bits, palabras) in [
+        (16, vec![0x0B80, 0x0B10, 0x0B, 0xFFFF, 0x0000, 0x0BAD]),
+        (8, vec![0x0B, 0x0A, 0xB0, 0x00]),
+    ] {
+        let texto = escribir_palabras(&palabras, bits, 4);
+        assert_eq!(leer_palabras(&texto, bits).unwrap(), palabras, "{texto}");
+    }
+    assert!(escribir_palabras(&[0x0B80], 16, 4).contains("0x0B80"));
+    // El resto se escribe sin prefijo, como siempre.
+    assert_eq!(escribir_palabras(&[0x1B80, 0x00AB], 16, 4), "1B80 00AB\n");
+    // Un binario con `0B` o `0b` sigue valiendo.
+    assert_eq!(leer_palabras("0b101 0B11", 16).unwrap(), [5, 3]);
+}

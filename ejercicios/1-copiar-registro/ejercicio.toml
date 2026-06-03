@@ -1,0 +1,11 @@
+[ejercicio]
+id = "copiar-registro"
+titulo = "Copiar un registro"
+nivel = 1
+tema = "registros"
+enunciado = """
+R1 trae un numero. Copialo en R2 sin cambiar R1.
+"""
+pistas = [
+  "No existe una instruccion MOV, pero sumar cero copia: ADDI rd, rs, 0.",
+]

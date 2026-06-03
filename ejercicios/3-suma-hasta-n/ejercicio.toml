@@ -1,0 +1,13 @@
+[ejercicio]
+id = "suma-hasta-n"
+titulo = "Sumar de 1 a N"
+nivel = 3
+tema = "bucles"
+enunciado = """
+R1 trae un numero N (de 0 a 20). Deja en R2 la suma 1 + 2 + ... + N. Si N es 0, la suma es 0.
+"""
+pistas = [
+  "Necesitas un contador que vaya de 1 a N y un acumulador.",
+  "Un bucle: comprueba si ya terminaste, suma, avanza el contador y vuelve al principio con J.",
+  "Cuidado con N = 0: el bucle no debe ejecutarse ni una vez.",
+]

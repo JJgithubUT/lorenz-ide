@@ -1,0 +1,30 @@
+# Proyecto de ejemplo: dos archivos de ensamblador que se enlazan.
+#
+#   lorenz proyecto ejemplos/proyecto-8
+#   lorenz tarea ejemplos/proyecto-8 correr
+
+[proyecto]
+nombre = "suma-enlazada"
+arquitectura = "ejemplo-8"
+
+[[arquitectura]]
+nombre = "ejemplo-8"
+ruta = "maquina.toml"
+
+# El orden de los fuentes es el orden en que se enlazan.
+[[fuente]]
+ruta = "programas/principal.s"
+
+[[fuente]]
+ruta = "programas/datos.s"
+
+[[tarea]]
+nombre = "construir"
+descripcion = "ensambla y enlaza los fuentes"
+pasos = ["ensamblar"]
+
+[[tarea]]
+nombre = "correr"
+descripcion = "construye y ejecuta"
+pasos = ["construir", "ejecutar"]
+limite = 1000

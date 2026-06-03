@@ -1,0 +1,12 @@
+[ejercicio]
+id = "maximo"
+titulo = "El mayor de dos"
+nivel = 3
+tema = "saltos"
+enunciado = """
+R1 y R2 traen dos numeros (menores que 32768). Deja en R3 el mayor.
+"""
+pistas = [
+  "Compara con SLT y salta con BNE o BEQ.",
+  "Los dos caminos terminan en HLT; no hace falta que se junten.",
+]

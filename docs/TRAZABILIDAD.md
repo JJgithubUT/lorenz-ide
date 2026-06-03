@@ -247,10 +247,23 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-001 | Empaquetar una arquitectura con nombre y version | Hecho | `Paquete::desde_carpeta`, `lorenz paquete crear` |
 | RF-ECO-002 | Manifiesto con autor, licencia y tipo | Hecho | `Manifiesto::leer`, `Tipo` |
 | RF-ECO-003 | Instalar un paquete en el almacen local | Hecho | `Almacen::instalar`, `lorenz paquete instalar` |
-| RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `tests/almacen.rs` |
-| RF-ECO-006 | Versiones semanticas con requisitos | Hecho | `Version`, `Requisito` (`=`, `>=`, `>`, `<=`, `<`, `^`, `*`) |
-| RF-ECO-007 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
+| RF-ECO-004 | Instalar un paquete desde una direccion web | Hecho | `lorenz_paq::descarga`, `paquete instalar URL --sha256` (D-115: sin TLS, huella obligatoria); `tests/descarga.rs` |
+| RF-ECO-005 | Resolver dependencias entre paquetes | Hecho | version mas alta que cumple, ciclos y faltantes (D-110); `Version`, `Requisito`; `tests/almacen.rs` |
+| RF-ECO-006 | Avisar si el paquete exige un formato mas nuevo | Hecho | `requiere_formato`, `Paquete::avisos` |
+| RF-ECO-007 | Empaquetar el proyecto actual | Hecho | `lorenz paquete crear`, `Paquete::a_bytes` |
 | RF-ECO-008 | Verificar la integridad | Hecho | SHA-256 por archivo y total; `lorenz paquete verificar` |
+| RF-ECO-014 | Desafios con metrica y ranking | Hecho | `desafios::ranking` (empates comparten puesto), `lorenz desafio`; `desafios/multiplicar-barato`; `tests/ejercicios.rs` |
+| RF-ECO-015 | Importar arquitecturas de otros formatos | Hecho | `importar::importar_texto`, `lorenz importar`; `importadores/{jdh-8,astro-8}.tabla`; `tests/importar.rs` |
+| RF-ECO-034 | Exportar la maquina a Verilog | Hecho | `verilog::exportar`, `lorenz exportar verilog`; comparado con el emulador usando `iverilog` |
+| RF-ECO-035 | Banco de pruebas Verilog | Hecho | `<maquina>_tb.v` con `programa.mem`; escribe los registros finales |
+| RF-ECO-036 | Exportar a Logisim | Hecho | `logisim::exportar`, `lorenz exportar logisim` (bloques sin cablear) |
+| RF-ECO-009 | Modo seguro que prohibe tocar el disco | Hecho | `seguro::comprobar`, `--seguro` y `LORENZ_SEGURO`; `tests/externos.rs` |
+| RF-ECO-037 | Dispositivos externos por proceso o TCP | Hecho | `TipoDispositivo::Externo`, `lorenz_emu::externo`; `ejemplos/externo-8` |
+| RF-ECO-038 | Protocolo documentado para dispositivos externos | Hecho | `docs/EXTERNOS.md` |
+| RF-ECO-044 | Explicar una ejecucion en palabras | Hecho | `explicar::explicar_cli`, `lorenz explicar`; determinista; `tests/explicar.rs` |
+| RF-ECO-046 | Marcar el texto generado | Hecho | `lorenz_arch::marca_generado` en documentar, Verilog, Logisim, PDF, importar y explicar |
+| RF-ECO-041 | Planificador de tareas en Lorenz OS | Hecho | `ejemplos/so-ejemplo/planificador.sgt`, orden `TAREAS`; `tests/so_ejemplo.rs` |
+| RF-ECO-016 | Ejercicios guiados con verificacion | Hecho | `ejercicios::Ejercicio`, `lorenz ejercicio listar/ver/verificar`; 12 ejercicios en `ejercicios/` |
 | RF-ECO-017 | Generar la documentacion de la ISA a partir de la descripcion | Hecho | `documentar::documentar`, `lorenz documentar` |
 | RF-ECO-018 | Tabla de codigos de operacion ordenada | Hecho | seccion "Codigos de operacion", ordenada por el valor de los bits fijos |
 | RF-ECO-019 | Diagrama de codificacion por instruccion | Hecho | `diagrama`: una caja por palabra, con numeracion de bits |
@@ -258,6 +271,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-021 | Tabla de registros y banderas | Hecho | seccion "Registros y banderas", con pares |
 | RF-ECO-022 | Coste en ciclos de cada instruccion | Hecho | columna "Ciclos"; los saltos muestran ambos costes |
 | RF-ECO-023 | Incorporar los comentarios de la descripcion | Hecho | `Comentarios::leer` |
+| RF-ECO-024 | Exportar la documentacion a PDF | Hecho | `pdf::markdown_a_pdf` (escritor propio), `lorenz exportar pdf`; `tests/exportar.rs` |
 | RF-ECO-025 | Exportar la documentacion a HTML | Hecho | `html::markdown_a_html`, `lorenz documentar -o ARCHIVO.html` |
 | RF-ECO-026 | Regenerar la documentacion al cambiar la descripcion | Hecho | `lorenz documentar -o ARCHIVO --vigilar`, `Vigilante` |
 | RF-ECO-027 | Ejemplo de sistema operativo completo | Hecho | `ejemplos/so-ejemplo`, `tests/so_ejemplo.rs` |
@@ -361,6 +375,22 @@ conocida, escrita en la columna de evidencia.
 | RF-GPU-020 | Al menos tres programas de ejemplo | Hecho | `ejemplos/gpu-16/kernels/*.kgpu`, `programas/*.gpu`, `*.s` |
 | RF-GPU-021 | Simular sin GPU sin penalizacion | Hecho | sin `[gpu]` no hay unidad; el emulador funcional ignora la seccion |
 | RF-GPU-022 | Ampliar e inspeccionar pixeles | Hecho | `--ampliar`, `--pixel`, `imagen::inspeccionar`; el visor grafico los consumira en el IDE |
+
+## Requisitos del entorno (RF-IDE)
+
+Solo los que no necesitan interfaz; el resto llega con el IDE. Ver `docs/PROYECTOS.md`.
+
+| Requisito | Resumen | Estado | Donde |
+| --- | --- | --- | --- |
+| RF-IDE-001 | Proyectos con archivo de configuracion | Hecho | `proyecto::Proyecto`, `proyecto.toml`, `lorenz proyecto` |
+| RF-IDE-002 | El proyecto declara su arquitectura | Hecho | `[[arquitectura]]` |
+| RF-IDE-003 | Varias arquitecturas y una activa | Hecho | `Proyecto::activa`, `--arquitectura` |
+| RF-IDE-004 | Fuentes y orden de compilacion | Hecho | `[[fuente]]`, `tareas::Marcha::construir` |
+| RF-IDE-005 | Dispositivos conectados y su configuracion | Hecho | `[[dispositivo]]`, `Abierto::comprobar` |
+| RF-IDE-006 | Tareas de compilacion y ejecucion con nombre | Hecho | `[[tarea]]`, `tareas::ejecutar_tarea`, `lorenz tarea` |
+| RF-IDE-007 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `nuevo::desde_incluida` |
+| RF-IDE-008 | Plantillas de programa, sistema operativo y arquitectura | Hecho | `plantillas::PLANTILLAS`, `lorenz plantillas` |
+| RF-IDE-009 | Abrir un proyecto reciente | Hecho | `recientes::Recientes`, `lorenz recientes` |
 
 ## Concordancia con los commits anteriores
 

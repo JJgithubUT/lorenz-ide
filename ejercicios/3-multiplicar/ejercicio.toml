@@ -1,0 +1,12 @@
+[ejercicio]
+id = "multiplicar"
+titulo = "Multiplicar sumando"
+nivel = 3
+tema = "bucles"
+enunciado = """
+R1 y R2 traen dos numeros (R2 es pequeno: de 0 a 12). Deja en R3 su producto. La maquina no multiplica: suma R1 consigo mismo R2 veces.
+"""
+pistas = [
+  "El producto es R1 sumado R2 veces.",
+  "Usa R2 como contador que baja hasta cero: ADDI R2, R2, -1.",
+]

@@ -46,18 +46,32 @@ Uso:
   lorenz comparar-gpu <maquina.toml> <programa> <kernel.kgpu> [--resultado DIR_CPU:DIR_GPU:CANTIDAD] [--limite N]
   lorenz gpu <maquina.toml> <programa | guion.gpu> [--limite N] [--direccion A] [--imagen ARCHIVO.png|.ppm]
              [--ampliar N] [--pixel X,Y]... [--texto]
+  lorenz nuevo <plantilla | carpeta-plantilla> <destino> [--nombre NOMBRE]
+  lorenz plantillas
+  lorenz ejercicio listar <carpeta-de-ejercicios>
+  lorenz ejercicio ver <ejercicio> [--pista N]
+  lorenz ejercicio verificar <ejercicio> [--solucion ARCHIVO]
+  lorenz desafio ver <desafio>
+  lorenz desafio evaluar <desafio> <solucion>
+  lorenz desafio comparar <desafio> <solucion>...
+  lorenz recientes [listar | abrir N | olvidar N|todos] [--en ARCHIVO]
+  lorenz proyecto <carpeta | proyecto.toml> [--arquitectura NOMBRE]
+  lorenz tarea <carpeta | proyecto.toml> [NOMBRE] [--arquitectura NOMBRE]
   lorenz paquete crear <carpeta> [-o ARCHIVO.lpkg]
   lorenz paquete verificar|info <archivo.lpkg>
-  lorenz paquete instalar <archivo.lpkg> [--en DIR] [--repositorio DIR]...
+  lorenz paquete instalar <archivo.lpkg | http://...> [--sha256 HUELLA] [--en DIR] [--repositorio DIR]...
   lorenz paquete listar [--en DIR]
   lorenz restricciones <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz variantes <maquina.toml> <programa> [--limite N] [--direccion A] [--bus] [--cuantas N]
   lorenz convencion <maquina.toml> [-o CONVENCION.md]
-  lorenz nuevo <carpeta-plantilla> <carpeta-nueva> [--nombre NOMBRE]
   lorenz ensamblar <maquina.toml> <fuente.s> [-o PROGRAMA.hex] [--mapa ARCHIVO] [--listado ARCHIVO]
                    [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
+  lorenz explicar <maquina.toml> <programa> [--limite N] [--direccion A]
+  lorenz exportar <verilog|pdf|logisim> <maquina.toml> [programa] -o SALIDA
+  lorenz --seguro <orden> ...   (sin escribir archivos ni abrir procesos o conexiones)
+  lorenz importar <tabla> [-o maquina.toml]
   lorenz documentar <maquina.toml> [-o DOCUMENTACION.md] [--vigilar]
   lorenz desensamblar <maquina.toml> <programa.hex> [--direccion A] [--simbolos ARCHIVO]
   lorenz depurar <maquina.toml> <programa.hex | fuente.s> [--guion ARCHIVO]
@@ -104,12 +118,23 @@ pub fn ejecutar_cli_con_entrada(
     salida: &mut dyn Write,
     errores: &mut dyn Write,
 ) -> i32 {
+    let (args, seguro) = crate::seguro::extraer(args);
+    let args = &args[..];
     let orden = match interpretar(args) {
         Ok(o) => o,
         Err(e) => {
             escribir(errores, &format!("error: {e}\n"));
             return SALIDA_ERROR_USO;
         }
+    };
+    let _guardia = if seguro || crate::seguro::pedido_por_entorno() {
+        if let Err(e) = crate::seguro::comprobar(&orden) {
+            escribir(errores, &format!("error: {e}\n"));
+            return SALIDA_ERROR_USO;
+        }
+        Some(crate::seguro::Guardia::activar())
+    } else {
+        None
     };
     match orden {
         Orden::Ayuda => {
@@ -257,6 +282,26 @@ pub fn ejecutar_cli_con_entrada(
             programa,
             opciones,
         } => crate::gpu::gpu_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Ejercicio { accion } => crate::ejercicios::ejercicio_cli(&accion, salida, errores),
+        Orden::Desafio { accion } => crate::desafios::desafio_cli(&accion, salida, errores),
+        Orden::Recientes { accion, en } => {
+            crate::recientes::recientes_cli(&accion, en.as_deref(), salida, errores)
+        }
+        Orden::Plantillas => crate::nuevo::plantillas_cli(salida),
+        Orden::Proyecto { ruta, arquitectura } => {
+            crate::proyecto::proyecto_cli(&ruta, arquitectura.as_deref(), salida, errores)
+        }
+        Orden::Tarea {
+            ruta,
+            nombre,
+            arquitectura,
+        } => crate::proyecto::tarea_cli(
+            &ruta,
+            nombre.as_deref(),
+            arquitectura.as_deref(),
+            salida,
+            errores,
+        ),
         Orden::Paquete { accion, opciones } => {
             crate::paquete::paquete_cli(&accion, &opciones, salida, errores)
         }
@@ -305,6 +350,28 @@ pub fn ejecutar_cli_con_entrada(
             maquina,
             salida: archivo,
         } => crate::compilar::convencion_cli(&maquina, archivo.as_deref(), salida, errores),
+        Orden::Explicar {
+            maquina,
+            programa,
+            opciones,
+        } => crate::explicar::explicar_cli(&maquina, &programa, &opciones, salida, errores),
+        Orden::Exportar {
+            formato,
+            maquina,
+            programa,
+            salida: destino,
+        } => crate::exportar::exportar_cli(
+            formato,
+            &maquina,
+            programa.as_deref(),
+            destino.as_deref(),
+            salida,
+            errores,
+        ),
+        Orden::Importar {
+            archivo,
+            salida: destino,
+        } => crate::importar::importar_cli(&archivo, destino.as_deref(), salida, errores),
         Orden::Documentar {
             maquina,
             salida: archivo,

@@ -1,0 +1,14 @@
+[ejercicio]
+id = "carga-constante"
+titulo = "Una constante en un registro"
+nivel = 1
+tema = "registros"
+enunciado = """
+Pon el numero 42 en el registro R1 y detén la maquina.
+
+Es el primer paso: aprender a escribir un programa, ensamblarlo y ver que hace.
+"""
+pistas = [
+  "La instruccion LI carga una constante en un registro: LI R1, 7 deja un 7 en R1.",
+  "Despues de cargar el valor hace falta HLT para que la maquina se detenga.",
+]

@@ -1,0 +1,32 @@
+# Proyecto de un solo programa en ensamblador.
+#
+#   lorenz proyecto .          muestra y comprueba el proyecto
+#   lorenz tarea . correr      construye y ejecuta
+#   lorenz tarea . verificar   pasa las pruebas
+
+[proyecto]
+nombre = "__NOMBRE__"
+pruebas = "pruebas.toml"
+
+[[arquitectura]]
+nombre = "principal"
+ruta = "maquina.toml"
+
+[[fuente]]
+ruta = "programas/principal.s"
+
+[[tarea]]
+nombre = "construir"
+descripcion = "ensambla el programa"
+pasos = ["ensamblar"]
+
+[[tarea]]
+nombre = "correr"
+descripcion = "construye y ejecuta"
+pasos = ["construir", "ejecutar"]
+limite = 10000
+
+[[tarea]]
+nombre = "verificar"
+descripcion = "pasa las pruebas del proyecto"
+pasos = ["probar"]

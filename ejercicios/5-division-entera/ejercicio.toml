@@ -1,0 +1,13 @@
+[ejercicio]
+id = "division-entera"
+titulo = "Division entera"
+nivel = 5
+tema = "bucles"
+enunciado = """
+R1 (el dividendo, menor que 2000) y R2 (el divisor, al menos 1) traen dos numeros. Deja en R3 el cociente entero y en R4 el resto. No hay instruccion de division: resta.
+"""
+pistas = [
+  "Resta el divisor del dividendo mientras el resto sea al menos tan grande como el divisor, y cuenta las veces.",
+  "El resto empieza siendo R1 y va bajando; cuando es menor que R2, termino.",
+  "SLT te dice si el resto ya es menor que el divisor.",
+]

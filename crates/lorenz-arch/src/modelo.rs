@@ -220,6 +220,13 @@ pub enum TipoDispositivo {
     /// `destino` sin que las mueva el procesador. Puertos: `origen`, `destino`, `cuenta`, `control`
     /// y, si se quiere, `estado`.
     Dma,
+    /// Dispositivo que vive fuera del emulador (RF-ECO-037): un proceso al que se le habla por su
+    /// entrada y salida estandar (`orden`) o un servidor TCP (`direccion`, `host:puerto`). Hay que
+    /// dar exactamente una de las dos. El protocolo esta en `docs/EXTERNOS.md`.
+    Externo {
+        orden: Option<String>,
+        direccion: Option<String>,
+    },
     /// Dispositivo propio. El `script` (en el lenguaje de semantica) se ejecuta cada vez que el
     /// programa escribe en uno de sus puertos (RF-EMU-035); `programa` es su arbol ya analizado.
     Generico {

@@ -9,10 +9,12 @@ pub mod documentar;
 pub mod error;
 mod herencia;
 mod localizar;
+pub mod logisim;
 pub mod modelo;
 pub mod plantilla;
 pub mod semantica;
 pub mod validacion;
+pub mod verilog;
 
 pub use bits::{Codificacion, ErrorBits, Pieza};
 pub use carga::{cargar, cargar_archivo, mezclar_archivo};
@@ -26,3 +28,12 @@ pub use modelo::{
 
 /// Version del formato de descripcion que esta biblioteca entiende.
 pub const VERSION_FORMATO: &str = "0.1";
+
+/// La marca que llevan los textos que Lorenz genera (RF-ECO-046): quien los lee sabe que no los
+/// escribio una persona y con que orden se regeneran.
+pub fn marca_generado(orden: &str) -> String {
+    format!(
+        "Generado por Lorenz {} con `{orden}`. Se regenera: no lo edites a mano.",
+        env!("CARGO_PKG_VERSION")
+    )
+}

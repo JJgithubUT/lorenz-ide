@@ -1,0 +1,355 @@
+# Maquina RISC de 16 bits: palabras y direcciones de 16 bits, big endian, 8 registros de uso
+# general, todas las instrucciones de una palabra salvo el salto absoluto, y ningun registro de
+# banderas: las comparaciones se hacen con SLT y los saltos comparan registros.
+
+[maquina]
+nombre         = "risc-16"
+formato        = "0.1"
+bits_palabra   = 16
+bits_direccion = 16
+endianness     = "big"
+arranque       = 0x0000
+pila           = "descendente"
+
+[[registro]]
+nombre = "R0"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R1"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R2"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R3"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R4"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R5"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R6"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "R7"
+bits = 16
+rol = "general"
+inicial = 0
+
+[[registro]]
+nombre = "PC"
+bits = 16
+rol = "pc"
+
+[[region]]
+nombre = "rom"
+desde  = 0x0000
+hasta  = 0x3FFF
+acceso = "r"
+
+[[region]]
+nombre = "ram"
+desde  = 0x4000
+hasta  = 0xFFFF
+acceso = "rw"
+
+[[instruccion]]
+mnemonico = "NOP"
+sintaxis  = "NOP"
+codigo    = "0000 .... .... ...."
+semantica = ""
+ciclos    = 1
+descripcion = "No hace nada."
+
+[[instruccion]]
+mnemonico = "ADD"
+sintaxis  = "ADD {rd}, {rs}, {rt}"
+codigo    = "0001 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs + rt"
+ciclos    = 1
+descripcion = "Suma dos registros."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "SUB"
+sintaxis  = "SUB {rd}, {rs}, {rt}"
+codigo    = "0010 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs - rt"
+ciclos    = 1
+descripcion = "Resta dos registros."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "AND"
+sintaxis  = "AND {rd}, {rs}, {rt}"
+codigo    = "0011 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs & rt"
+ciclos    = 1
+descripcion = "Y de bits."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "OR"
+sintaxis  = "OR {rd}, {rs}, {rt}"
+codigo    = "0100 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs | rt"
+ciclos    = 1
+descripcion = "O de bits."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "XOR"
+sintaxis  = "XOR {rd}, {rs}, {rt}"
+codigo    = "0101 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs ^ rt"
+ciclos    = 1
+descripcion = "O exclusivo de bits."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "SLT"
+sintaxis  = "SLT {rd}, {rs}, {rt}"
+codigo    = "0110 rd:3 rs:3 rt:3 ..."
+semantica = "rd = rs < rt"
+ciclos    = 1
+descripcion = "rd vale 1 si rs es menor que rt (sin signo) y 0 si no."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "ADDI"
+sintaxis  = "ADDI {rd}, {rs}, {imm}"
+codigo    = "0111 rd:3 rs:3 imm:6"
+semantica = "rd = rs + imm"
+ciclos    = 1
+descripcion = "Suma una constante con signo de 6 bits."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = true
+  rango = [-32, 31]
+
+[[instruccion]]
+mnemonico = "LI"
+sintaxis  = "LI {rd}, {imm}"
+codigo    = "1000 rd:3 imm:9"
+semantica = "rd = imm"
+ciclos    = 1
+descripcion = "Carga una constante de 9 bits."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "imm"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 511]
+
+[[instruccion]]
+mnemonico = "LW"
+sintaxis  = "LW {rd}, [{rs}+{off}]"
+codigo    = "1001 rd:3 rs:3 off:6"
+semantica = "rd = mem[rs + off]"
+ciclos    = 2
+descripcion = "Lee la palabra en rs + off."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "off"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 63]
+
+[[instruccion]]
+mnemonico = "SW"
+sintaxis  = "SW {rd}, [{rs}+{off}]"
+codigo    = "1010 rd:3 rs:3 off:6"
+semantica = "mem[rs + off] = rd"
+ciclos    = 2
+descripcion = "Escribe rd en rs + off."
+  [[instruccion.operando]]
+  nombre = "rd"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "off"
+  tipo = "inmediato"
+  signo = false
+  rango = [0, 63]
+
+[[instruccion]]
+mnemonico = "BEQ"
+sintaxis  = "BEQ {rs}, {rt}, {off}"
+codigo    = "1011 rs:3 rt:3 off:6"
+semantica = "si rs == rt: pc = pc + off"
+ciclos    = { tomado = 2, no_tomado = 1 }
+descripcion = "Salta si la comparacion se cumple."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "off"
+  tipo = "desplazamiento"
+
+[[instruccion]]
+mnemonico = "BNE"
+sintaxis  = "BNE {rs}, {rt}, {off}"
+codigo    = "1100 rs:3 rt:3 off:6"
+semantica = "si rs != rt: pc = pc + off"
+ciclos    = { tomado = 2, no_tomado = 1 }
+descripcion = "Salta si la comparacion se cumple."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "rt"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+  [[instruccion.operando]]
+  nombre = "off"
+  tipo = "desplazamiento"
+
+[[instruccion]]
+mnemonico = "J"
+sintaxis  = "J {dir}"
+codigo    = "1101 .... .... .... | dir:16"
+semantica = "pc = dir"
+ciclos    = 2
+descripcion = "Salta a una direccion."
+  [[instruccion.operando]]
+  nombre = "dir"
+  tipo = "direccion"
+
+[[instruccion]]
+mnemonico = "JR"
+sintaxis  = "JR {rs}"
+codigo    = "1110 rs:3 .... .... ."
+semantica = "pc = rs"
+ciclos    = 2
+descripcion = "Salta a la direccion que hay en un registro."
+  [[instruccion.operando]]
+  nombre = "rs"
+  tipo = "registro"
+  de = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+
+[[instruccion]]
+mnemonico = "HLT"
+sintaxis  = "HLT"
+codigo    = "1111 .... .... ...."
+semantica = "detener"
+ciclos    = 1
+descripcion = "Detiene la maquina."
+

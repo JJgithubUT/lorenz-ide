@@ -1,10 +1,13 @@
 // Reloj del sistema (RF-ECO-040): cuenta las interrupciones del temporizador.
 
+importar planificador { tic };
+
 var tics: u16;
 
 @interrupcion(0)
 funcion al_tic() {
     tics += 1;
+    tic();
 }
 
 funcion tics_desde_el_arranque() -> u16 {

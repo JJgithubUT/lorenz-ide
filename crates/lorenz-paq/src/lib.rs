@@ -2,6 +2,7 @@
 //! biblioteca o un proyecto, verificar su integridad e instalarlo con sus dependencias.
 
 pub mod almacen;
+pub mod descarga;
 pub mod paquete;
 pub mod sha256;
 pub mod version;
