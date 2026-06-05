@@ -1,0 +1,9 @@
+[package]
+name = "lorenz-web"
+description = "Servidor HTTP minimo de Lorenz: rutas, limites y cierre ordenado, solo con la biblioteca estandar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

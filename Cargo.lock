@@ -143,6 +143,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-web"
+version = "0.6.0"
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
