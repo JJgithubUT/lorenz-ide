@@ -5,11 +5,13 @@
 //! cuerpo, plazos de lectura, rutas con parametros y un cierre ordenado que espera a que terminen
 //! las peticiones en curso.
 
+pub mod json;
 pub mod peticion;
 pub mod respuesta;
 pub mod ruta;
 pub mod servidor;
 
+pub use json::Json;
 pub use peticion::Peticion;
 pub use respuesta::Respuesta;
 pub use ruta::Router;
