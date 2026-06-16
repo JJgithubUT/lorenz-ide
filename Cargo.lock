@@ -62,6 +62,7 @@ dependencies = [
  "lorenz-paq",
  "lorenz-sgt",
  "lorenz-tst",
+ "lorenz-web",
  "serde",
  "serde_json",
  "thiserror",

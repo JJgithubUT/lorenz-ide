@@ -23,6 +23,7 @@ lorenz-sgt = { path = "../lorenz-sgt" }
 lorenz-cic = { path = "../lorenz-cic" }
 lorenz-gpu = { path = "../lorenz-gpu" }
 lorenz-paq = { path = "../lorenz-paq" }
+lorenz-web = { path = "../lorenz-web" }
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true
