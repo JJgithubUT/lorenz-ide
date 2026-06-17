@@ -319,3 +319,41 @@ fn sesiones_independientes_y_limite() {
         404
     );
 }
+
+#[test]
+fn la_orden_ide_arranca_y_se_cierra() {
+    let raiz = proyecto();
+    let (mut s, mut e) = (Vec::new(), Vec::new());
+    let args: Vec<String> = [
+        "ide",
+        raiz.to_str().unwrap(),
+        "--puerto",
+        "0",
+        "--segundos",
+        "0",
+    ]
+    .map(String::from)
+    .to_vec();
+    assert_eq!(
+        lorenz_cli::ejecutar_cli(&args, &mut s, &mut e),
+        lorenz_cli::SALIDA_OK
+    );
+    assert!(String::from_utf8(s)
+        .unwrap()
+        .contains("Lorenz IDE en http://127.0.0.1:"));
+    let args: Vec<String> = ["ide", "no-existe-xyz"].map(String::from).to_vec();
+    assert_eq!(
+        lorenz_cli::ejecutar_cli(&args, &mut Vec::new(), &mut Vec::new()),
+        lorenz_cli::SALIDA_ERROR_USO
+    );
+    let args: Vec<String> = ["--seguro", "ide"].map(String::from).to_vec();
+    assert_ne!(
+        lorenz_cli::ejecutar_cli(&args, &mut Vec::new(), &mut Vec::new()),
+        lorenz_cli::SALIDA_OK
+    );
+    let args: Vec<String> = ["ide", "--puerto", "99999"].map(String::from).to_vec();
+    assert_eq!(
+        lorenz_cli::ejecutar_cli(&args, &mut Vec::new(), &mut Vec::new()),
+        lorenz_cli::SALIDA_ERROR_USO
+    );
+}
