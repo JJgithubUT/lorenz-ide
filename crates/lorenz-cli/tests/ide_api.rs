@@ -357,3 +357,82 @@ fn la_orden_ide_arranca_y_se_cierra() {
         lorenz_cli::SALIDA_ERROR_USO
     );
 }
+
+#[test]
+fn editar_estado_desensamblar_y_retroceder() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let base = format!("/api/sesiones/{id}");
+    let (_, d) = c.pedir("GET", &format!("{base}/desensamblado?desde=0&n=3"), None);
+    let lineas = d.get("lineas").unwrap().como_lista().unwrap();
+    assert_eq!(lineas.len(), 3);
+    assert_eq!(
+        lineas[0].get("actual").and_then(Json::como_bool),
+        Some(true)
+    );
+    assert_eq!(
+        c.pedir(
+            "POST",
+            &format!("{base}/grabar"),
+            Some(r#"{"activa":true}"#)
+        )
+        .0,
+        200
+    );
+    c.pedir("POST", &format!("{base}/paso"), Some(r#"{"n":2}"#));
+    let (e, j) = c.pedir("POST", &format!("{base}/atras"), Some(r#"{"n":1}"#));
+    assert_eq!(e, 200);
+    assert_eq!(entero(&j, "pc"), 1);
+    let (e, _) = c.pedir(
+        "POST",
+        &format!("{base}/registro"),
+        Some(r#"{"nombre":"R5","valor":7}"#),
+    );
+    assert_eq!(e, 200);
+    assert_eq!(
+        c.pedir(
+            "POST",
+            &format!("{base}/registro"),
+            Some(r#"{"nombre":"Z99","valor":7}"#)
+        )
+        .0,
+        422
+    );
+    assert_eq!(
+        c.pedir(
+            "POST",
+            &format!("{base}/registro"),
+            Some(r#"{"nombre":"R5"}"#)
+        )
+        .0,
+        400
+    );
+    assert_eq!(
+        c.pedir(
+            "POST",
+            &format!("{base}/memoria"),
+            Some(r#"{"direccion":200,"valor":9}"#)
+        )
+        .0,
+        200
+    );
+    let (_, m) = c.pedir("GET", &format!("{base}/memoria?desde=200&n=1"), None);
+    assert_eq!(
+        m.get("celdas").unwrap().como_lista().unwrap()[0].como_entero(),
+        Some(9)
+    );
+    assert_eq!(
+        c.pedir("GET", &format!("{base}/pantalla/nada"), None).0,
+        404
+    );
+    assert_eq!(c.pedir("GET", &format!("{base}/serie/nada"), None).0, 404);
+}

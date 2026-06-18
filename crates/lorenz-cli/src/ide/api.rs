@@ -246,6 +246,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
         ide.clone(),
         ide.clone(),
     );
+    let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
     Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/api/proyecto", move |_| {
@@ -414,6 +415,79 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         })
+        .get("/api/sesiones/:id/desensamblado", {
+            let ide = m1;
+            move |p| {
+                let desde = p.consulta("desde").map_or(Some(0), numero);
+                let n = p.consulta("n").map_or(Some(16), numero);
+                let (Some(desde), Some(n)) = (desde, n) else {
+                    return error(400, "`desde` y `n` deben ser numeros");
+                };
+                if n > 1024 {
+                    return error(400, "`n` es como mucho 1024");
+                }
+                con_sesion(&ide, p, |s| {
+                    let pc = s.depurador.emulador().estado().pc();
+                    let lineas: Vec<Json> =
+                        lorenz_dbg::vistas::desensamblar(&s.depurador, desde, n as usize)
+                            .into_iter()
+                            .map(|(d, t)| {
+                                Json::objeto([
+                                    ("direccion", d.into()),
+                                    ("texto", t.into()),
+                                    (
+                                        "etiqueta",
+                                        s.depurador.etiqueta_en(d).map_or(Json::Nulo, Json::from),
+                                    ),
+                                    (
+                                        "linea",
+                                        s.depurador
+                                            .ubicacion_de(d)
+                                            .map_or(Json::Nulo, |(_, l)| l.into()),
+                                    ),
+                                    ("actual", (d == pc).into()),
+                                ])
+                            })
+                            .collect();
+                    ok(Json::objeto([("lineas", lineas.into())]))
+                })
+            }
+        })
+        .get("/api/sesiones/:id/pantalla/:nombre", {
+            let ide = m2;
+            move |p| {
+                let nombre = p.parametro("nombre").unwrap_or("").to_string();
+                con_sesion(&ide, p, |s| {
+                    match s.depurador.emulador().pantalla(&nombre) {
+                        Ok(img) => ok(Json::objeto([
+                            ("ancho", u64::from(img.ancho).into()),
+                            ("alto", u64::from(img.alto).into()),
+                            (
+                                "pixeles",
+                                img.pixeles
+                                    .iter()
+                                    .map(|b| Json::from(u64::from(*b)))
+                                    .collect::<Vec<_>>()
+                                    .into(),
+                            ),
+                        ])),
+                        Err(e) => error(404, e.to_string()),
+                    }
+                })
+            }
+        })
+        .get("/api/sesiones/:id/serie/:nombre", {
+            let ide = m3;
+            move |p| {
+                let nombre = p.parametro("nombre").unwrap_or("").to_string();
+                con_sesion(&ide, p, |s| {
+                    match s.depurador.emulador_mut().texto_de_uart(&nombre) {
+                        Ok(t) => ok(Json::objeto([("texto", t.into())])),
+                        Err(e) => error(404, e.to_string()),
+                    }
+                })
+            }
+        })
         .get("/api/sesiones/:id/rupturas", {
             let ide = l;
             move |p| con_sesion(&ide, p, |s| ok(Json::objeto([("rupturas", rupturas(s))])))
@@ -496,6 +570,62 @@ pub fn router(ide: Arc<Ide>) -> Router {
                             s.depurador.emulador_mut().reiniciar();
                             s.depurador.emulador_mut().estado_mut().fijar_pc(inicio);
                             return ok(estado(s));
+                        }
+                        "atras" | "adelante" => {
+                            let n = match num_de(&j, "n", 1) {
+                                Ok(n) => n,
+                                Err(r) => return r,
+                            };
+                            let r = if accion == "atras" {
+                                s.depurador.atras(n)
+                            } else {
+                                s.depurador.adelante(n)
+                            };
+                            return match r {
+                                Ok(()) => ok(estado(s)),
+                                Err(e) => error(422, e.to_string()),
+                            };
+                        }
+                        "grabar" => {
+                            s.depurador
+                                .grabar(j.get("activa").and_then(Json::como_bool).unwrap_or(true));
+                            return ok(estado(s));
+                        }
+                        "registro" | "memoria" | "puerto" => {
+                            let (a, v) = match (
+                                num_de(
+                                    &j,
+                                    if accion == "registro" {
+                                        "valor"
+                                    } else {
+                                        "direccion"
+                                    },
+                                    u64::MAX,
+                                ),
+                                num_de(&j, "valor", u64::MAX),
+                            ) {
+                                (Ok(a), Ok(v)) => (a, v),
+                                (Err(r), _) | (_, Err(r)) => return r,
+                            };
+                            if v == u64::MAX {
+                                return error(400, "falta `valor`");
+                            }
+                            let r = match accion.as_str() {
+                                "registro" => match texto_de(&j, "nombre") {
+                                    Ok(n) => s.depurador.fijar_registro(n, v),
+                                    Err(r) => return r,
+                                },
+                                "memoria" if a == u64::MAX => {
+                                    return error(400, "falta `direccion`")
+                                }
+                                "memoria" => s.depurador.escribir_memoria(a, v),
+                                _ if a == u64::MAX => return error(400, "falta `direccion`"),
+                                _ => s.depurador.escribir_puerto(a, v),
+                            };
+                            return match r {
+                                Ok(()) => ok(estado(s)),
+                                Err(e) => error(422, e.to_string()),
+                            };
                         }
                         _ => return error(404, format!("accion desconocida `{accion}`")),
                     };
