@@ -165,6 +165,13 @@ pub enum Orden {
         maquina: String,
         salida: Option<String>,
     },
+    /// Abrir el IDE: un servidor local con la interfaz web del proyecto.
+    Ide {
+        carpeta: Option<String>,
+        puerto: u16,
+        /// Termina tras estos segundos; sin el, sirve hasta que se interrumpa.
+        segundos: Option<u64>,
+    },
     /// Contar en palabras lo que hace un programa, instruccion a instruccion.
     Explicar {
         maquina: String,
@@ -365,6 +372,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "importar" => interpretar_importar(resto),
         "exportar" => interpretar_exportar(resto),
         "explicar" => interpretar_explicar(resto),
+        "ide" => interpretar_ide(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -1548,6 +1556,42 @@ fn interpretar_exportar(resto: &[String]) -> Result<Orden, ErrorUso> {
         maquina,
         programa,
         salida,
+    })
+}
+
+fn interpretar_ide(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut puerto: u16 = 8080;
+    let mut segundos = None;
+    let mut carpeta = None;
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--puerto" | "--segundos" => {
+                let valor = it
+                    .next()
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                let n = numero(a, valor)?;
+                if a == "--puerto" {
+                    puerto = u16::try_from(n).map_err(|_| ErrorUso::NumeroInvalido {
+                        opcion: a.clone(),
+                        valor: valor.clone(),
+                    })?;
+                } else {
+                    segundos = Some(n);
+                }
+            }
+            o if o.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => {
+                if carpeta.replace(a.clone()).is_some() {
+                    return Err(ErrorUso::Sobra(a.clone()));
+                }
+            }
+        }
+    }
+    Ok(Orden::Ide {
+        carpeta,
+        puerto,
+        segundos,
     })
 }
 
