@@ -247,7 +247,8 @@ pub fn router(ide: Arc<Ide>) -> Router {
         ide.clone(),
     );
     let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
-    Router::nuevo()
+    let para_editor = ide.clone();
+    let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/api/proyecto", move |_| {
             let mut v = Vec::new();
@@ -326,8 +327,8 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 Ok(x) => x,
                 Err(er) => return error(422, format!("{m}: {er}")),
             };
-            match crate::ensamblar::ensamblar_archivo(&maquina, &rf) {
-                Ok((o, _)) => ok(Json::objeto([
+            match super::editor::ensamblar_estructurado(&maquina, &rf) {
+                Ok(o) => ok(Json::objeto([
                     ("palabras", o.tamano().into()),
                     (
                         "avisos",
@@ -337,6 +338,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
                             .collect::<Vec<_>>()
                             .into(),
                     ),
+                    ("simbolos", super::editor::simbolos(&o, e.raiz())),
                 ])),
                 Err(er) => Respuesta::json(
                     422,
@@ -344,8 +346,12 @@ pub fn router(ide: Arc<Ide>) -> Router {
                         ("error", "no se pudo ensamblar".into()),
                         (
                             "errores",
-                            er.lines().map(Json::texto).collect::<Vec<_>>().into(),
+                            er.iter()
+                                .map(|x| Json::texto(x.to_string()))
+                                .collect::<Vec<_>>()
+                                .into(),
                         ),
+                        ("diagnosticos", super::editor::diagnosticos(&er, e.raiz())),
                     ])
                     .serializar(),
                 ),
@@ -638,5 +644,6 @@ pub fn router(ide: Arc<Ide>) -> Router {
                     }
                 })
             }
-        })
+        });
+    super::editor::rutas(base, para_editor)
 }

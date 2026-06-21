@@ -436,3 +436,125 @@ fn editar_estado_desensamblar_y_retroceder() {
     );
     assert_eq!(c.pedir("GET", &format!("{base}/serie/nada"), None).0, 404);
 }
+
+#[test]
+fn api_del_editor() {
+    let raiz = proyecto();
+    std::fs::write(
+        raiz.join("q.s"),
+        "inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        FOO R3\n",
+    )
+    .unwrap();
+    let c = Cliente::nuevo(&raiz);
+    // lenguaje
+    let (e, l) = c.pedir("GET", "/api/lenguaje?maquina=maquina.toml", None);
+    assert_eq!(e, 200);
+    let mn: Vec<_> = l
+        .get("mnemonicos")
+        .unwrap()
+        .como_lista()
+        .unwrap()
+        .iter()
+        .filter_map(Json::como_texto)
+        .collect();
+    assert!(mn.contains(&"ADDI") && mn.contains(&"HLT"));
+    assert!(l
+        .get("registros")
+        .unwrap()
+        .como_lista()
+        .unwrap()
+        .iter()
+        .any(|r| r.como_texto() == Some("R1")));
+    assert!(l.get("directivas").unwrap().serializar().contains(".org"));
+    assert_eq!(c.pedir("GET", "/api/lenguaje?maquina=../x", None).0, 400);
+    // diagnosticos con linea
+    let (e, j) = c.pedir(
+        "POST",
+        "/api/ensamblar",
+        Some(r#"{"maquina":"maquina.toml","fuente":"q.s"}"#),
+    );
+    assert_eq!(e, 422);
+    let d = &j.get("diagnosticos").unwrap().como_lista().unwrap()[0];
+    assert_eq!(entero(d, "linea"), 4);
+    assert_eq!(d.get("archivo").and_then(Json::como_texto), Some("q.s"));
+    // simbolos si ensambla
+    std::fs::write(
+        raiz.join("q.s"),
+        "inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        HLT\n",
+    )
+    .unwrap();
+    let (e, j) = c.pedir(
+        "POST",
+        "/api/ensamblar",
+        Some(r#"{"maquina":"maquina.toml","fuente":"q.s"}"#),
+    );
+    assert_eq!(e, 200);
+    let s = &j.get("simbolos").unwrap().como_lista().unwrap()[0];
+    assert_eq!(s.get("nombre").and_then(Json::como_texto), Some("inicio"));
+    assert_eq!(entero(s, "linea"), 1);
+    // codificacion bajo el cursor
+    let (e, j) = c.pedir(
+        "POST",
+        "/api/codificacion",
+        Some(r#"{"maquina":"maquina.toml","fuente":"q.s","linea":2}"#),
+    );
+    assert_eq!(e, 200);
+    let w = &j.get("palabras").unwrap().como_lista().unwrap()[0];
+    assert_eq!(entero(w, "direccion"), 1);
+    assert!(w
+        .get("binario")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .chars()
+        .all(|c| c == '0' || c == '1'));
+    let (_, j) = c.pedir(
+        "POST",
+        "/api/codificacion",
+        Some(r#"{"maquina":"maquina.toml","fuente":"q.s","linea":99}"#),
+    );
+    assert!(j.get("palabras").unwrap().como_lista().unwrap().is_empty());
+    // busqueda y reemplazo
+    let (_, b) = c.pedir("POST", "/api/buscar", Some(r#"{"texto":"inicio"}"#));
+    assert_eq!(b.get("resultados").unwrap().como_lista().unwrap().len(), 2);
+    let (_, b) = c.pedir(
+        "POST",
+        "/api/buscar",
+        Some(r#"{"texto":"INICIO","mayusculas":true}"#),
+    );
+    assert!(b
+        .get("resultados")
+        .unwrap()
+        .como_lista()
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        c.pedir("POST", "/api/buscar", Some(r#"{"texto":""}"#)).0,
+        400
+    );
+    let (_, r) = c.pedir(
+        "POST",
+        "/api/reemplazar",
+        Some(r#"{"texto":"inicio","por":"arranque"}"#),
+    );
+    assert_eq!(entero(&r, "cambios"), 2);
+    assert!(std::fs::read_to_string(raiz.join("q.s"))
+        .unwrap()
+        .starts_with("arranque:"));
+    assert_eq!(
+        c.pedir(
+            "POST",
+            "/api/ensamblar",
+            Some(r#"{"maquina":"maquina.toml","fuente":"q.s"}"#)
+        )
+        .0,
+        200
+    );
+    // documentacion
+    let (e, d) = c.pedir("GET", "/api/documentacion?maquina=maquina.toml", None);
+    assert_eq!(e, 200);
+    assert!(d
+        .get("html")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("ADDI"));
+}

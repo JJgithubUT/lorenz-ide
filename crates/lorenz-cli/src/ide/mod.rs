@@ -4,6 +4,7 @@
 //! se lanza `lorenz ide`, y ninguna ruta puede salir de ella.
 
 mod api;
+pub mod editor;
 mod sesion;
 
 pub use api::router;
