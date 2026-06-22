@@ -10,7 +10,47 @@ mod sesion;
 pub use api::router;
 pub use sesion::{Ide, MAX_SESIONES};
 
-pub const PAGINA: &str = include_str!("pagina.html");
+/// Archivos estaticos de la interfaz: nombre publico, tipo y contenido.
+pub const ESTATICOS: &[(&str, &str, &str)] = &[
+    (
+        "ide.css",
+        "text/css; charset=utf-8",
+        include_str!("web/ide.css"),
+    ),
+    (
+        "util.js",
+        "text/javascript; charset=utf-8",
+        include_str!("web/util.js"),
+    ),
+    (
+        "atajos.js",
+        "text/javascript; charset=utf-8",
+        include_str!("web/atajos.js"),
+    ),
+    (
+        "paneles.js",
+        "text/javascript; charset=utf-8",
+        include_str!("web/paneles.js"),
+    ),
+    (
+        "archivos.js",
+        "text/javascript; charset=utf-8",
+        include_str!("web/archivos.js"),
+    ),
+    (
+        "main.js",
+        "text/javascript; charset=utf-8",
+        include_str!("web/main.js"),
+    ),
+    (
+        "index.html",
+        "text/html; charset=utf-8",
+        include_str!("web/index.html"),
+    ),
+];
+
+/// La pagina principal.
+pub const PAGINA: &str = include_str!("web/index.html");
 
 use std::io::Write;
 use std::sync::Arc;

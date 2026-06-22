@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lorenz IDE</title>
+<link rel="stylesheet" href="/web/ide.css">
+</head>
+<body>
+<a class="saltar" href="#zonas">Saltar al contenido</a>
+<header id="barra" role="toolbar" aria-label="Acciones principales">
+  <strong class="marca">Lorenz</strong>
+  <span id="acciones"></span>
+  <span class="relleno"></span>
+  <label>Máquina <select id="sel-maquina" aria-label="Arquitectura activa"></select></label>
+  <label>Programa <select id="sel-programa" aria-label="Programa a ejecutar"></select></label>
+  <span id="progreso" role="status" aria-live="polite" hidden><span class="giro" aria-hidden="true"></span> <span id="progreso-texto"></span></span>
+</header>
+<main id="zonas">
+  <section class="zona" id="zona-izq" data-zona="izq" aria-label="Zona izquierda"></section>
+  <div id="central">
+    <section class="zona" id="zona-centro" data-zona="centro" aria-label="Zona central"></section>
+    <section class="zona" id="zona-abajo" data-zona="abajo" aria-label="Zona inferior"></section>
+  </div>
+  <section class="zona" id="zona-der" data-zona="der" aria-label="Zona derecha"></section>
+</main>
+<footer id="pie" role="status" aria-live="polite"><span id="estado-texto">Listo</span><span class="relleno"></span><span id="pie-codificacion"></span></footer>
+<div id="flotantes"></div>
+<script src="/web/util.js"></script>
+<script src="/web/atajos.js"></script>
+<script src="/web/paneles.js"></script>
+<script src="/web/archivos.js"></script>
+<script src="/web/main.js"></script>
+</body>
+</html>

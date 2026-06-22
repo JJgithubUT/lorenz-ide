@@ -250,6 +250,14 @@ pub fn router(ide: Arc<Ide>) -> Router {
     let para_editor = ide.clone();
     let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
+        .get("/web/:archivo", |p| {
+            let n = p.parametro("archivo").unwrap_or("");
+            match super::ESTATICOS.iter().find(|(nombre, _, _)| *nombre == n) {
+                Some((_, tipo, contenido)) => Respuesta::nueva(200, tipo, *contenido)
+                    .con_cabecera("Cache-Control", "no-cache"),
+                None => Respuesta::texto(404, "no existe"),
+            }
+        })
         .get("/api/proyecto", move |_| {
             let mut v = Vec::new();
             listar(a.raiz(), a.raiz(), &mut v);
