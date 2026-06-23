@@ -558,3 +558,31 @@ fn api_del_editor() {
         .unwrap()
         .contains("ADDI"));
 }
+
+#[test]
+fn compilar_sgt_con_diagnosticos() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    std::fs::write(
+        raiz.join("a.sgt"),
+        "funcion principal() {\n    var x: u16 = 1;\n    x = y;\n}\n",
+    )
+    .unwrap();
+    let (e, j) = c.pedir(
+        "POST",
+        "/api/compilar",
+        Some(r#"{"maquina":"maquina.toml","fuente":"a.sgt"}"#),
+    );
+    assert_eq!(e, 422, "{}", j.serializar());
+    let d = &j.get("diagnosticos").unwrap().como_lista().unwrap()[0];
+    assert_eq!(entero(d, "linea"), 3);
+    assert_eq!(
+        c.pedir(
+            "POST",
+            "/api/compilar",
+            Some(r#"{"maquina":"maquina.toml","fuente":"../a.sgt"}"#)
+        )
+        .0,
+        400
+    );
+}

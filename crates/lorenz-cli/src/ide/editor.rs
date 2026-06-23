@@ -170,7 +170,14 @@ pub fn posiciones(pajar: &str, aguja: &str, mayusculas: bool) -> Vec<usize> {
 }
 
 pub fn rutas(router: Router, ide: Arc<Ide>) -> Router {
-    let (a, b, c, d, e) = (ide.clone(), ide.clone(), ide.clone(), ide.clone(), ide);
+    let (a, b, c, d, e, g) = (
+        ide.clone(),
+        ide.clone(),
+        ide.clone(),
+        ide.clone(),
+        ide.clone(),
+        ide,
+    );
     router
         .get("/api/lenguaje", move |p| {
             let Some(m) = p.consulta("maquina") else {
@@ -224,6 +231,72 @@ pub fn rutas(router: Router, ide: Arc<Ide>) -> Router {
                         .into(),
                 ),
             ]))
+        })
+        .post("/api/compilar", move |p| {
+            let j = match cuerpo(p) {
+                Ok(j) => j,
+                Err(r) => return r,
+            };
+            let (m, f) = match (texto(&j, "maquina"), texto(&j, "fuente")) {
+                (Ok(m), Ok(f)) => (m, f),
+                (Err(r), _) | (_, Err(r)) => return r,
+            };
+            let (rm, rf) = match (g.ruta_texto(m), g.ruta_texto(f)) {
+                (Ok(x), Ok(y)) => (x, y),
+                (Err(e), _) | (_, Err(e)) => return error(400, e),
+            };
+            let maquina = match lorenz_arch::cargar_archivo(&rm) {
+                Ok(x) => x,
+                Err(er) => return error(422, format!("{m}: {er}")),
+            };
+            let t = match std::fs::read_to_string(&rf) {
+                Ok(t) => t,
+                Err(er) => return error(404, format!("{f}: {er}")),
+            };
+            let r = lorenz_sgt::compilar::compilar_con(
+                &rf,
+                &t,
+                &maquina,
+                lorenz_sgt::analisis::Opciones::default(),
+                &lorenz_sgt::compilar::en_carpeta_de(&rf),
+            );
+            match r {
+                Ok(c) => ok(Json::objeto([
+                    ("palabras", c.objeto.tamano().into()),
+                    ("simbolos", simbolos(&c.objeto, g.raiz())),
+                ])),
+                Err(ds) => {
+                    let diag: Vec<Json> = ds
+                        .iter()
+                        .map(|d| {
+                            let archivo = std::path::Path::new(&d.archivo)
+                                .strip_prefix(g.raiz())
+                                .map_or_else(
+                                    |_| d.archivo.clone(),
+                                    |r| r.to_string_lossy().replace('\\', "/"),
+                                );
+                            Json::objeto([
+                                ("archivo", archivo.into()),
+                                ("linea", u64::from(d.lugar.linea).into()),
+                                ("columna", u64::from(d.lugar.columna).into()),
+                                ("mensaje", d.mensaje.as_str().into()),
+                                (
+                                    "sugerencia",
+                                    d.sugerencia.clone().map_or(Json::Nulo, Json::from),
+                                ),
+                            ])
+                        })
+                        .collect();
+                    Respuesta::json(
+                        422,
+                        &Json::objeto([
+                            ("error", "no se pudo compilar".into()),
+                            ("diagnosticos", diag.into()),
+                        ])
+                        .serializar(),
+                    )
+                }
+            }
         })
         .post("/api/codificacion", move |p| {
             let j = match cuerpo(p) {
