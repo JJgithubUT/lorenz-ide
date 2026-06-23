@@ -252,9 +252,11 @@ pub fn router(ide: Arc<Ide>) -> Router {
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/web/:archivo", |p| {
             let n = p.parametro("archivo").unwrap_or("");
-            match super::ESTATICOS.iter().find(|(nombre, _, _)| *nombre == n) {
-                Some((_, tipo, contenido)) => Respuesta::nueva(200, tipo, *contenido)
-                    .con_cabecera("Cache-Control", "no-cache"),
+            match super::ESTATICOS.iter().find(|(nombre, _)| *nombre == n) {
+                Some((nombre, contenido)) => {
+                    Respuesta::nueva(200, super::tipo_de(nombre), *contenido)
+                        .con_cabecera("Cache-Control", "no-cache")
+                }
                 None => Respuesta::texto(404, "no existe"),
             }
         })

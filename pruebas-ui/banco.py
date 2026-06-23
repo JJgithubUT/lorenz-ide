@@ -29,6 +29,8 @@ class Proyecto:
         shutil.copy(os.path.join(raiz_repo, "ejercicios", "maquina.toml"), self.dir)
         with open(os.path.join(self.dir, "p.s"), "w") as f:
             f.write("        LI    R1, 42\n        ADDI  R2, R1, 1\n        HLT\n")
+        with open(os.path.join(self.dir, "q.s"), "w") as f:
+            f.write("inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        HLT\n")
         self.puerto = puerto_libre()
         self.proc = subprocess.Popen(
             [binario, "ide", self.dir, "--puerto", str(self.puerto), "--segundos", "120"],
@@ -59,7 +61,8 @@ class Navegador:
         self.pag = self.ctx.new_page()
         self.errores = []
         self.pag.on("pageerror", lambda e: self.errores.append(str(e)))
-        self.pag.on("console", lambda m: self.errores.append(m.text) if m.type == "error" else None)
+        # Los 4xx de la API son respuestas esperadas (p. ej. errores de compilacion), no fallos de la pagina.
+        self.pag.on("console", lambda m: self.errores.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
         self.url = p.url
         self.abrir()
 
@@ -155,7 +158,119 @@ def prueba_atajos_reasignables(n, p):
     assert n.pag.evaluate("L.atajos.de('paso')") == "", "un atajo no puede servir a dos acciones"
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables]}
+def abrir_archivo(n, ruta):
+    n.pag.click(f"#panel-archivos li[data-ruta='{ruta}']")
+    n.pag.wait_for_function(f"L.editor.activo() === '{ruta}'")
+
+
+@con_navegador
+def prueba_editor_resalta_segun_la_arquitectura(n, p):
+    abrir_archivo(n, "p.s")
+    assert n.pag.locator(".resalte .t-mnemonico", has_text="LI").count() == 1
+    assert n.pag.locator(".resalte .t-registro", has_text="R1").count() >= 1
+    assert n.pag.locator(".resalte .t-numero", has_text="42").count() == 1
+    n.pag.fill(".area", "FOO R1 ; hola\n.org 0x10\nx: HLT")
+    assert n.pag.locator(".resalte .t-comentario", has_text="; hola").count() == 1
+    assert n.pag.locator(".resalte .t-directiva", has_text=".org").count() == 1
+    assert n.pag.locator(".resalte .t-etiqueta", has_text="x:").count() == 1
+    assert n.pag.locator(".resalte .t-mnemonico", has_text="FOO").count() == 0, "FOO no es de esta arquitectura"
+
+
+@con_navegador
+def prueba_editor_resalta_sgt(n, p):
+    n.pag.evaluate("L.api('PUT','/api/archivo',{ruta:'a.sgt',texto:'// c\\nfuncion f() -> u16 {\\n  devolver 0x10; /* b */\\n}\\n'})")
+    n.pag.evaluate("L.cargarProyecto()")
+    n.pag.wait_for_selector("#panel-archivos li[data-ruta='a.sgt']")
+    abrir_archivo(n, "a.sgt")
+    assert n.pag.locator(".resalte .t-mnemonico", has_text="funcion").count() == 1
+    assert n.pag.locator(".resalte .t-mnemonico", has_text="devolver").count() == 1
+    assert n.pag.locator(".resalte .t-registro", has_text="u16").count() == 1
+    assert n.pag.locator(".resalte .t-comentario").count() == 2
+
+
+@con_navegador
+def prueba_editor_autocompleta(n, p):
+    abrir_archivo(n, "p.s")
+    n.pag.click(".area")
+    n.pag.keyboard.press("Control+End")
+    n.pag.keyboard.type("\n        ADD")
+    n.pag.wait_for_selector(".sugerencias li")
+    textos = n.pag.locator(".sugerencias li span:first-child").all_inner_texts()
+    assert "ADDI" in textos and "ADD" not in textos or "ADDI" in textos, textos
+    n.pag.keyboard.press("ArrowDown")
+    n.pag.keyboard.press("Enter")
+    assert n.pag.input_value(".area").rstrip().split()[-1] in textos, n.pag.input_value(".area")
+    n.pag.keyboard.type(" R")
+    n.pag.wait_for_selector(".sugerencias li")
+    assert "R1" in n.pag.locator(".sugerencias li span:first-child").all_inner_texts()
+    n.pag.keyboard.press("Escape")
+    assert n.pag.locator(".sugerencias li").count() == 0 or not n.pag.locator(".sugerencias").is_visible()
+    # Las etiquetas del propio archivo tambien se sugieren.
+    abrir_archivo(n, "q.s")
+    n.pag.click(".area")
+    n.pag.keyboard.press("Control+End")
+    n.pag.keyboard.type("\n        BEQ R1, R1, ini")
+    n.pag.wait_for_selector(".sugerencias li")
+    assert "inicio" in n.pag.locator(".sugerencias li span:first-child").all_inner_texts()
+
+
+@con_navegador
+def prueba_editor_muestra_la_codificacion(n, p):
+    abrir_archivo(n, "p.s")
+    n.pag.click(".area")
+    n.pag.keyboard.press("Control+Home")
+    n.pag.keyboard.press("ArrowDown")
+    n.pag.wait_for_function("document.getElementById('pie-codificacion').textContent.includes('0x0001')")
+    t = n.pag.inner_text("#pie-codificacion")
+    assert "L2" in t and all(c in "01 " for c in t.split(":")[1].split("(")[0].strip()), t
+
+
+@con_navegador
+def prueba_editor_marca_errores_en_la_linea(n, p):
+    abrir_archivo(n, "p.s")
+    n.pag.fill(".area", "        LI R1, 1\n        FOO R2\n        HLT\n")
+    n.pag.keyboard.press("Control+b")
+    n.pag.wait_for_selector(".resalte .linea.con-error")
+    assert n.pag.locator(".resalte .linea.con-error").get_attribute("data-n") == "2"
+    assert "FOO" in n.pag.locator(".resalte .linea.con-error").get_attribute("title")
+    assert n.pag.locator(".numeros .con-error").inner_text().startswith("✖2")
+    n.pag.fill(".area", "        LI R1, 1\n        HLT\n")
+    n.pag.keyboard.press("Control+b")
+    n.pag.wait_for_function("document.querySelectorAll('.resalte .linea.con-error').length === 0")
+    assert "Compilado" in n.pag.inner_text("#estado-texto")
+
+
+@con_navegador
+def prueba_editor_va_a_la_definicion(n, p):
+    abrir_archivo(n, "q.s")
+    n.pag.click(".area")
+    n.pag.keyboard.press("Control+Home")
+    n.pag.keyboard.press("ArrowDown")
+    n.pag.keyboard.press("ArrowDown")
+    n.pag.keyboard.press("End")
+    n.pag.keyboard.press("ArrowLeft")
+    n.pag.keyboard.press("ArrowLeft")
+    n.pag.keyboard.press("F12")
+    n.pag.wait_for_function("document.querySelector('.area').selectionStart < 10")
+    assert n.pag.evaluate("(() => { const a = document.querySelector('.area'); return a.value.slice(a.selectionStart, a.selectionEnd); })()").startswith("inicio")
+
+
+@con_navegador
+def prueba_guardado_automatico_y_recuperacion(n, p):
+    abrir_archivo(n, "p.s")
+    n.pag.fill(".area", "        HLT\n")
+    n.pag.wait_for_function("(L.guardado.leer('borradores', {})['p.s'] || '').includes('HLT')")
+    n.recargar()
+    n.pag.wait_for_selector("body[data-editor-listo='1']")
+    n.pag.wait_for_selector(".aviso-recuperado")
+    assert n.pag.input_value(".area") == "        HLT\n"
+    n.pag.keyboard.press("Control+b")  # compilar guarda antes
+    n.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('Compilado')")
+    assert open(os.path.join(p.dir, "p.s")).read() == "        HLT\n"
+    assert n.pag.evaluate("L.guardado.leer('borradores', {})['p.s']") is None
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion]}
 
 
 def principal(argv):

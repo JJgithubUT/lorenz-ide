@@ -10,44 +10,29 @@ mod sesion;
 pub use api::router;
 pub use sesion::{Ide, MAX_SESIONES};
 
-/// Archivos estaticos de la interfaz: nombre publico, tipo y contenido.
-pub const ESTATICOS: &[(&str, &str, &str)] = &[
-    (
-        "ide.css",
-        "text/css; charset=utf-8",
-        include_str!("web/ide.css"),
-    ),
-    (
-        "util.js",
-        "text/javascript; charset=utf-8",
-        include_str!("web/util.js"),
-    ),
-    (
-        "atajos.js",
-        "text/javascript; charset=utf-8",
-        include_str!("web/atajos.js"),
-    ),
-    (
-        "paneles.js",
-        "text/javascript; charset=utf-8",
-        include_str!("web/paneles.js"),
-    ),
-    (
-        "archivos.js",
-        "text/javascript; charset=utf-8",
-        include_str!("web/archivos.js"),
-    ),
-    (
-        "main.js",
-        "text/javascript; charset=utf-8",
-        include_str!("web/main.js"),
-    ),
-    (
-        "index.html",
-        "text/html; charset=utf-8",
-        include_str!("web/index.html"),
-    ),
+macro_rules! estatico {
+    ($n:literal) => {
+        ($n, include_str!(concat!("web/", $n)))
+    };
+}
+
+/// Archivos estaticos de la interfaz: nombre publico y contenido. Para sumar uno, basta una linea.
+#[rustfmt::skip]
+pub const ESTATICOS: &[(&str, &str)] = &[
+    estatico!("ide.css"), estatico!("util.js"), estatico!("atajos.js"), estatico!("paneles.js"),
+    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("main.js"),
 ];
+
+/// Tipo de contenido segun la extension.
+pub fn tipo_de(nombre: &str) -> &'static str {
+    match nombre.rsplit('.').next() {
+        Some("css") => "text/css; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("html") => "text/html; charset=utf-8",
+        Some("svg") => "image/svg+xml",
+        _ => "text/plain; charset=utf-8",
+    }
+}
 
 /// La pagina principal.
 pub const PAGINA: &str = include_str!("web/index.html");
