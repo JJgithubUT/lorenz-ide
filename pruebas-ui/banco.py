@@ -270,7 +270,46 @@ def prueba_guardado_automatico_y_recuperacion(n, p):
     assert n.pag.evaluate("L.guardado.leer('borradores', {})['p.s']") is None
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion]}
+@con_navegador
+def prueba_buscar_y_reemplazar_en_el_proyecto(n, p):
+    n.pag.fill("#buscar-texto", "inicio")
+    n.pag.click("#buscar-ir")
+    n.pag.wait_for_function("document.getElementById('buscar-info').textContent.startsWith('2')")
+    n.pag.click("#buscar-resultados li >> nth=1")
+    n.pag.wait_for_function("L.editor.activo() === 'q.s'")
+    assert n.pag.evaluate("document.querySelector('.area').selectionStart") > 0
+    n.pag.fill("#buscar-por", "arranque")
+    n.pag.once("dialog", lambda d: d.accept())
+    n.pag.click("#reemplazar-ir")
+    n.pag.wait_for_function("document.getElementById('buscar-info').textContent.includes('reemplazo')")
+    assert open(os.path.join(p.dir, "q.s")).read().startswith("arranque:")
+    assert n.pag.input_value(".area").startswith("arranque:"), "el editor debe recargar el archivo abierto"
+    n.pag.keyboard.press("Control+Shift+F")
+    assert n.pag.evaluate("document.activeElement.id") == "buscar-texto"
+
+
+@con_navegador
+def prueba_lista_de_problemas(n, p):
+    abrir_archivo(n, "p.s")
+    n.pag.fill(".area", "        FOO R2\n        HLT\n")
+    n.pag.keyboard.press("Control+b")
+    n.pag.wait_for_selector("#problemas-lista li")
+    assert "p.s:1" in n.pag.inner_text("#problemas-lista li")
+    abrir_archivo(n, "q.s")
+    n.pag.click("#problemas-lista li")
+    n.pag.wait_for_function("L.editor.activo() === 'p.s'")
+
+
+@con_navegador
+def prueba_documentacion_dentro_del_ide(n, p):
+    n.pag.click("#panel-documentacion [data-accion='colapsar']")
+    n.pag.wait_for_selector("#documento iframe")
+    cuerpo = n.pag.frame_locator("#documento iframe").locator("body")
+    cuerpo.wait_for()
+    assert "ADDI" in cuerpo.inner_text()
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide]}
 
 
 def principal(argv):
