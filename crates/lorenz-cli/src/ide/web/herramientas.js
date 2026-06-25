@@ -40,9 +40,8 @@
           return L.api('POST', '/api/reemplazar', { texto: texto.value, por: por.value, mayusculas: may.checked }, 'Reemplazando');
         }).then(function (r) {
           if (!r || !r.ok) { info.textContent = (r && r.datos.error) || 'Error'; info.className = 'error'; return; }
-          info.className = 'ok';
-          info.textContent = r.datos.cambios + ' reemplazo(s) en ' + r.datos.archivos.length + ' archivo(s)';
-          L.editor.recargar().then(buscar);
+          var resumen = r.datos.cambios + ' reemplazo(s) en ' + r.datos.archivos.length + ' archivo(s)';
+          L.editor.recargar().then(buscar).then(function () { info.className = 'ok'; info.textContent = resumen; });
         });
       }
       texto.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') buscar(); });

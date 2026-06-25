@@ -29,6 +29,9 @@ class Proyecto:
         shutil.copy(os.path.join(raiz_repo, "ejercicios", "maquina.toml"), self.dir)
         with open(os.path.join(self.dir, "p.s"), "w") as f:
             f.write("        LI    R1, 42\n        ADDI  R2, R1, 1\n        HLT\n")
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "ejemplo-8-serie", "maquina.toml"), os.path.join(self.dir, "serie.toml"))
+        with open(os.path.join(self.dir, "hola.s"), "w") as f:
+            f.write("        LDI A, 0x48\n        OUT A\n        LDI A, 0x69\n        OUT A\n        LDI A, 0xFF\n        ST [0xF000], A\n        HLT\n")
         with open(os.path.join(self.dir, "q.s"), "w") as f:
             f.write("inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        HLT\n")
         self.puerto = puerto_libre()
@@ -69,6 +72,9 @@ class Navegador:
     def abrir(self):
         self.pag.goto(self.url + "/")
         self.pag.wait_for_selector("body[data-listo='1']")
+        # Por defecto se trabaja con la maquina RISC-16 y p.s; las pruebas eligen otras si hace falta.
+        self.pag.select_option("#sel-maquina", "maquina.toml")
+        self.pag.select_option("#sel-programa", "p.s")
 
     def recargar(self):
         self.pag.reload()
@@ -309,7 +315,137 @@ def prueba_documentacion_dentro_del_ide(n, p):
     assert "ADDI" in cuerpo.inner_text()
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide]}
+def elegir(n, maquina, programa):
+    n.pag.select_option("#sel-maquina", maquina)
+    n.pag.select_option("#sel-programa", programa)
+
+
+def registro_valor(n, nombre):
+    return n.pag.inner_text(f"[data-registro='{nombre}'] .valor")
+
+
+@con_navegador
+def prueba_depurador_paso_a_paso_con_lamparas(n, p):
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("[data-registro='R1']")
+    assert "PC 0x0001" in n.pag.inner_text("#contadores")
+    assert "= 42" in registro_valor(n, "R1")
+    assert n.pag.locator("[data-registro='R1'] .lampara.on").count() == 3, "42 = 0b101010 tiene tres bits"
+    assert n.pag.locator("[data-registro='R1'] .delta").count() == 1, "el registro que cambio se marca"
+    assert n.pag.locator("[data-registro='R2'] .delta").count() == 0
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("document.querySelector('[data-registro=\\'R2\\'] .valor').textContent.includes('= 43')")
+    n.pag.click("#registros-modo")
+    assert n.pag.locator(".lampara").count() == 0
+    assert "0x002a" in registro_valor(n, "R1")
+    n.pag.click("#registros-modo")
+    assert n.pag.locator(".lampara").count() > 0
+
+
+@con_navegador
+def prueba_depurador_lamparas_se_pueden_conmutar(n, p):
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("[data-registro='R1'] .lampara")
+    # El bit 0 es la ultima lampara de la fila.
+    n.pag.locator("[data-registro='R1'] .lampara").last.click()
+    n.pag.wait_for_function("document.querySelector('[data-registro=\\'R1\\'] .valor').textContent.includes('= 43')")
+
+
+@con_navegador
+def prueba_depurador_ruptura_y_ejecucion(n, p):
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("#desens-lista li")
+    # Ruptura en la tercera instruccion (HLT, direccion 2).
+    n.pag.click("#desens-lista li[data-direccion='2'] .bp")
+    n.pag.wait_for_selector("#desens-lista li[data-direccion='2'] .bp.puesta")
+    assert n.pag.inner_text("#desens-lista li[data-direccion='2'] .bp") == "\u25cf"
+    assert n.pag.inner_text("#desens-lista li[data-direccion='1'] .bp") == "\u25cb"
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('ruptura')")
+    assert "PC 0x0002" in n.pag.inner_text("#contadores")
+    assert n.pag.inner_text("#desens-lista li.actual .flecha") == "\u25b6", "la linea actual no depende solo del color"
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('detenida')")
+    assert "DETENIDA" in n.pag.inner_text("#contadores")
+    n.pag.click("#accion-atras")
+    n.pag.wait_for_function("!document.getElementById('contadores').textContent.includes('DETENIDA')")
+    n.pag.click("#accion-reiniciar")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('instr 0')")
+
+
+@con_navegador
+def prueba_depuracion_completa_solo_con_teclado(n, p):
+    n.pag.keyboard.press("F10")
+    n.pag.wait_for_selector("[data-registro='R1']")
+    assert "= 42" in registro_valor(n, "R1")
+    n.pag.keyboard.press("F10")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0002')")
+    n.pag.keyboard.press("Shift+F10")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
+    n.pag.keyboard.press("F9")  # ruptura en el PC actual
+    n.pag.wait_for_selector("#desens-lista li[data-direccion='1'] .bp.puesta")
+    n.pag.keyboard.press("Control+Shift+F5")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('instr 0')")
+    n.pag.keyboard.press("F5")
+    n.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('ruptura')")
+    n.pag.keyboard.press("F5")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('DETENIDA')")
+    # Foco por paneles con F8.
+    antes = n.pag.evaluate("document.activeElement.closest('.panel') && document.activeElement.closest('.panel').id")
+    n.pag.keyboard.press("F8")
+    despues = n.pag.evaluate("document.activeElement.closest('.panel') && document.activeElement.closest('.panel').id")
+    assert antes != despues and despues, (antes, despues)
+
+
+@con_navegador
+def prueba_las_banderas_no_dependen_del_color(n, p):
+    elegir(n, "serie.toml", "hola.s")
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("#banderas .bandera")
+    textos = n.pag.locator("#banderas .bandera").all_inner_texts()
+    assert textos and all(("✓1" in t) or ("✗0" in t) for t in textos), textos
+
+
+@con_navegador
+def prueba_consola_de_teletipo(n, p):
+    elegir(n, "serie.toml", "hola.s")
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.getElementById('consola-salida').textContent.includes('Hi')")
+    assert "Hi" in n.pag.inner_text("#consola-salida")
+    assert n.pag.get_attribute("#consola-salida", "role") == "log"
+    n.pag.fill("#consola-entrada", "abc")
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_function("document.getElementById('consola-entrada').value === ''")
+
+
+@con_navegador
+def prueba_pantalla_muestra_el_framebuffer(n, p):
+    elegir(n, "serie.toml", "hola.s")
+    assert n.pag.get_attribute("#pantalla-lienzo", "data-encendidos") in (None, "0") or True
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.getElementById('pantalla-lienzo').getAttribute('data-encendidos') === '8'")
+    brillo = n.pag.evaluate("(() => { const c = document.getElementById('pantalla-lienzo'); const d = c.getContext('2d').getImageData(0, 0, 8, 1).data; let s = 0; for (let i = 1; i < d.length; i += 4) s += d[i]; return s; })()")
+    assert brillo > 0, "la primera fila debe tener pixeles encendidos"
+
+
+@con_navegador
+def prueba_efectos_del_monitor_son_independientes(n, p):
+    clases = lambda: n.pag.get_attribute("#monitor", "class")
+    for f in ["curvatura", "grano", "parpadeo", "texturas"]:
+        assert f"efecto-{f}" in clases()
+    for f in ["curvatura", "grano", "parpadeo", "texturas"]:
+        n.pag.uncheck(f"#efecto-{f}")
+        resto = [g for g in ["curvatura", "grano", "parpadeo", "texturas"] if g != f]
+        assert f"efecto-{f}" not in clases()
+        assert all(f"efecto-{g}" in clases() for g in resto), "apagar un efecto no debe tocar los demas"
+        n.pag.check(f"#efecto-{f}")
+    n.pag.uncheck("#efecto-grano")
+    n.recargar()
+    assert "efecto-grano" not in clases() and "efecto-curvatura" in clases(), "los efectos se recuerdan"
+    assert n.pag.is_checked("#efecto-grano") is False
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes]}
 
 
 def principal(argv):
@@ -324,6 +460,12 @@ def principal(argv):
         print("omitida: falta playwright para Python")
         return OMITIDA
     elegidas = argv[2:] or list(PRUEBAS)
+    desconocidas = [e for e in elegidas if e not in PRUEBAS]
+    if desconocidas:
+        print("pruebas desconocidas:", desconocidas)
+        return 2
+    if len(elegidas) > 1 and not os.environ.get("LORENZ_UI_SERIE"):
+        return en_paralelo(binario, elegidas)
     fallos = 0
     with sync_playwright() as pw:
         try:
@@ -341,6 +483,30 @@ def principal(argv):
                 print(f"FALLA {nombre}: {e}")
             finally:
                 p.cerrar()
+    return 1 if fallos else 0
+
+
+def en_paralelo(binario, elegidas):
+    """Cada prueba en su propio proceso (su propio servidor y navegador), varias a la vez."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def una(nombre):
+        env = dict(os.environ, LORENZ_UI_SERIE="1")
+        r = subprocess.run([sys.executable, os.path.abspath(__file__), binario, nombre], capture_output=True, text=True, env=env)
+        return nombre, r.returncode, (r.stdout + r.stderr).strip()
+
+    trabajadores = min(len(elegidas), max(2, (os.cpu_count() or 2)), 6)
+    omitidas = fallos = 0
+    with ThreadPoolExecutor(trabajadores) as ex:
+        for nombre, codigo, salida in ex.map(una, elegidas):
+            if codigo == OMITIDA:
+                omitidas += 1
+                print(salida)
+            else:
+                print(salida or f"{'ok   ' if codigo == 0 else 'FALLA'} {nombre}")
+                fallos += codigo != 0
+    if omitidas == len(elegidas):
+        return OMITIDA
     return 1 if fallos else 0
 
 

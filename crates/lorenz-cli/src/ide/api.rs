@@ -133,6 +133,11 @@ fn estado(s: &SesionIde) -> Json {
             Json::objeto([
                 ("nombre", n.as_str().into()),
                 ("valor", st.registro(n).map_or(Json::Nulo, Json::from)),
+                (
+                    "bits",
+                    st.mascara_de_registro(n)
+                        .map_or(Json::Nulo, |m| u64::from(64 - m.leading_zeros()).into()),
+                ),
             ])
         })
         .collect();
@@ -165,7 +170,40 @@ fn estado(s: &SesionIde) -> Json {
         ),
         ("maquina", s.maquina.as_str().into()),
         ("programa", s.programa.as_str().into()),
+        ("dispositivos", dispositivos(s)),
+        ("arranque", s.depurador.maquina().arranque.into()),
+        (
+            "bits_palabra",
+            u64::from(s.depurador.maquina().bits_palabra).into(),
+        ),
     ])
+}
+
+fn dispositivos(s: &SesionIde) -> Json {
+    use lorenz_arch::modelo::TipoDispositivo as T;
+    s.depurador
+        .maquina()
+        .dispositivos
+        .iter()
+        .map(|d| {
+            let (tipo, ancho, alto) = match &d.tipo {
+                T::Pantalla { ancho, alto, .. } => ("pantalla", *ancho, *alto),
+                T::Teclado => ("teclado", 0, 0),
+                T::Uart => ("uart", 0, 0),
+                T::Temporizador { .. } => ("temporizador", 0, 0),
+                T::Bloques { .. } => ("bloques", 0, 0),
+                T::Dma => ("dma", 0, 0),
+                _ => ("otro", 0, 0),
+            };
+            Json::objeto([
+                ("nombre", d.nombre.as_str().into()),
+                ("tipo", tipo.into()),
+                ("ancho", u64::from(ancho).into()),
+                ("alto", u64::from(alto).into()),
+            ])
+        })
+        .collect::<Vec<_>>()
+        .into()
 }
 
 fn rupturas(s: &SesionIde) -> Json {
@@ -500,6 +538,26 @@ pub fn router(ide: Arc<Ide>) -> Router {
                     match s.depurador.emulador_mut().texto_de_uart(&nombre) {
                         Ok(t) => ok(Json::objeto([("texto", t.into())])),
                         Err(e) => error(404, e.to_string()),
+                    }
+                })
+            }
+        })
+        .post("/api/sesiones/:id/serie/:nombre", {
+            let ide = ide.clone();
+            move |p| {
+                let j = match cuerpo(p) {
+                    Ok(j) => j,
+                    Err(r) => return r,
+                };
+                let t = match texto_de(&j, "texto") {
+                    Ok(t) => t.to_string(),
+                    Err(r) => return r,
+                };
+                let nombre = p.parametro("nombre").unwrap_or("").to_string();
+                con_sesion(&ide, p, |s| {
+                    match s.depurador.recibir_serie(&nombre, t.as_bytes()) {
+                        Ok(()) => ok(estado(s)),
+                        Err(e) => error(422, e.to_string()),
                     }
                 })
             }
