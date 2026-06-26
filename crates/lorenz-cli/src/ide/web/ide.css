@@ -144,3 +144,8 @@ code, pre, .mono { font-family: var(--fuente); }
 :root[data-tema="sobrio"] .monitor, :root[data-tema="sobrio"] .monitor canvas { border-radius: 0; box-shadow: none; filter: none; animation: none; }
 :root[data-tema="sobrio"] .monitor::before, :root[data-tema="sobrio"] .monitor::after { display: none; }
 .efectos { border: 1px solid var(--color-borde); margin-top: .3rem; } .efectos label { margin-right: .8rem; white-space: nowrap; }
+
+/* Ajustes */
+.atajos { width: 100%; border-collapse: collapse; } .atajos th { text-align: left; font-weight: normal; } .atajos td, .atajos th { border-bottom: 1px solid var(--color-borde); padding: .15rem .2rem; }
+fieldset { border: 1px solid var(--color-borde); border-radius: var(--radio); margin: .3rem 0; }
+#zona-izq { flex: 0 1 17rem; min-width: 8rem; } #zona-der { flex: 0 1 22rem; min-width: 10rem; } #zonas { overflow: hidden; }

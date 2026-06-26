@@ -445,7 +445,151 @@ def prueba_efectos_del_monitor_son_independientes(n, p):
     assert n.pag.is_checked("#efecto-grano") is False
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes]}
+def abrir_ajustes(n):
+    if "colapsado" in n.pag.get_attribute("#panel-ajustes", "class"):
+        n.pag.click("#panel-ajustes [data-accion='colapsar']")
+
+
+@con_navegador
+def prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad(n, p):
+    abrir_ajustes(n)
+    n.pag.select_option("#ajuste-tema", "sobrio")
+    assert n.pag.get_attribute("html", "data-tema") == "sobrio"
+    estilo = n.pag.evaluate("""(() => {
+        const m = document.getElementById('monitor');
+        const cs = getComputedStyle(m);
+        return {sombra: cs.boxShadow, radio: cs.borderRadius, antes: getComputedStyle(m, '::before').display,
+                despues: getComputedStyle(m, '::after').display, textura: getComputedStyle(document.body).backgroundImage,
+                fondo: getComputedStyle(document.body).backgroundColor};
+    })()""")
+    assert estilo["sombra"] == "none" and estilo["antes"] == "none" and estilo["despues"] == "none", estilo
+    assert estilo["textura"] == "none" and estilo["radio"] in ("0px", "0"), estilo
+    assert estilo["fondo"] == "rgb(255, 255, 255)", estilo
+    # La misma funcionalidad: depurar, editar, buscar.
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("[data-registro='R1']")
+    abrir_archivo(n, "p.s")
+    assert n.pag.locator(".resalte .t-mnemonico").count() >= 1
+    n.recargar()
+    assert n.pag.get_attribute("html", "data-tema") == "sobrio", "el tema se recuerda"
+
+
+@con_navegador
+def prueba_temas_propios_con_marcas_modificables(n, p):
+    abrir_ajustes(n)
+    n.pag.fill("#marca-color-fondo", "#102030")
+    n.pag.fill("#marca-color-acento", "#ff00aa")
+    n.pag.select_option("#marca-fuente", "Georgia, serif")
+    n.pag.fill("#tema-nombre", "mio")
+    n.pag.click("#tema-guardar")
+    css = lambda v: n.pag.evaluate(f"getComputedStyle(document.documentElement).getPropertyValue('{v}').trim()")
+    assert css("--color-fondo") == "#102030" and css("--color-acento") == "#ff00aa" and "Georgia" in css("--fuente")
+    assert n.pag.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(16, 32, 48)"
+    n.recargar()
+    assert css("--color-fondo") == "#102030", "el tema propio se recuerda"
+    n.pag.select_option("#ajuste-tema", "oscuro")
+    assert css("--color-fondo") == "#1b1d21"
+    n.pag.select_option("#ajuste-tema", "mio")
+    assert css("--color-fondo") == "#102030"
+    n.pag.click("#tema-borrar")
+    assert css("--color-fondo") == "#1b1d21"
+    assert n.pag.locator("#ajuste-tema option[value='mio']").count() == 0
+
+
+@con_navegador
+def prueba_sonido_por_familia_y_sin_sonido(n, p):
+    cuenta = lambda f: n.pag.evaluate(f"L.sonido.cuenta['{f}']")
+    abrir_ajustes(n)
+    assert not any(n.pag.is_checked(f"#sonido-{f}") for f in ["rele", "teclado", "campanilla"]), "por defecto en silencio"
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("[data-registro='R1']")
+    assert cuenta("rele") == 0
+    n.pag.check("#sonido-rele")
+    n.pag.wait_for_timeout(100)
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("L.sonido.cuenta.rele === 1")
+    assert cuenta("teclado") == 0 and cuenta("campanilla") == 0, "cada familia es independiente"
+    abrir_archivo(n, "p.s")
+    n.pag.click(".area")
+    n.pag.keyboard.type("x")
+    assert cuenta("teclado") == 0
+    n.pag.check("#sonido-teclado")
+    n.pag.click(".area")
+    n.pag.keyboard.type("y")
+    assert cuenta("teclado") == 1
+    n.pag.uncheck("#sonido-rele")
+    n.pag.check("#sonido-campanilla")
+    n.pag.fill(".area", "        HLT\n")
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("L.sonido.cuenta.campanilla === 1")
+    assert cuenta("rele") == 1, "el rele esta silenciado"
+    n.recargar()
+    assert n.pag.is_checked("#sonido-campanilla") and not n.pag.is_checked("#sonido-rele")
+
+
+@con_navegador
+def prueba_tamano_de_texto_sin_romper_la_disposicion(n, p):
+    abrir_ajustes(n)
+    for px in (11, 20, 28):
+        n.pag.fill("#ajuste-tam", str(px))
+        n.pag.dispatch_event("#ajuste-tam", "input")
+        assert n.pag.evaluate("getComputedStyle(document.documentElement).fontSize") == f"{px}px"
+        desborde = n.pag.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+        assert desborde <= 0, f"con {px}px hay desborde horizontal de {desborde}px"
+        caja = n.pag.locator("#accion-paso").bounding_box()
+        assert caja and caja["x"] >= 0 and caja["x"] + caja["width"] <= 1400, caja
+    n.recargar()
+    assert n.pag.evaluate("getComputedStyle(document.documentElement).fontSize") == "28px"
+
+
+@con_navegador
+def prueba_alto_contraste(n, p):
+    abrir_ajustes(n)
+    n.pag.check("#ajuste-contraste")
+    razon = n.pag.evaluate("""(() => {
+        const lum = c => { const m = c.match(/\\d+/g).map(Number); const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+            return .2126 * f(m[0]) + .7152 * f(m[1]) + .0722 * f(m[2]); };
+        const cs = getComputedStyle(document.body);
+        const a = lum(cs.color), b = lum(cs.backgroundColor);
+        return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+    })()""")
+    assert razon >= 7, razon
+    assert n.pag.get_attribute("html", "data-contraste") == "alto"
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("[data-registro='R1'] .lampara.on")
+
+
+@con_navegador
+def prueba_progreso_de_operaciones_largas(n, p):
+    def lento(ruta):
+        import time
+        time.sleep(1.8)
+        ruta.continue_()
+    n.pag.route("**/api/ensamblar", lento)
+    abrir_archivo(n, "p.s")
+    assert n.pag.locator("#progreso").is_hidden()
+    n.pag.keyboard.press("Control+b")
+    n.pag.wait_for_selector("#progreso:not([hidden])", timeout=4000)
+    assert "Compilando" in n.pag.inner_text("#progreso-texto")
+    n.pag.wait_for_selector("#progreso", state="hidden", timeout=6000)
+
+
+@con_navegador
+def prueba_reasignar_un_atajo_desde_la_interfaz(n, p):
+    abrir_ajustes(n)
+    n.pag.click("#tabla-atajos [data-atajo='paso']")
+    n.pag.keyboard.press("Control+y")
+    assert n.pag.inner_text("#tabla-atajos [data-atajo='paso']") == "Ctrl+Y"
+    n.pag.keyboard.press("F10")
+    n.pag.wait_for_timeout(300)
+    assert n.pag.locator("[data-registro='R1']").count() == 0, "F10 ya no avanza"
+    n.pag.keyboard.press("Control+y")
+    n.pag.wait_for_selector("[data-registro='R1']")
+    n.pag.click("#atajos-restaurar")
+    assert n.pag.inner_text("#tabla-atajos [data-atajo='paso']") == "F10"
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz]}
 
 
 def principal(argv):
