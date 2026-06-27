@@ -17,6 +17,44 @@ Formato de una entrada:
 
 ---
 
+## 2026-10-16 — Hitos B y C del sprint 4: el IDE
+
+Sprint 4, hitos B y C (v0.7.0): servidor local, API del núcleo e interfaz completa; 29 requisitos
+de IDE (RF-IDE-010 a 038), de 329 a 358 terminados.
+
+**Hecho:** crate `lorenz-web` (servidor HTTP con la biblioteca estándar, JSON propio, rutas con
+parámetros, límites y cierre ordenado); API del IDE en `lorenz-cli::ide` (archivos, ensamblado y
+compilación con diagnósticos, símbolos, codificación, búsqueda, documentación y sesiones de
+ejecución con pasos, retroceso, rupturas, memoria, pantalla y serie); `lorenz ide`; interfaz con
+paneles acoplables, editor con resaltado y autocompletado, depurador gráfico, instrumentos, temas,
+sonido y accesibilidad; banco de pruebas con Chromium (`pruebas-ui/banco.py`, en paralelo).
+
+**Decisiones:**
+
+- **D-121** — El servidor usa solo la biblioteca estándar: una petición por conexión, hilos con
+  tope, límites de cabeceras y cuerpo, y rechazo de `Host` no local. Un servidor local sin
+  dependencias es fácil de auditar y suficiente.
+- **D-122** — El editor es un `textarea` sobre una capa resaltada, sin bibliotecas: pocas líneas,
+  accesible por teclado y fácil de probar. Su límite es que no es para archivos enormes.
+- **D-123** — La interfaz son archivos JavaScript sueltos incrustados en el binario (`include_str!`);
+  sin paso de construcción ni dependencias. Cada módulo registra sus paneles en `L.paneles`.
+- **D-124** — La apariencia son marcas (variables CSS). El tema sobrio no es otra interfaz: apaga
+  texturas y efectos con las mismas funciones. Un tema propio es un conjunto de marcas guardado.
+- **D-125** — El sonido se sintetiza con WebAudio, está apagado por defecto y cada familia se
+  silencia aparte; las pruebas cuentan las peticiones de sonido, no el audio.
+- **D-126** — Las pruebas de interfaz se omiten (código 77) si no hay `playwright` o Chromium, para
+  no impedir `cargo test` en máquinas sin navegador; en este entorno corren siempre.
+
+**Pendiente:** hito D (depurador gráfico avanzado y visor de la GPU), E (editor visual de
+arquitectura, decide D-114), F (versión web y cierre).
+
+**Requisitos:** RF-IDE-010 a 038.
+
+**Commits:** ramas `feature/servidor-web`, `feature/api-ide`, `feature/banco-ui`,
+`feature/ide-editor-api` (de 654 a 679).
+
+---
+
 ## 2026-10-16 — Hito A del sprint 4: el núcleo sin interfaz
 
 Sprint 4, hito A (v0.6.0): 23 requisitos que no necesitan interfaz, de 306 a 329 terminados.

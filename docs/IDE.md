@@ -49,3 +49,52 @@ Las respuestas de `paso`, `continuar` y `hasta` traen `parada` (`tipo`: `paso`, 
 `crates/lorenz-cli/tests/ide_api.rs` prueba la API contra un servidor real. `pruebas-ui/banco.py`
 abre el IDE en Chromium (playwright) y la prueba `ide_ui.rs` lo lanza; se omite si no hay
 playwright o Chromium.
+
+## La interfaz
+
+`lorenz ide` sirve una pagina con paneles (todos se pueden mover entre las cuatro zonas, separar
+como ventanas flotantes, plegar y reordenar; la disposicion se recuerda):
+
+| Panel | Que hace |
+|---|---|
+| Archivos | arbol del proyecto y archivo nuevo |
+| Editor | pestanas, resaltado segun la arquitectura activa, autocompletado, errores sobre la linea, codificacion bajo el cursor (pie), F12 o Ctrl+clic para ir a la definicion |
+| Buscar y reemplazar | en todo el proyecto, con o sin distinguir mayusculas |
+| Problemas | errores del ultimo compilado; Intro lleva a la linea |
+| Registros | lamparas por bit (clic invierte un bit) o numeros; banderas; contadores |
+| Desensamblado | instrucciones con puntos de ruptura (clic en el circulo o Espacio) y la actual marcada con ▶ |
+| Memoria · Puntos de ruptura | volcado desde una direccion; lista de rupturas |
+| Consola | salida de la UART como teletipo y entrada de texto |
+| Pantalla | el framebuffer con efecto de monitor; curvatura, grano, parpadeo y texturas se apagan por separado |
+| Documentacion | la de la arquitectura activa |
+| Apariencia, sonido y accesibilidad | temas, tema propio por marcas, tamano de texto, alto contraste, sonido por familia y atajos |
+
+### Atajos (reasignables)
+
+| Accion | Atajo |
+|---|---|
+| Compilar | Ctrl+B |
+| Ejecutar / continuar · Pausar | F5 · F6 |
+| Paso · Paso atras | F10 · Mayus+F10 |
+| Reiniciar | Ctrl+Mayus+F5 |
+| Alternar ruptura en el PC | F9 |
+| Ir a la definicion · Buscar | F12 · Ctrl+Mayus+F |
+| Guardar | Ctrl+S |
+| Panel siguiente / anterior | F8 · Mayus+F8 |
+
+Toda la depuracion se puede hacer solo con teclado. Ningun estado depende solo del color: las
+lamparas llevan ●/○, la linea actual ▶, las banderas ✓/✗, los registros cambiados Δ y los errores ✖.
+
+### Trabajo que no se pierde
+
+Antes de compilar o abrir una sesion se guardan los archivos abiertos. Mientras se escribe se
+guarda un borrador en el navegador; si la pagina se cierra de golpe, al volver se ofrece
+conservarlo o descartarlo. Las operaciones que tardan mas de un segundo muestran un indicador con
+los segundos transcurridos.
+
+### Por dentro
+
+Los archivos de `crates/lorenz-cli/src/ide/web/` se incrustan en el binario; cada modulo registra
+sus paneles en `L.paneles`. No hay dependencias ni paso de construccion. Las pruebas de
+`pruebas-ui/banco.py` abren cada pantalla en Chromium (varias a la vez); `LORENZ_UI_SERIE=1` las
+fuerza en serie.

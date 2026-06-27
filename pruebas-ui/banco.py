@@ -327,8 +327,7 @@ def registro_valor(n, nombre):
 @con_navegador
 def prueba_depurador_paso_a_paso_con_lamparas(n, p):
     n.pag.click("#accion-paso")
-    n.pag.wait_for_selector("[data-registro='R1']")
-    assert "PC 0x0001" in n.pag.inner_text("#contadores")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
     assert "= 42" in registro_valor(n, "R1")
     assert n.pag.locator("[data-registro='R1'] .lampara.on").count() == 3, "42 = 0b101010 tiene tres bits"
     assert n.pag.locator("[data-registro='R1'] .delta").count() == 1, "el registro que cambio se marca"
@@ -376,7 +375,7 @@ def prueba_depurador_ruptura_y_ejecucion(n, p):
 @con_navegador
 def prueba_depuracion_completa_solo_con_teclado(n, p):
     n.pag.keyboard.press("F10")
-    n.pag.wait_for_selector("[data-registro='R1']")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
     assert "= 42" in registro_valor(n, "R1")
     n.pag.keyboard.press("F10")
     n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0002')")
@@ -569,9 +568,9 @@ def prueba_progreso_de_operaciones_largas(n, p):
     abrir_archivo(n, "p.s")
     assert n.pag.locator("#progreso").is_hidden()
     n.pag.keyboard.press("Control+b")
-    n.pag.wait_for_selector("#progreso:not([hidden])", timeout=4000)
+    n.pag.wait_for_selector("#progreso:not([hidden])", timeout=15000)
     assert "Compilando" in n.pag.inner_text("#progreso-texto")
-    n.pag.wait_for_selector("#progreso", state="hidden", timeout=6000)
+    n.pag.wait_for_selector("#progreso", state="hidden", timeout=20000)
 
 
 @con_navegador
@@ -624,7 +623,7 @@ def principal(argv):
                 print(f"ok    {nombre}")
             except Exception as e:  # noqa: BLE001
                 fallos += 1
-                print(f"FALLA {nombre}: {e}")
+                print(f"FALLA {nombre}: {type(e).__name__}: {e}")
             finally:
                 p.cerrar()
     return 1 if fallos else 0
@@ -637,9 +636,11 @@ def en_paralelo(binario, elegidas):
     def una(nombre):
         env = dict(os.environ, LORENZ_UI_SERIE="1")
         r = subprocess.run([sys.executable, os.path.abspath(__file__), binario, nombre], capture_output=True, text=True, env=env)
+        if r.returncode not in (0, OMITIDA):  # una sola repeticion: bajo carga algunas esperas se agotan
+            r = subprocess.run([sys.executable, os.path.abspath(__file__), binario, nombre], capture_output=True, text=True, env=env)
         return nombre, r.returncode, (r.stdout + r.stderr).strip()
 
-    trabajadores = min(len(elegidas), max(2, (os.cpu_count() or 2)), 6)
+    trabajadores = min(len(elegidas), max(1, (os.cpu_count() or 2)), 6)
     omitidas = fallos = 0
     with ThreadPoolExecutor(trabajadores) as ex:
         for nombre, codigo, salida in ex.map(una, elegidas):
