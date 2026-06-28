@@ -4,12 +4,38 @@
 //! se lanza `lorenz ide`, y ninguna ruta puede salir de ella.
 
 mod api;
+pub mod editor;
 mod sesion;
 
 pub use api::router;
 pub use sesion::{Ide, MAX_SESIONES};
 
-pub const PAGINA: &str = include_str!("pagina.html");
+macro_rules! estatico {
+    ($n:literal) => {
+        ($n, include_str!(concat!("web/", $n)))
+    };
+}
+
+/// Archivos estaticos de la interfaz: nombre publico y contenido. Para sumar uno, basta una linea.
+#[rustfmt::skip]
+pub const ESTATICOS: &[(&str, &str)] = &[
+    estatico!("ide.css"), estatico!("util.js"), estatico!("atajos.js"), estatico!("paneles.js"),
+    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("main.js"),
+];
+
+/// Tipo de contenido segun la extension.
+pub fn tipo_de(nombre: &str) -> &'static str {
+    match nombre.rsplit('.').next() {
+        Some("css") => "text/css; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("html") => "text/html; charset=utf-8",
+        Some("svg") => "image/svg+xml",
+        _ => "text/plain; charset=utf-8",
+    }
+}
+
+/// La pagina principal.
+pub const PAGINA: &str = include_str!("web/index.html");
 
 use std::io::Write;
 use std::sync::Arc;

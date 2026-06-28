@@ -133,6 +133,11 @@ fn estado(s: &SesionIde) -> Json {
             Json::objeto([
                 ("nombre", n.as_str().into()),
                 ("valor", st.registro(n).map_or(Json::Nulo, Json::from)),
+                (
+                    "bits",
+                    st.mascara_de_registro(n)
+                        .map_or(Json::Nulo, |m| u64::from(64 - m.leading_zeros()).into()),
+                ),
             ])
         })
         .collect();
@@ -165,7 +170,40 @@ fn estado(s: &SesionIde) -> Json {
         ),
         ("maquina", s.maquina.as_str().into()),
         ("programa", s.programa.as_str().into()),
+        ("dispositivos", dispositivos(s)),
+        ("arranque", s.depurador.maquina().arranque.into()),
+        (
+            "bits_palabra",
+            u64::from(s.depurador.maquina().bits_palabra).into(),
+        ),
     ])
+}
+
+fn dispositivos(s: &SesionIde) -> Json {
+    use lorenz_arch::modelo::TipoDispositivo as T;
+    s.depurador
+        .maquina()
+        .dispositivos
+        .iter()
+        .map(|d| {
+            let (tipo, ancho, alto) = match &d.tipo {
+                T::Pantalla { ancho, alto, .. } => ("pantalla", *ancho, *alto),
+                T::Teclado => ("teclado", 0, 0),
+                T::Uart => ("uart", 0, 0),
+                T::Temporizador { .. } => ("temporizador", 0, 0),
+                T::Bloques { .. } => ("bloques", 0, 0),
+                T::Dma => ("dma", 0, 0),
+                _ => ("otro", 0, 0),
+            };
+            Json::objeto([
+                ("nombre", d.nombre.as_str().into()),
+                ("tipo", tipo.into()),
+                ("ancho", u64::from(ancho).into()),
+                ("alto", u64::from(alto).into()),
+            ])
+        })
+        .collect::<Vec<_>>()
+        .into()
 }
 
 fn rupturas(s: &SesionIde) -> Json {
@@ -247,8 +285,19 @@ pub fn router(ide: Arc<Ide>) -> Router {
         ide.clone(),
     );
     let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
-    Router::nuevo()
+    let para_editor = ide.clone();
+    let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
+        .get("/web/:archivo", |p| {
+            let n = p.parametro("archivo").unwrap_or("");
+            match super::ESTATICOS.iter().find(|(nombre, _)| *nombre == n) {
+                Some((nombre, contenido)) => {
+                    Respuesta::nueva(200, super::tipo_de(nombre), *contenido)
+                        .con_cabecera("Cache-Control", "no-cache")
+                }
+                None => Respuesta::texto(404, "no existe"),
+            }
+        })
         .get("/api/proyecto", move |_| {
             let mut v = Vec::new();
             listar(a.raiz(), a.raiz(), &mut v);
@@ -326,8 +375,8 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 Ok(x) => x,
                 Err(er) => return error(422, format!("{m}: {er}")),
             };
-            match crate::ensamblar::ensamblar_archivo(&maquina, &rf) {
-                Ok((o, _)) => ok(Json::objeto([
+            match super::editor::ensamblar_estructurado(&maquina, &rf) {
+                Ok(o) => ok(Json::objeto([
                     ("palabras", o.tamano().into()),
                     (
                         "avisos",
@@ -337,6 +386,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
                             .collect::<Vec<_>>()
                             .into(),
                     ),
+                    ("simbolos", super::editor::simbolos(&o, e.raiz())),
                 ])),
                 Err(er) => Respuesta::json(
                     422,
@@ -344,8 +394,12 @@ pub fn router(ide: Arc<Ide>) -> Router {
                         ("error", "no se pudo ensamblar".into()),
                         (
                             "errores",
-                            er.lines().map(Json::texto).collect::<Vec<_>>().into(),
+                            er.iter()
+                                .map(|x| Json::texto(x.to_string()))
+                                .collect::<Vec<_>>()
+                                .into(),
                         ),
+                        ("diagnosticos", super::editor::diagnosticos(&er, e.raiz())),
                     ])
                     .serializar(),
                 ),
@@ -484,6 +538,26 @@ pub fn router(ide: Arc<Ide>) -> Router {
                     match s.depurador.emulador_mut().texto_de_uart(&nombre) {
                         Ok(t) => ok(Json::objeto([("texto", t.into())])),
                         Err(e) => error(404, e.to_string()),
+                    }
+                })
+            }
+        })
+        .post("/api/sesiones/:id/serie/:nombre", {
+            let ide = ide.clone();
+            move |p| {
+                let j = match cuerpo(p) {
+                    Ok(j) => j,
+                    Err(r) => return r,
+                };
+                let t = match texto_de(&j, "texto") {
+                    Ok(t) => t.to_string(),
+                    Err(r) => return r,
+                };
+                let nombre = p.parametro("nombre").unwrap_or("").to_string();
+                con_sesion(&ide, p, |s| {
+                    match s.depurador.recibir_serie(&nombre, t.as_bytes()) {
+                        Ok(()) => ok(estado(s)),
+                        Err(e) => error(422, e.to_string()),
                     }
                 })
             }
@@ -638,5 +712,6 @@ pub fn router(ide: Arc<Ide>) -> Router {
                     }
                 })
             }
-        })
+        });
+    super::editor::rutas(base, para_editor)
 }

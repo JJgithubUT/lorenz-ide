@@ -178,7 +178,7 @@ ver ni probar.
 | A8 | Explicar trazas y marcar lo generado | RF-ECO-044, 046 | `lorenz explicar` determinista; marca en todo texto generado. | 14 |
 | A9 | Instalar desde dirección web | RF-ECO-004 | Cliente HTTP(S) propio probado contra servidor local. | 10 |
 
-### Hito B — Servidor y API → parte de v0.7.0 (sin requisitos propios)
+### Hito B — Servidor y API → parte de v0.7.0 (sin requisitos propios) — **terminado**
 
 | # | Historia | Criterio de hecho | Commits |
 | --- | --- | --- | --- |
@@ -186,7 +186,7 @@ ver ni probar.
 | B2 | API del núcleo | Proyecto, archivos, ensamblar, compilar, ejecutar, paso a paso, registros, memoria, trazas, puntos de parada, GPU; sesiones independientes. | 24 |
 | B3 | Banco de pruebas de interfaz | Chromium sin cabeza dentro de las pruebas: abrir, pulsar, leer el DOM y capturar. | 6 |
 
-### Hito C — IDE → v0.7.0 (329 → 358, 94,2 %)
+### Hito C — IDE → v0.7.0 (329 → 358, 94,2 %) — **terminado**
 
 | # | Historia | Requisitos | Commits |
 | --- | --- | --- | --- |

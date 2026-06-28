@@ -1,5 +1,22 @@
 # Registro de cambios
 
+## 0.7.0 — 2026-10-16 — El IDE
+
+`lorenz ide [carpeta]` abre una interfaz web local (solo `127.0.0.1`) sobre el proyecto. No hay
+dependencias nuevas: el servidor, el JSON y la interfaz son del proyecto. Ver `docs/IDE.md`.
+
+- Editor con resaltado de ensamblador (segun la arquitectura activa) y de SGT, autocompletado,
+  codificacion en bits bajo el cursor, errores sobre la linea, ir a la definicion, buscar y
+  reemplazar en el proyecto y documentacion de la arquitectura dentro del IDE.
+- Paneles acoplables, separables y reordenables con la disposicion recordada; atajos reasignables.
+- Depurador grafico: registros como lamparas, desensamblado con rupturas, memoria, paso atras,
+  consola de teletipo y pantalla con efecto de monitor (cada efecto se apaga por separado).
+- Temas por marcas (incluido el sobrio, sin efectos) y temas propios; sonido por familia, apagado
+  por defecto; tamano de texto, alto contraste, depuracion solo con teclado y estados que no
+  dependen del color.
+- Guardado antes de compilar, recuperacion tras un cierre inesperado y progreso de operaciones
+  largas.
+
 ## 0.6.0 — 2026-10-16 — El nucleo sin interfaz
 
 Primer hito del sprint 4: 23 requisitos que no necesitan interfaz grafica.
