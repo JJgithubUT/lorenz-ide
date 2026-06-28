@@ -5,6 +5,8 @@
 
 pub mod explicar;
 
+pub mod ide;
+
 pub mod exportar;
 
 pub mod seguro;

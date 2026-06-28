@@ -1,0 +1,100 @@
+# IDE de Lorenz (API y arquitectura)
+
+`lorenz ide [carpeta] [--puerto N] [--segundos N]` sirve la carpeta (por defecto `.`) en
+`http://127.0.0.1:N` (por defecto 8080). Es una aplicacion web local (D-113): no hay WASM ni
+dependencias externas. El servidor (`lorenz-web`) usa solo la biblioteca estandar.
+
+## Seguridad
+
+- Solo escucha en `127.0.0.1` y rechaza peticiones cuyo `Host` no sea local (403), para que una
+  pagina ajena no pueda atacarlo desde el navegador.
+- Ninguna ruta puede salir de la carpeta del proyecto: se rechazan `..`, rutas absolutas, `\` y
+  enlaces simbolicos que apunten fuera.
+- Limites: cuerpo 4 MiB, cabeceras 16 KiB, 64 conexiones a la vez (503 si hay mas), 10 s por
+  conexion, 16 sesiones de ejecucion. Un manejador que entra en panico devuelve 500 y el servidor
+  sigue vivo.
+- No funciona en modo seguro (`--seguro`).
+
+## API
+
+Todo es JSON; los errores salen como `{"error": "..."}`.
+
+| Metodo y ruta | Hace |
+|---|---|
+| `GET /api/proyecto` | lista de archivos y carpetas |
+| `GET /api/archivo?ruta=` | lee un archivo de texto |
+| `PUT /api/archivo` `{ruta, texto}` | escribe (crea carpetas) |
+| `DELETE /api/archivo?ruta=` | borra |
+| `POST /api/ensamblar` `{maquina, fuente}` | ensambla; 422 con `errores` si falla |
+| `POST /api/sesiones` `{maquina, programa}` | abre una sesion; devuelve `{id}` |
+| `GET /api/sesiones` | ids de sesiones abiertas |
+| `DELETE /api/sesiones/:id` | la cierra |
+| `GET /api/sesiones/:id/estado` | pc, sp, registros, banderas, contadores, ubicacion |
+| `POST /api/sesiones/:id/paso` `{n}` | ejecuta n instrucciones |
+| `POST .../continuar` `{limite}` | sigue hasta una parada |
+| `POST .../hasta` `{direccion}` | sigue hasta una direccion |
+| `POST .../reiniciar` | vuelve al arranque |
+| `POST .../grabar` `{activa}` · `atras` `{n}` · `adelante` `{n}` | depuracion hacia atras |
+| `POST .../registro` `{nombre, valor}` · `memoria` `{direccion, valor}` · `puerto` | edita el estado |
+| `GET .../memoria?desde=&n=` | celdas (`null` si no hay memoria) |
+| `GET .../desensamblado?desde=&n=` | lineas con etiqueta, linea de fuente y `actual` |
+| `GET/POST .../rupturas`, `DELETE .../rupturas/:id` | puntos de ruptura (con condicion) |
+| `GET .../pantalla/:nombre` · `.../serie/:nombre` | pixeles de una pantalla; texto de una UART |
+
+Las respuestas de `paso`, `continuar` y `hasta` traen `parada` (`tipo`: `paso`, `detenida`,
+`ruptura`, `observacion`, `llegada`, `retorno`, `limite`, `fallo`, `condicion`) y el `estado`.
+
+## Pruebas
+
+`crates/lorenz-cli/tests/ide_api.rs` prueba la API contra un servidor real. `pruebas-ui/banco.py`
+abre el IDE en Chromium (playwright) y la prueba `ide_ui.rs` lo lanza; se omite si no hay
+playwright o Chromium.
+
+## La interfaz
+
+`lorenz ide` sirve una pagina con paneles (todos se pueden mover entre las cuatro zonas, separar
+como ventanas flotantes, plegar y reordenar; la disposicion se recuerda):
+
+| Panel | Que hace |
+|---|---|
+| Archivos | arbol del proyecto y archivo nuevo |
+| Editor | pestanas, resaltado segun la arquitectura activa, autocompletado, errores sobre la linea, codificacion bajo el cursor (pie), F12 o Ctrl+clic para ir a la definicion |
+| Buscar y reemplazar | en todo el proyecto, con o sin distinguir mayusculas |
+| Problemas | errores del ultimo compilado; Intro lleva a la linea |
+| Registros | lamparas por bit (clic invierte un bit) o numeros; banderas; contadores |
+| Desensamblado | instrucciones con puntos de ruptura (clic en el circulo o Espacio) y la actual marcada con ▶ |
+| Memoria · Puntos de ruptura | volcado desde una direccion; lista de rupturas |
+| Consola | salida de la UART como teletipo y entrada de texto |
+| Pantalla | el framebuffer con efecto de monitor; curvatura, grano, parpadeo y texturas se apagan por separado |
+| Documentacion | la de la arquitectura activa |
+| Apariencia, sonido y accesibilidad | temas, tema propio por marcas, tamano de texto, alto contraste, sonido por familia y atajos |
+
+### Atajos (reasignables)
+
+| Accion | Atajo |
+|---|---|
+| Compilar | Ctrl+B |
+| Ejecutar / continuar · Pausar | F5 · F6 |
+| Paso · Paso atras | F10 · Mayus+F10 |
+| Reiniciar | Ctrl+Mayus+F5 |
+| Alternar ruptura en el PC | F9 |
+| Ir a la definicion · Buscar | F12 · Ctrl+Mayus+F |
+| Guardar | Ctrl+S |
+| Panel siguiente / anterior | F8 · Mayus+F8 |
+
+Toda la depuracion se puede hacer solo con teclado. Ningun estado depende solo del color: las
+lamparas llevan ●/○, la linea actual ▶, las banderas ✓/✗, los registros cambiados Δ y los errores ✖.
+
+### Trabajo que no se pierde
+
+Antes de compilar o abrir una sesion se guardan los archivos abiertos. Mientras se escribe se
+guarda un borrador en el navegador; si la pagina se cierra de golpe, al volver se ofrece
+conservarlo o descartarlo. Las operaciones que tardan mas de un segundo muestran un indicador con
+los segundos transcurridos.
+
+### Por dentro
+
+Los archivos de `crates/lorenz-cli/src/ide/web/` se incrustan en el binario; cada modulo registra
+sus paneles en `L.paneles`. No hay dependencias ni paso de construccion. Las pruebas de
+`pruebas-ui/banco.py` abren cada pantalla en Chromium (varias a la vez); `LORENZ_UI_SERIE=1` las
+fuerza en serie.
