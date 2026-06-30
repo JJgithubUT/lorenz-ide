@@ -378,7 +378,7 @@ conocida, escrita en la columna de evidencia.
 
 ## Requisitos del entorno (RF-IDE)
 
-Solo los que no necesitan interfaz; el resto llega con el IDE. Ver `docs/PROYECTOS.md`.
+Los de proyecto (001 a 009) viven en el nucleo (`docs/PROYECTOS.md`); el resto es la interfaz web local, `lorenz ide` (`docs/IDE.md`).
 
 | Requisito | Resumen | Estado | Donde |
 | --- | --- | --- | --- |
@@ -391,6 +391,35 @@ Solo los que no necesitan interfaz; el resto llega con el IDE. Ver `docs/PROYECT
 | RF-IDE-007 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `nuevo::desde_incluida` |
 | RF-IDE-008 | Plantillas de programa, sistema operativo y arquitectura | Hecho | `plantillas::PLANTILLAS`, `lorenz plantillas` |
 | RF-IDE-009 | Abrir un proyecto reciente | Hecho | `recientes::Recientes`, `lorenz recientes` |
+| RF-IDE-010 | Resaltado de ensamblador segun la arquitectura activa | Hecho | `web/resaltado.js`, `GET /api/lenguaje` |
+| RF-IDE-011 | Resaltado de SGT | Hecho | `web/resaltado.js` |
+| RF-IDE-012 | Autocompletado de mnemonicos, registros y etiquetas | Hecho | `web/editor.js` |
+| RF-IDE-013 | Codificacion en bits de la instruccion bajo el cursor | Hecho | `POST /api/codificacion`, pie del editor |
+| RF-IDE-014 | Errores de compilacion sobre la linea | Hecho | `diagnosticos` de `/api/ensamblar` y `/api/compilar` |
+| RF-IDE-015 | Ir a la definicion de una etiqueta o simbolo | Hecho | F12 o Ctrl+clic, `simbolos` del ensamblado |
+| RF-IDE-016 | Busqueda y reemplazo en todo el proyecto | Hecho | `/api/buscar`, `/api/reemplazar`, panel Buscar |
+| RF-IDE-017 | Acoplar, separar y reordenar paneles | Hecho | `web/paneles.js` (botones, arrastre y teclado) |
+| RF-IDE-018 | Recordar la disposicion de paneles | Hecho | `localStorage` `disposicion` |
+| RF-IDE-019 | Atajos para compilar, ejecutar, pausar y avanzar | Hecho | `web/atajos.js` |
+| RF-IDE-020 | Reasignar los atajos | Hecho | panel de ajustes, `L.atajos.fijar` |
+| RF-IDE-021 | Registros como lamparas conmutables a numeros | Hecho | `web/depurador.js`, panel Registros |
+| RF-IDE-022 | Consola de teletipo | Hecho | `web/instrumentos.js`, panel Consola |
+| RF-IDE-023 | Pantalla con efecto de monitor de tubo | Hecho | `web/instrumentos.js`, panel Pantalla |
+| RF-IDE-024 | Apagar por separado curvatura, grano, parpadeo y texturas | Hecho | casillas `efecto-*` |
+| RF-IDE-025 | Tema sobrio sin texturas ni efectos | Hecho | `data-tema="sobrio"` en `ide.css` |
+| RF-IDE-026 | Apariencia definida por marcas | Hecho | variables `--color-*`, `--fuente`, `--textura` |
+| RF-IDE-027 | Temas propios guardables | Hecho | `web/ajustes.js` |
+| RF-IDE-028 | Sonidos de rele, teclado y campanilla | Hecho | `L.sonido` (WebAudio sintetizado) |
+| RF-IDE-029 | Silenciar cada familia de sonidos | Hecho | casillas `sonido-*` |
+| RF-IDE-030 | Funcionar sin sonido | Hecho | sonido apagado por defecto; ninguna funcion depende de el |
+| RF-IDE-031 | Tamano de texto ajustable sin romper la disposicion | Hecho | `--tam`, deslizador de ajustes |
+| RF-IDE-032 | Modo de alto contraste | Hecho | `data-contraste="alto"` |
+| RF-IDE-033 | Depuracion completa solo con teclado | Hecho | atajos F5/F6/F9/F10/Shift+F10, F8 entre paneles |
+| RF-IDE-034 | El color nunca es el unico medio | Hecho | simbolos ●/○, ▶, ✓/✗, Δ y ✖ junto al color |
+| RF-IDE-035 | Progreso de operaciones de mas de un segundo | Hecho | `L.progreso`, barra superior |
+| RF-IDE-036 | Guardar antes de compilar | Hecho | `L.guardarTodo` antes de ensamblar y de abrir sesion |
+| RF-IDE-037 | Recuperar trabajo no guardado | Hecho | borradores en `localStorage` y aviso de recuperacion |
+| RF-IDE-038 | Documentacion de la arquitectura dentro del IDE | Hecho | `GET /api/documentacion`, panel Documentacion |
 
 ## Concordancia con los commits anteriores
 
