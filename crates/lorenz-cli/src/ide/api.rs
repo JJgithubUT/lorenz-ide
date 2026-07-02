@@ -172,6 +172,11 @@ fn estado(s: &SesionIde) -> Json {
         ("programa", s.programa.as_str().into()),
         ("dispositivos", dispositivos(s)),
         ("arranque", s.depurador.maquina().arranque.into()),
+        ("instante", s.depurador.instante().into()),
+        (
+            "traza_longitud",
+            s.depurador.traza().map_or(0, |t| t.longitud()).into(),
+        ),
         (
             "bits_palabra",
             u64::from(s.depurador.maquina().bits_palabra).into(),
@@ -562,6 +567,92 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         })
+        .get("/api/sesiones/:id/eventos", {
+            let ide = ide.clone();
+            move |p| {
+                con_sesion(&ide, p, |s| {
+                    let e = s.depurador.emulador();
+                    let ints: Vec<Json> = e
+                        .interrupciones_atendidas()
+                        .iter()
+                        .map(|i| {
+                            Json::objeto([
+                                ("linea", u64::from(i.linea).into()),
+                                ("ciclo", i.ciclo.into()),
+                                ("instruccion", i.instruccion.into()),
+                                ("pc_interrumpido", i.pc_interrumpido.into()),
+                                ("manejador", i.manejador.into()),
+                            ])
+                        })
+                        .collect();
+                    ok(Json::objeto([
+                        ("interrupciones", ints.into()),
+                        ("sin_registrar", e.interrupciones_sin_registrar().into()),
+                        (
+                            "pendientes",
+                            e.interrupciones_pendientes()
+                                .into_iter()
+                                .map(|l| Json::from(u64::from(l)))
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                    ]))
+                })
+            }
+        })
+        .get("/api/sesiones/:id/explicacion", {
+            let ide = ide.clone();
+            move |p| {
+                con_sesion(&ide, p, |s| match s.depurador.explicar() {
+                    Ok(x) => ok(Json::objeto([
+                        ("direccion", x.direccion.into()),
+                        ("texto", x.texto.into()),
+                        ("descripcion", x.descripcion.into()),
+                        (
+                            "operaciones",
+                            x.operaciones
+                                .into_iter()
+                                .map(Json::from)
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        (
+                            "registros",
+                            x.registros
+                                .iter()
+                                .map(|r| {
+                                    Json::objeto([
+                                        ("nombre", r.nombre.as_str().into()),
+                                        ("antes", r.antes.into()),
+                                        ("despues", r.despues.into()),
+                                    ])
+                                })
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        (
+                            "escrituras",
+                            x.escrituras
+                                .iter()
+                                .map(|w| {
+                                    Json::objeto([
+                                        ("direccion", w.direccion.into()),
+                                        ("antes", w.antes.into()),
+                                        ("despues", w.despues.into()),
+                                    ])
+                                })
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        ("salto", x.salto.map_or(Json::Nulo, Json::from)),
+                        ("pc_despues", x.pc_despues.into()),
+                        ("ciclos", x.ciclos.into()),
+                        ("detiene", x.detiene.into()),
+                    ])),
+                    Err(e) => error(422, e.to_string()),
+                })
+            }
+        })
         .get("/api/sesiones/:id/rupturas", {
             let ide = l;
             move |p| con_sesion(&ide, p, |s| ok(Json::objeto([("rupturas", rupturas(s))])))
@@ -659,6 +750,29 @@ pub fn router(ide: Arc<Ide>) -> Router {
                                 Ok(()) => ok(estado(s)),
                                 Err(e) => error(422, e.to_string()),
                             };
+                        }
+                        "instante" => {
+                            let n = match num_de(&j, "n", u64::MAX) {
+                                Ok(n) if n != u64::MAX => n,
+                                Ok(_) => return error(400, "falta `n`"),
+                                Err(r) => return r,
+                            };
+                            return match s.depurador.ir_a(n) {
+                                Ok(()) => ok(estado(s)),
+                                Err(e) => error(422, e.to_string()),
+                            };
+                        }
+                        "orden" => {
+                            let linea = match texto_de(&j, "linea") {
+                                Ok(l) => l.to_string(),
+                                Err(r) => return r,
+                            };
+                            let r = s.sesion.ejecutar(&linea);
+                            return ok(Json::objeto([
+                                ("texto", r.texto.into()),
+                                ("salir", r.salir.into()),
+                                ("estado", estado(s)),
+                            ]));
                         }
                         "grabar" => {
                             s.depurador

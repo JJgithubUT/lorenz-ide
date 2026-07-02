@@ -586,3 +586,82 @@ fn compilar_sgt_con_diagnosticos() {
         400
     );
 }
+
+#[test]
+fn traza_ordenes_eventos_y_explicacion() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let base = format!("/api/sesiones/{id}");
+    c.pedir(
+        "POST",
+        &format!("{base}/grabar"),
+        Some(r#"{"activa":true}"#),
+    );
+    c.pedir("POST", &format!("{base}/paso"), Some(r#"{"n":3}"#));
+    let (_, e) = c.pedir("GET", &format!("{base}/estado"), None);
+    assert_eq!(entero(&e, "instante"), 3);
+    assert!(entero(&e, "traza_longitud") >= 3);
+    let (s, j) = c.pedir("POST", &format!("{base}/instante"), Some(r#"{"n":1}"#));
+    assert_eq!(s, 200);
+    assert_eq!(entero(&j, "instante"), 1);
+    assert_eq!(entero(&j, "pc"), 1);
+    assert_eq!(
+        c.pedir("POST", &format!("{base}/instante"), Some(r#"{"n":999}"#))
+            .0,
+        422
+    );
+    assert_eq!(
+        c.pedir("POST", &format!("{base}/instante"), Some("{}")).0,
+        400
+    );
+    let (_, x) = c.pedir("GET", &format!("{base}/explicacion"), None);
+    assert!(x
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("ADDI"));
+    assert!(x.get("registros").unwrap().como_lista().is_some());
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"registros"}"#),
+    );
+    assert!(o
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("R1"));
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"paso"}"#),
+    );
+    assert_eq!(entero(o.get("estado").unwrap(), "instante"), 2);
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"nada"}"#),
+    );
+    assert!(o
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .starts_with("error"));
+    let (e, ev) = c.pedir("GET", &format!("{base}/eventos"), None);
+    assert_eq!(e, 200);
+    assert!(ev
+        .get("interrupciones")
+        .unwrap()
+        .como_lista()
+        .unwrap()
+        .is_empty());
+}
