@@ -8,7 +8,7 @@
   var elementos = {};    // id -> elemento .panel
   var disposicion = {};  // id -> {zona, orden, flotante, x, y, colapsado}
 
-  function guardar() { L.guardado.escribir('disposicion', disposicion); }
+  function guardar() { L.guardado.escribir('disposicion', disposicion); setTimeout(function () { if (L.emit) L.emit('disposicion'); }, 0); }
 
   function zona(z) { return document.getElementById('zona-' + z); }
 
