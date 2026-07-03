@@ -567,6 +567,62 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         })
+        .get("/api/sesiones/:id/mapa", {
+            let ide = ide.clone();
+            move |p| {
+                let bloque = p
+                    .consulta("bloque")
+                    .map_or(Some(64), numero)
+                    .filter(|b| (1..=4096).contains(b));
+                let Some(bloque) = bloque else {
+                    return error(400, "`bloque` debe estar entre 1 y 4096");
+                };
+                con_sesion(&ide, p, |s| {
+                    let e = s.depurador.emulador();
+                    let m = e.memoria();
+                    let regiones: Vec<Json> = e
+                        .maquina()
+                        .regiones
+                        .iter()
+                        .map(|r| {
+                            let total = r.hasta - r.desde + 1;
+                            let bloques = total.div_ceil(bloque);
+                            // Por bloque: cuantas celdas tienen algo distinto de cero.
+                            let ocupacion: Vec<Json> = (0..bloques.min(4096))
+                                .map(|b| {
+                                    let ini = r.desde + b * bloque;
+                                    let fin = (ini + bloque - 1).min(r.hasta);
+                                    let ocupadas = (ini..=fin)
+                                        .filter(|d| {
+                                            m.leer_privilegiado(*d).map_or(false, |v| v != 0)
+                                        })
+                                        .count();
+                                    Json::from(ocupadas)
+                                })
+                                .collect();
+                            Json::objeto([
+                                ("nombre", r.nombre.as_str().into()),
+                                ("desde", r.desde.into()),
+                                ("hasta", r.hasta.into()),
+                                ("lectura", r.acceso.lectura.into()),
+                                ("escritura", r.acceso.escritura.into()),
+                                (
+                                    "dispositivo",
+                                    r.dispositivo.clone().map_or(Json::Nulo, Json::from),
+                                ),
+                                ("ocupacion", ocupacion.into()),
+                            ])
+                        })
+                        .collect();
+                    ok(Json::objeto([
+                        ("bloque", bloque.into()),
+                        ("regiones", regiones.into()),
+                        ("pc", e.estado().pc().into()),
+                        ("sp", e.estado().sp().map_or(Json::Nulo, Json::from)),
+                    ]))
+                })
+            }
+        })
         .get("/api/sesiones/:id/eventos", {
             let ide = ide.clone();
             move |p| {

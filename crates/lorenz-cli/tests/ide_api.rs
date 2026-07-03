@@ -665,3 +665,46 @@ fn traza_ordenes_eventos_y_explicacion() {
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn mapa_de_memoria_por_regiones() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let base = format!("/api/sesiones/{id}");
+    let (s, j) = c.pedir("GET", &format!("{base}/mapa?bloque=16"), None);
+    assert_eq!(s, 200);
+    assert_eq!(entero(&j, "bloque"), 16);
+    let regiones = j.get("regiones").and_then(Json::como_lista).unwrap();
+    assert!(!regiones.is_empty());
+    for r in regiones {
+        let desde = entero(r, "desde");
+        let hasta = entero(r, "hasta");
+        let esperados = ((hasta - desde + 1) as usize).div_ceil(16);
+        assert_eq!(
+            r.get("ocupacion").and_then(Json::como_lista).unwrap().len(),
+            esperados
+        );
+    }
+    // El programa cargado ocupa el primer bloque de alguna region.
+    let ocupado = regiones.iter().any(|r| {
+        r.get("ocupacion")
+            .and_then(Json::como_lista)
+            .unwrap()
+            .iter()
+            .any(|o| o.como_entero().unwrap_or(0) > 0)
+    });
+    assert!(ocupado);
+    assert_eq!(
+        c.pedir("GET", &format!("{base}/mapa?bloque=0"), None).0,
+        400
+    );
+}
