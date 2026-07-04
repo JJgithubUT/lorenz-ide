@@ -149,3 +149,13 @@ code, pre, .mono { font-family: var(--fuente); }
 .atajos { width: 100%; border-collapse: collapse; } .atajos th { text-align: left; font-weight: normal; } .atajos td, .atajos th { border-bottom: 1px solid var(--color-borde); padding: .15rem .2rem; }
 fieldset { border: 1px solid var(--color-borde); border-radius: var(--radio); margin: .3rem 0; }
 #zona-izq { flex: 0 1 17rem; min-width: 8rem; } #zona-der { flex: 0 1 22rem; min-width: 10rem; } #zonas { overflow: hidden; }
+
+/* Depuracion avanzada */
+.hex { overflow: auto; } .fila-hex { display: flex; gap: .15rem; white-space: nowrap; } .dir-hex { color: var(--color-suave); width: 4.2ch; }
+.celda { border: 0; background: transparent; padding: 0 .15rem; font-family: var(--fuente); } .celda:hover { background: rgba(255,255,255,.1); }
+.celda.cambio { color: var(--color-acento); font-weight: bold; } .edicion { font-family: var(--fuente); }
+#dato-svg { max-height: 14rem; } .caja { fill: var(--color-superficie); stroke: var(--color-borde); stroke-width: 2; } .caja.activa { stroke: var(--color-acento); stroke-width: 3; }
+.caja-texto { fill: var(--color-texto); font-size: 11px; } .flujo { fill: none; stroke: var(--color-borde); stroke-width: 2; stroke-dasharray: 4 4; }
+.flujo.activo { stroke: var(--color-acento); stroke-width: 3; stroke-dasharray: none; } .punta { fill: var(--color-acento); } .dato-punto { fill: var(--color-acento); }
+#mapa-lienzo { width: 100%; max-width: 40rem; image-rendering: pixelated; border: 1px solid var(--color-borde); }
+.etiqueta-evento { color: var(--color-acento); font-weight: bold; }
