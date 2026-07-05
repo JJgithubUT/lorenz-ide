@@ -708,3 +708,65 @@ fn mapa_de_memoria_por_regiones() {
         400
     );
 }
+
+#[test]
+fn el_ide_cubre_todas_las_ordenes_del_depurador() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let (_, j) = c.pedir(
+        "POST",
+        &format!("/api/sesiones/{id}/orden"),
+        Some(r#"{"linea":"ayuda"}"#),
+    );
+    let ayuda = j
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .to_string();
+    // Las ordenes son las palabras que abren una linea sangrada con dos espacios.
+    let mut ordenes: Vec<String> = ayuda
+        .lines()
+        .filter(|l| l.starts_with("  ") && !l.starts_with("   "))
+        .filter_map(|l| l.split_whitespace().next())
+        .map(str::to_string)
+        .collect();
+    ordenes.sort();
+    ordenes.dedup();
+    assert!(ordenes.len() >= 30, "{ordenes:?}");
+    let tabla: Vec<&str> = lorenz_cli::ide::paridad::PARIDAD
+        .iter()
+        .map(|p| p.0)
+        .collect();
+    for o in &ordenes {
+        assert!(
+            tabla.contains(&o.as_str()),
+            "la orden `{o}` no tiene equivalente en el IDE"
+        );
+    }
+    for t in &tabla {
+        assert!(
+            ordenes.iter().any(|o| o == t),
+            "`{t}` ya no existe en el depurador"
+        );
+    }
+    // Cada orden se entiende en el panel de ordenes: ninguna da «desconocida».
+    for o in &ordenes {
+        if matches!(o.as_str(), "fin" | "explorar") {
+            continue;
+        }
+        let cuerpo = format!(r#"{{"linea":"{o}"}}"#);
+        let (s, r) = c.pedir("POST", &format!("/api/sesiones/{id}/orden"), Some(&cuerpo));
+        assert_eq!(s, 200);
+        let t = r.get("texto").and_then(Json::como_texto).unwrap_or("");
+        assert!(!t.contains("desconocida"), "{o}: {t}");
+    }
+}

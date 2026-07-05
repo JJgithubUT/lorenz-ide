@@ -5,6 +5,7 @@
 
 mod api;
 pub mod editor;
+pub mod paridad;
 mod sesion;
 
 pub use api::router;
