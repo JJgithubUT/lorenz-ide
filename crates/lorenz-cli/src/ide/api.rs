@@ -11,18 +11,18 @@ const LIMITE_PASO: u64 = 10_000_000;
 const MEMORIA_MAX: u64 = 4096;
 const ARCHIVOS_MAX: usize = 5000;
 
-fn ok(j: Json) -> Respuesta {
+pub(super) fn ok(j: Json) -> Respuesta {
     Respuesta::json(200, &j.serializar())
 }
 
-fn error(estado: u16, m: impl Into<String>) -> Respuesta {
+pub(super) fn error(estado: u16, m: impl Into<String>) -> Respuesta {
     Respuesta::json(
         estado,
         &Json::objeto([("error", Json::texto(m))]).serializar(),
     )
 }
 
-fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
+pub(super) fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
     let t = p
         .cuerpo_texto()
         .map_err(|_| error(400, "el cuerpo no es UTF-8"))?;
@@ -32,13 +32,13 @@ fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
     Json::analizar(t).map_err(|e| error(400, format!("JSON invalido: {e}")))
 }
 
-fn texto_de<'a>(j: &'a Json, k: &str) -> Result<&'a str, Respuesta> {
+pub(super) fn texto_de<'a>(j: &'a Json, k: &str) -> Result<&'a str, Respuesta> {
     j.get(k)
         .and_then(Json::como_texto)
         .ok_or_else(|| error(400, format!("falta `{k}` (texto)")))
 }
 
-fn num_de(j: &Json, k: &str, defecto: u64) -> Result<u64, Respuesta> {
+pub(super) fn num_de(j: &Json, k: &str, defecto: u64) -> Result<u64, Respuesta> {
     match j.get(k) {
         None | Some(Json::Nulo) => Ok(defecto),
         Some(v) => v
@@ -291,6 +291,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
     );
     let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
     let para_editor = ide.clone();
+    let para_graficos = ide.clone();
     let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/web/:archivo", |p| {
@@ -883,5 +884,6 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         });
-    super::editor::rutas(base, para_editor)
+    let con_editor = super::editor::rutas(base, para_editor);
+    super::graficos::rutas(con_editor, para_graficos)
 }

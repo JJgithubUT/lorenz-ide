@@ -5,6 +5,7 @@
 
 mod api;
 pub mod editor;
+mod graficos;
 pub mod paridad;
 mod sesion;
 

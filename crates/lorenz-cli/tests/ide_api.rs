@@ -51,6 +51,16 @@ impl Cliente {
         let texto = o.split_once("\r\n\r\n").map_or("", |x| x.1);
         (estado, Json::analizar(texto).unwrap_or(Json::Nulo))
     }
+
+    fn pedir_bytes(&self, metodo: &str, ruta: &str) -> (u16, Vec<u8>) {
+        let mut c = TcpStream::connect(self.0.direccion()).unwrap();
+        write!(c, "{metodo} {ruta} HTTP/1.1\r\nHost: localhost\r\n\r\n").unwrap();
+        let mut o = Vec::new();
+        c.read_to_end(&mut o).unwrap();
+        let estado = std::str::from_utf8(&o[9..12]).unwrap().parse().unwrap();
+        let corte = o.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+        (estado, o[corte..].to_vec())
+    }
 }
 
 fn entero(j: &Json, k: &str) -> i64 {
@@ -769,4 +779,48 @@ fn el_ide_cubre_todas_las_ordenes_del_depurador() {
         let t = r.get("texto").and_then(Json::como_texto).unwrap_or("");
         assert!(!t.contains("desconocida"), "{o}: {t}");
     }
+}
+
+#[test]
+fn visor_de_la_unidad_grafica() {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let c = Cliente::nuevo(&raiz);
+    // Una maquina sin [gpu] se rechaza con un mensaje claro.
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/gpu",
+        Some(r#"{"maquina":"ejemplos/risc-16/maquina.toml","programa":"ejemplos/gpu-16/programas/triangulo.s"}"#),
+    );
+    assert_eq!(s, 422, "{j:?}");
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/gpu",
+        Some(r#"{"maquina":"ejemplos/gpu-16/maquina.toml","programa":"ejemplos/gpu-16/programas/triangulo.s"}"#),
+    );
+    assert_eq!(s, 200, "{j:?}");
+    let id = entero(&j, "id");
+    assert!(entero(&j, "ancho") > 0 && entero(&j, "alto") > 0);
+    let base = format!("/api/gpu/{id}");
+    let (_, e0) = c.pedir("GET", &format!("{base}/estado"), None);
+    assert_eq!(entero(&e0, "instrucciones"), 0);
+    // A medio programa todavia no esta todo dibujado; al terminar, si.
+    let (s, e1) = c.pedir("POST", &format!("{base}/avanzar"), Some(r#"{"n":8}"#));
+    assert_eq!(s, 200);
+    assert_eq!(entero(&e1, "instrucciones"), 8);
+    let (_, e2) = c.pedir("POST", &format!("{base}/avanzar"), Some(r#"{"n":1000}"#));
+    assert_eq!(e2.get("detenida").and_then(Json::como_bool), Some(true));
+    let m = e2.get("metricas").unwrap();
+    assert!(entero(m, "triangulos") >= 1);
+    assert!(entero(m, "pixeles_escritos") > 0);
+    // La imagen es un PNG de verdad.
+    let (s, cuerpo) = c.pedir_bytes("GET", &format!("{base}/imagen"));
+    assert_eq!(s, 200);
+    assert_eq!(&cuerpo[..8], b"\x89PNG\r\n\x1a\n");
+    let (_, px) = c.pedir("GET", &format!("{base}/pixel?x=3&y=5"), None);
+    assert!(px
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("(3, 5)"));
+    assert_eq!(c.pedir("GET", "/api/gpu/999/estado", None).0, 404);
 }
