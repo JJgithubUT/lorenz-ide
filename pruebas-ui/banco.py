@@ -34,6 +34,12 @@ class Proyecto:
             f.write("        LDI A, 0x48\n        OUT A\n        LDI A, 0x69\n        OUT A\n        LDI A, 0xFF\n        ST [0xF000], A\n        HLT\n")
         with open(os.path.join(self.dir, "q.s"), "w") as f:
             f.write("inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        HLT\n")
+        gpu = os.path.join(self.dir, "z-gpu")
+        os.makedirs(os.path.join(gpu, "risc-16"))
+        os.makedirs(os.path.join(gpu, "gpu-16", "programas"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "risc-16", "maquina.toml"), os.path.join(gpu, "risc-16"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "gpu-16", "maquina.toml"), os.path.join(gpu, "gpu-16"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "gpu-16", "programas", "triangulo.s"), os.path.join(gpu, "gpu-16", "programas"))
         self.puerto = puerto_libre()
         self.proc = subprocess.Popen(
             [binario, "ide", self.dir, "--puerto", str(self.puerto), "--segundos", "120"],
@@ -664,7 +670,25 @@ def prueba_consola_de_ordenes_del_depurador(n, p):
     assert n.pag.input_value("#ordenes-entrada") == "ayuda"
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador]}
+@con_navegador
+def prueba_visor_de_la_unidad_grafica_en_vivo(n, p):
+    abrir_panel(n, "gpu")
+    n.pag.select_option("#sel-maquina", "z-gpu/gpu-16/maquina.toml")
+    n.pag.select_option("#sel-programa", "z-gpu/gpu-16/programas/triangulo.s")
+    n.pag.click("#gpu-abrir")
+    n.pag.wait_for_function("document.getElementById('gpu-info').textContent.includes('×')")
+    assert n.pag.get_attribute("#gpu-lienzo", "data-pixeles") == "0"
+    n.pag.click("#gpu-vivo")
+    n.pag.wait_for_function("document.getElementById('gpu-info').textContent.includes('DETENIDA')")
+    n.pag.wait_for_function("+document.getElementById('gpu-lienzo').getAttribute('data-pixeles') > 0")
+    n.pag.wait_for_function("+document.getElementById('gpu-lienzo').getAttribute('data-cuadros') >= 2")
+    azul = n.pag.evaluate("(() => { const c = document.getElementById('gpu-lienzo'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let b = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 2] > 200 && d[i] < 60) b++; return b; })()")
+    assert azul > 0, "el triangulo azul debe verse en el lienzo"
+    n.pag.click("#gpu-lienzo", position={"x": 5, "y": 5})
+    n.pag.wait_for_function("document.getElementById('gpu-pixel').textContent.includes('r=')")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo]}
 
 
 def principal(argv):

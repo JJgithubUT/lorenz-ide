@@ -242,6 +242,71 @@
     }
   });
 
+  // --- visor de la unidad grafica en tiempo real (RF-GPU-003) -------------------------------------
+  L.paneles.registrar({
+    id: 'gpu', titulo: 'Unidad gráfica', zona: 'der', colapsado: true,
+    construir: function (cuerpo) {
+      var lienzo = L.el('canvas', { id: 'gpu-lienzo', width: '64', height: '64', tabindex: '0', role: 'img', 'aria-label': 'Framebuffer de la unidad gráfica' });
+      var info = L.el('p', { id: 'gpu-info', class: 'mono', role: 'status', 'aria-live': 'polite', texto: 'Sin sesión gráfica.' });
+      var pixel = L.el('p', { id: 'gpu-pixel', class: 'mono suave', texto: 'Pulsa un píxel para inspeccionarlo.' });
+      var ctx = lienzo.getContext('2d');
+      var id = null, vivo = false, ocupado = false, dim = [0, 0];
+      function boton(idb, texto, f) { var b = L.el('button', { type: 'button', id: idb, texto: texto }); b.addEventListener('click', f); return b; }
+      function dibujar() {
+        var img = new Image();
+        img.onload = function () {
+          var k = Math.max(1, Math.floor(256 / Math.max(img.width, img.height)));
+          lienzo.width = img.width * k; lienzo.height = img.height * k;
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+          lienzo.setAttribute('data-cuadros', String((+lienzo.getAttribute('data-cuadros') || 0) + 1));
+        };
+        img.src = '/api/gpu/' + id + '/imagen?t=' + Date.now();
+      }
+      function resumen(e) {
+        dim = [e.ancho, e.alto];
+        var m = e.metricas;
+        info.textContent = 'Instr ' + e.instrucciones + ' · PC 0x' + L.hex(e.pc, 4) + (e.detenida ? ' · DETENIDA' : '') + ' · ' + e.ancho + '×' + e.alto +
+          ' · GPU ' + Math.round(m.utilizacion * 100) + ' % · ' + m.comandos + ' comandos · ' + m.triangulos + ' triángulos · ' + m.pixeles_escritos + ' píxeles';
+        lienzo.setAttribute('data-pixeles', String(m.pixeles_escritos));
+        if (e.detenida) vivo = false;
+      }
+      function avanzar(n) {
+        if (id == null || ocupado) return Promise.resolve();
+        ocupado = true;
+        return L.api('POST', '/api/gpu/' + id + '/avanzar', { n: n }).then(function (r) {
+          ocupado = false;
+          if (!r.ok) { vivo = false; info.textContent = 'Error: ' + (r.datos.error || r.estado); return; }
+          resumen(r.datos); dibujar();
+        });
+      }
+      function bucle() { if (!vivo) return; avanzar(+L.guardado.leer('gpu-lote', 20)).then(function () { if (vivo) setTimeout(bucle, 120); }); }
+      function abrir() {
+        var m = document.getElementById('sel-maquina').value, p = document.getElementById('sel-programa').value;
+        return L.api('POST', '/api/gpu', { maquina: m, programa: p }).then(function (r) {
+          if (!r.ok) { info.textContent = 'No se pudo abrir: ' + (r.datos.error || r.estado); L.estado(info.textContent, 'error'); id = null; return false; }
+          id = r.datos.id; resumen(r.datos); dibujar(); return true;
+        });
+      }
+      cuerpo.append(
+        L.el('div', { class: 'fila' }, [
+          boton('gpu-abrir', 'Abrir con la máquina elegida', abrir),
+          boton('gpu-paso', '⏭ 1 instrucción', function () { avanzar(1); }),
+          boton('gpu-vivo', '▶ En vivo', function () { if (id == null) return; vivo = true; bucle(); }),
+          boton('gpu-parar', '⏸ Parar', function () { vivo = false; }),
+          boton('gpu-fin', 'Terminar', function () { avanzar(5000000); })
+        ]),
+        lienzo, info, pixel);
+      lienzo.addEventListener('click', function (ev) {
+        if (id == null || !dim[0]) return;
+        var r = lienzo.getBoundingClientRect();
+        var x = Math.floor((ev.clientX - r.left) / r.width * dim[0]), y = Math.floor((ev.clientY - r.top) / r.height * dim[1]);
+        L.api('GET', '/api/gpu/' + id + '/pixel?x=' + x + '&y=' + y).then(function (q) { if (q.ok) pixel.textContent = q.datos.texto; });
+      });
+      L.on('maquina', function () { vivo = false; id = null; info.textContent = 'Sin sesión gráfica.'; });
+    }
+  });
+
   A.orden = function (linea) {
     return (sesion.id == null ? L.depurador.abrir() : Promise.resolve(true)).then(function (ok) {
       if (!ok) return { texto: 'No hay sesión: elige máquina y programa.' };
