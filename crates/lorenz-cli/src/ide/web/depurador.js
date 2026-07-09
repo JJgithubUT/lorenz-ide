@@ -128,8 +128,8 @@
       (function ciclo() {
         if (!sesion.corriendo) return;
         var lento = sesion.lento;
-        var peticion = lento ? { n: 1 } : { limite: 4000 };
-        L.api('POST', '/api/sesiones/' + sesion.id + (lento ? '/paso' : '/continuar'), peticion).then(function (r) {
+        var peticion = { limite: lento ? 1 : 4000 };  // lenta: de una en una, y el depurador sigue respetando rupturas
+        L.api('POST', '/api/sesiones/' + sesion.id + '/continuar', peticion).then(function (r) {
           if (!r.ok) { sesion.corriendo = false; actualizarBotones(); L.estado(r.datos.error || 'Error', 'error'); return; }
           aplicar(r.datos.estado);
           var t = r.datos.parada.tipo;

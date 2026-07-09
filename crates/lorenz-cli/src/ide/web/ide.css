@@ -159,3 +159,6 @@ fieldset { border: 1px solid var(--color-borde); border-radius: var(--radio); ma
 .flujo.activo { stroke: var(--color-acento); stroke-width: 3; stroke-dasharray: none; } .punta { fill: var(--color-acento); } .dato-punto { fill: var(--color-acento); }
 #mapa-lienzo { width: 100%; max-width: 40rem; image-rendering: pixelated; border: 1px solid var(--color-borde); }
 .etiqueta-evento { color: var(--color-acento); font-weight: bold; }
+/* Las zonas laterales y la de abajo desplazan sus paneles en vez de apretarlos hasta taparse. */
+#zona-izq > .panel, #zona-der > .panel, #zona-abajo > .panel { flex-shrink: 0; }
+#zona-izq > .panel > .cuerpo, #zona-der > .panel > .cuerpo, #zona-abajo > .panel > .cuerpo { max-height: 20rem; }
