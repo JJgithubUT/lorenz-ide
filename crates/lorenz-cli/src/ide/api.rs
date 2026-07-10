@@ -594,9 +594,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
                                     let ini = r.desde + b * bloque;
                                     let fin = (ini + bloque - 1).min(r.hasta);
                                     let ocupadas = (ini..=fin)
-                                        .filter(|d| {
-                                            m.leer_privilegiado(*d).map_or(false, |v| v != 0)
-                                        })
+                                        .filter(|d| m.leer_privilegiado(*d).is_ok_and(|v| v != 0))
                                         .count();
                                     Json::from(ocupadas)
                                 })
