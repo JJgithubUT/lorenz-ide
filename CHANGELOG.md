@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.8.0 — 2026-10-16 — Depuracion grafica avanzada
+
+- Control deslizante sobre la traza y velocidad de ejecucion (la lenta respeta las rupturas).
+- Camino del dato animado, mapa de memoria, editor hexadecimal en vivo y linea de tiempo de
+  interrupciones, E/S y paradas.
+- Panel de ordenes con todas las del depurador de linea de comandos; una prueba comprueba que cada
+  orden tiene su equivalente en el IDE (`ide::paridad`).
+- Visor de la unidad grafica en tiempo real (`/api/gpu`, panel Unidad grafica).
+
 ## 0.7.0 — 2026-10-16 — El IDE
 
 `lorenz ide [carpeta]` abre una interfaz web local (solo `127.0.0.1`) sobre el proyecto. No hay
