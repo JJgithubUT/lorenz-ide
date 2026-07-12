@@ -40,6 +40,12 @@ Todo es JSON; los errores salen como `{"error": "..."}`.
 | `GET .../desensamblado?desde=&n=` | lineas con etiqueta, linea de fuente y `actual` |
 | `GET/POST .../rupturas`, `DELETE .../rupturas/:id` | puntos de ruptura (con condicion) |
 | `GET .../pantalla/:nombre` · `.../serie/:nombre` | pixeles de una pantalla; texto de una UART |
+| `POST .../instante` `{n}` · `orden` `{linea}` | salta a un instante de la traza; ejecuta una orden del depurador de linea de comandos |
+| `GET .../mapa?bloque=` | regiones de memoria con su ocupacion por bloques, PC y SP |
+| `GET .../eventos` · `.../explicacion` | interrupciones atendidas; que hara la proxima instruccion |
+| `POST /api/gpu` `{maquina, programa}` | abre una sesion grafica (la maquina necesita `[gpu]`) |
+| `POST /api/gpu/:id/avanzar` `{n}` · `GET .../estado` | ejecuta n instrucciones de la CPU junto a la GPU; metricas |
+| `GET /api/gpu/:id/imagen?ampliar=` · `.../pixel?x=&y=` | framebuffer como PNG; describe un pixel |
 
 Las respuestas de `paso`, `continuar` y `hasta` traen `parada` (`tipo`: `paso`, `detenida`,
 `ruptura`, `observacion`, `llegada`, `retorno`, `limite`, `fallo`, `condicion`) y el `estado`.
@@ -98,3 +104,12 @@ Los archivos de `crates/lorenz-cli/src/ide/web/` se incrustan en el binario; cad
 sus paneles en `L.paneles`. No hay dependencias ni paso de construccion. Las pruebas de
 `pruebas-ui/banco.py` abren cada pantalla en Chromium (varias a la vez); `LORENZ_UI_SERIE=1` las
 fuerza en serie.
+
+## Depuracion avanzada
+
+Paneles del depurador grafico: **Instante y velocidad** (control deslizante sobre la traza y
+ejecucion lenta), **Camino del dato** (que mueve la proxima instruccion entre memoria, registros,
+unidad aritmetica, PC y puertos; el rotulo lo dice con palabras), **Mapa de memoria**,
+**Memoria** (hexadecimal, con celdas editables), **Linea de tiempo**, **Ordenes del depurador** y
+**Unidad grafica**. `ide::paridad` lista cada orden de `lorenz depurar` con su equivalente grafico y
+una prueba la compara con la ayuda del depurador.

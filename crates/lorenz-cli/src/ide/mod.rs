@@ -5,6 +5,8 @@
 
 mod api;
 pub mod editor;
+mod graficos;
+pub mod paridad;
 mod sesion;
 
 pub use api::router;
@@ -20,7 +22,7 @@ macro_rules! estatico {
 #[rustfmt::skip]
 pub const ESTATICOS: &[(&str, &str)] = &[
     estatico!("ide.css"), estatico!("util.js"), estatico!("atajos.js"), estatico!("paneles.js"),
-    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("main.js"),
+    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("depuracion.js"), estatico!("main.js"),
 ];
 
 /// Tipo de contenido segun la extension.

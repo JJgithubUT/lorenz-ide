@@ -11,18 +11,18 @@ const LIMITE_PASO: u64 = 10_000_000;
 const MEMORIA_MAX: u64 = 4096;
 const ARCHIVOS_MAX: usize = 5000;
 
-fn ok(j: Json) -> Respuesta {
+pub(super) fn ok(j: Json) -> Respuesta {
     Respuesta::json(200, &j.serializar())
 }
 
-fn error(estado: u16, m: impl Into<String>) -> Respuesta {
+pub(super) fn error(estado: u16, m: impl Into<String>) -> Respuesta {
     Respuesta::json(
         estado,
         &Json::objeto([("error", Json::texto(m))]).serializar(),
     )
 }
 
-fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
+pub(super) fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
     let t = p
         .cuerpo_texto()
         .map_err(|_| error(400, "el cuerpo no es UTF-8"))?;
@@ -32,13 +32,13 @@ fn cuerpo(p: &Peticion) -> Result<Json, Respuesta> {
     Json::analizar(t).map_err(|e| error(400, format!("JSON invalido: {e}")))
 }
 
-fn texto_de<'a>(j: &'a Json, k: &str) -> Result<&'a str, Respuesta> {
+pub(super) fn texto_de<'a>(j: &'a Json, k: &str) -> Result<&'a str, Respuesta> {
     j.get(k)
         .and_then(Json::como_texto)
         .ok_or_else(|| error(400, format!("falta `{k}` (texto)")))
 }
 
-fn num_de(j: &Json, k: &str, defecto: u64) -> Result<u64, Respuesta> {
+pub(super) fn num_de(j: &Json, k: &str, defecto: u64) -> Result<u64, Respuesta> {
     match j.get(k) {
         None | Some(Json::Nulo) => Ok(defecto),
         Some(v) => v
@@ -172,6 +172,11 @@ fn estado(s: &SesionIde) -> Json {
         ("programa", s.programa.as_str().into()),
         ("dispositivos", dispositivos(s)),
         ("arranque", s.depurador.maquina().arranque.into()),
+        ("instante", s.depurador.instante().into()),
+        (
+            "traza_longitud",
+            s.depurador.traza().map_or(0, |t| t.longitud()).into(),
+        ),
         (
             "bits_palabra",
             u64::from(s.depurador.maquina().bits_palabra).into(),
@@ -286,6 +291,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
     );
     let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
     let para_editor = ide.clone();
+    let para_graficos = ide.clone();
     let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/web/:archivo", |p| {
@@ -562,6 +568,146 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         })
+        .get("/api/sesiones/:id/mapa", {
+            let ide = ide.clone();
+            move |p| {
+                let bloque = p
+                    .consulta("bloque")
+                    .map_or(Some(64), numero)
+                    .filter(|b| (1..=4096).contains(b));
+                let Some(bloque) = bloque else {
+                    return error(400, "`bloque` debe estar entre 1 y 4096");
+                };
+                con_sesion(&ide, p, |s| {
+                    let e = s.depurador.emulador();
+                    let m = e.memoria();
+                    let regiones: Vec<Json> = e
+                        .maquina()
+                        .regiones
+                        .iter()
+                        .map(|r| {
+                            let total = r.hasta - r.desde + 1;
+                            let bloques = total.div_ceil(bloque);
+                            // Por bloque: cuantas celdas tienen algo distinto de cero.
+                            let ocupacion: Vec<Json> = (0..bloques.min(4096))
+                                .map(|b| {
+                                    let ini = r.desde + b * bloque;
+                                    let fin = (ini + bloque - 1).min(r.hasta);
+                                    let ocupadas = (ini..=fin)
+                                        .filter(|d| m.leer_privilegiado(*d).is_ok_and(|v| v != 0))
+                                        .count();
+                                    Json::from(ocupadas)
+                                })
+                                .collect();
+                            Json::objeto([
+                                ("nombre", r.nombre.as_str().into()),
+                                ("desde", r.desde.into()),
+                                ("hasta", r.hasta.into()),
+                                ("lectura", r.acceso.lectura.into()),
+                                ("escritura", r.acceso.escritura.into()),
+                                (
+                                    "dispositivo",
+                                    r.dispositivo.clone().map_or(Json::Nulo, Json::from),
+                                ),
+                                ("ocupacion", ocupacion.into()),
+                            ])
+                        })
+                        .collect();
+                    ok(Json::objeto([
+                        ("bloque", bloque.into()),
+                        ("regiones", regiones.into()),
+                        ("pc", e.estado().pc().into()),
+                        ("sp", e.estado().sp().map_or(Json::Nulo, Json::from)),
+                    ]))
+                })
+            }
+        })
+        .get("/api/sesiones/:id/eventos", {
+            let ide = ide.clone();
+            move |p| {
+                con_sesion(&ide, p, |s| {
+                    let e = s.depurador.emulador();
+                    let ints: Vec<Json> = e
+                        .interrupciones_atendidas()
+                        .iter()
+                        .map(|i| {
+                            Json::objeto([
+                                ("linea", u64::from(i.linea).into()),
+                                ("ciclo", i.ciclo.into()),
+                                ("instruccion", i.instruccion.into()),
+                                ("pc_interrumpido", i.pc_interrumpido.into()),
+                                ("manejador", i.manejador.into()),
+                            ])
+                        })
+                        .collect();
+                    ok(Json::objeto([
+                        ("interrupciones", ints.into()),
+                        ("sin_registrar", e.interrupciones_sin_registrar().into()),
+                        (
+                            "pendientes",
+                            e.interrupciones_pendientes()
+                                .into_iter()
+                                .map(|l| Json::from(u64::from(l)))
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                    ]))
+                })
+            }
+        })
+        .get("/api/sesiones/:id/explicacion", {
+            let ide = ide.clone();
+            move |p| {
+                con_sesion(&ide, p, |s| match s.depurador.explicar() {
+                    Ok(x) => ok(Json::objeto([
+                        ("direccion", x.direccion.into()),
+                        ("texto", x.texto.into()),
+                        ("descripcion", x.descripcion.into()),
+                        (
+                            "operaciones",
+                            x.operaciones
+                                .into_iter()
+                                .map(Json::from)
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        (
+                            "registros",
+                            x.registros
+                                .iter()
+                                .map(|r| {
+                                    Json::objeto([
+                                        ("nombre", r.nombre.as_str().into()),
+                                        ("antes", r.antes.into()),
+                                        ("despues", r.despues.into()),
+                                    ])
+                                })
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        (
+                            "escrituras",
+                            x.escrituras
+                                .iter()
+                                .map(|w| {
+                                    Json::objeto([
+                                        ("direccion", w.direccion.into()),
+                                        ("antes", w.antes.into()),
+                                        ("despues", w.despues.into()),
+                                    ])
+                                })
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ),
+                        ("salto", x.salto.map_or(Json::Nulo, Json::from)),
+                        ("pc_despues", x.pc_despues.into()),
+                        ("ciclos", x.ciclos.into()),
+                        ("detiene", x.detiene.into()),
+                    ])),
+                    Err(e) => error(422, e.to_string()),
+                })
+            }
+        })
         .get("/api/sesiones/:id/rupturas", {
             let ide = l;
             move |p| con_sesion(&ide, p, |s| ok(Json::objeto([("rupturas", rupturas(s))])))
@@ -660,6 +806,29 @@ pub fn router(ide: Arc<Ide>) -> Router {
                                 Err(e) => error(422, e.to_string()),
                             };
                         }
+                        "instante" => {
+                            let n = match num_de(&j, "n", u64::MAX) {
+                                Ok(n) if n != u64::MAX => n,
+                                Ok(_) => return error(400, "falta `n`"),
+                                Err(r) => return r,
+                            };
+                            return match s.depurador.ir_a(n) {
+                                Ok(()) => ok(estado(s)),
+                                Err(e) => error(422, e.to_string()),
+                            };
+                        }
+                        "orden" => {
+                            let linea = match texto_de(&j, "linea") {
+                                Ok(l) => l.to_string(),
+                                Err(r) => return r,
+                            };
+                            let r = s.sesion.ejecutar(&linea);
+                            return ok(Json::objeto([
+                                ("texto", r.texto.into()),
+                                ("salir", r.salir.into()),
+                                ("estado", estado(s)),
+                            ]));
+                        }
                         "grabar" => {
                             s.depurador
                                 .grabar(j.get("activa").and_then(Json::como_bool).unwrap_or(true));
@@ -713,5 +882,6 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 })
             }
         });
-    super::editor::rutas(base, para_editor)
+    let con_editor = super::editor::rutas(base, para_editor);
+    super::graficos::rutas(con_editor, para_graficos)
 }
