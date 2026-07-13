@@ -198,7 +198,7 @@ ver ni probar.
 | C6 | Accesibilidad: tamaño de texto, alto contraste, depurar solo con teclado, no depender del color | RF-IDE-031 a 034 | 16 |
 | C7 | Robustez: progreso en operaciones largas, autoguardado antes de compilar, recuperación tras cierre, documentación de la arquitectura dentro del programa | RF-IDE-035 a 038 | 18 |
 
-### Hito D — Depuración gráfica y visor de la GPU → v0.8.0 (358 → 366)
+### Hito D — Depuración gráfica y visor de la GPU → v0.8.0 (358 → 366) — **terminado**
 
 | # | Historia | Requisitos | Commits |
 | --- | --- | --- | --- |

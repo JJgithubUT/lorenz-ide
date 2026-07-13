@@ -128,8 +128,8 @@
       (function ciclo() {
         if (!sesion.corriendo) return;
         var lento = sesion.lento;
-        var peticion = lento ? { n: 1 } : { limite: 4000 };
-        L.api('POST', '/api/sesiones/' + sesion.id + (lento ? '/paso' : '/continuar'), peticion).then(function (r) {
+        var peticion = { limite: lento ? 1 : 4000 };  // lenta: de una en una, y el depurador sigue respetando rupturas
+        L.api('POST', '/api/sesiones/' + sesion.id + '/continuar', peticion).then(function (r) {
           if (!r.ok) { sesion.corriendo = false; actualizarBotones(); L.estado(r.datos.error || 'Error', 'error'); return; }
           aplicar(r.datos.estado);
           var t = r.datos.parada.tipo;
@@ -176,6 +176,10 @@
       aplicar(r.datos);
     });
   };
+
+  A.abrir = function () { return asegurar(); };
+  A.aplicarEstado = aplicar;
+  A.refrescarRupturas = refrescarRupturas;
 
   A.pedir = function (ruta) { return sesion.id == null ? Promise.resolve({ ok: false, datos: {} }) : L.api('GET', '/api/sesiones/' + sesion.id + '/' + ruta); };
 
@@ -306,31 +310,62 @@
     }
   });
 
-  // --- memoria --------------------------------------------------------------------------------
+  // --- memoria: editor hexadecimal en vivo (RF-DEP-037) -------------------------------------------
   L.paneles.registrar({
-    id: 'memoria', titulo: 'Memoria', zona: 'der', colapsado: true,
+    id: 'memoria', titulo: 'Memoria (editor hexadecimal)', zona: 'der', colapsado: true,
     construir: function (cuerpo) {
       var desde = L.el('input', { type: 'text', id: 'memoria-desde', value: '0x0000', 'aria-label': 'Dirección inicial', size: '8' });
-      var vista = L.el('pre', { id: 'memoria-vista', class: 'mono', tabindex: '0', 'aria-label': 'Volcado de memoria' });
-      function dir() { var v = desde.value.trim(); var n = /^0x/i.test(v) ? parseInt(v, 16) : parseInt(v, 10); return isNaN(n) ? 0 : n; }
+      var vista = L.el('div', { id: 'memoria-vista', class: 'mono hex', role: 'grid', 'aria-label': 'Memoria' });
+      var previo = {};
+      L.memoria = { irA: function (d) { desde.value = '0x' + L.hex(d, 4); pintar(); L.paneles.mostrar('memoria'); } };
+      function dir() { var v = desde.value.trim(); var n = /^0x/i.test(v) ? parseInt(v, 16) : parseInt(v, 10); return isNaN(n) || n < 0 ? 0 : n; }
+      function editar(celda, d, actual) {
+        var i = L.el('input', { type: 'text', class: 'edicion', value: '0x' + L.hex(actual || 0, 2), 'aria-label': 'Nuevo valor de la celda 0x' + L.hex(d, 4), size: '6' });
+        celda.replaceWith(i); i.focus(); i.select();
+        var hecho = false;
+        function fin(guardar) {
+          if (hecho) return; hecho = true;
+          if (guardar) {
+            var t = i.value.trim(), v = /^0x/i.test(t) ? parseInt(t, 16) : parseInt(t, 10);
+            if (isNaN(v) || v < 0) { L.estado('Valor inválido: ' + t, 'error'); pintar(); return; }
+            A.editar('memoria', { direccion: d, valor: v });
+          } else pintar();
+        }
+        i.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') fin(true); else if (ev.key === 'Escape') fin(false); });
+        i.addEventListener('blur', function () { fin(false); });
+      }
       function pintar() {
         if (!sesion.estado) { vista.textContent = 'Sin sesión.'; return; }
         var d0 = dir(), ancho = 8, filas = 16;
         A.pedir('memoria?desde=' + d0 + '&n=' + (ancho * filas)).then(function (r) {
           if (!r.ok) { vista.textContent = r.datos.error || ''; return; }
-          var c = r.datos.celdas, s = '';
+          var c = r.datos.celdas, nuevo = {};
           var dig = Math.max(2, Math.ceil((sesion.estado.bits_palabra || 8) / 4));
+          vista.textContent = '';
           for (var f = 0; f < filas; f++) {
-            s += L.hex(d0 + f * ancho, 4) + ':';
-            for (var i = 0; i < ancho; i++) { var v = c[f * ancho + i]; s += ' ' + (v == null ? '·'.repeat(dig) : L.hex(v, dig)); }
-            s += '\n';
+            var fila = L.el('div', { class: 'fila-hex', role: 'row' }, [L.el('span', { class: 'dir-hex', role: 'rowheader', texto: L.hex(d0 + f * ancho, 4) + ':' })]);
+            for (var i = 0; i < ancho; i++) {
+              (function (d, v) {
+                nuevo[d] = v;
+                var cambio = previo[d] !== undefined && previo[d] !== v;
+                var b = L.el('button', {
+                  type: 'button', class: 'celda' + (cambio ? ' cambio' : ''), role: 'gridcell', 'data-dir': d,
+                  title: 'Celda 0x' + L.hex(d, 4) + (cambio ? ' (cambió)' : '') + ' — clic para editar',
+                  texto: (v == null ? '·'.repeat(dig) : L.hex(v, dig)) + (cambio ? '*' : '')
+                });
+                b.addEventListener('click', function () { if (v != null) editar(b, d, v); });
+                fila.append(b);
+              })(d0 + f * ancho + i, c[f * ancho + i]);
+            }
+            vista.append(fila);
           }
-          vista.textContent = s;
+          previo = nuevo;
         });
       }
       desde.addEventListener('change', pintar);
       cuerpo.append(L.el('label', {}, ['Desde ', desde]), vista);
       L.on('estado', function () { if (!cuerpo.closest('.panel').classList.contains('colapsado')) pintar(); });
+      L.on('disposicion', function () { if (!cuerpo.closest('.panel').classList.contains('colapsado')) pintar(); });
     }
   });
 

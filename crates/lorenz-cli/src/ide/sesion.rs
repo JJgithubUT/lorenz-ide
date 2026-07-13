@@ -7,11 +7,24 @@ use std::sync::{Arc, Mutex};
 use lorenz_dbg::Depurador;
 use lorenz_emu::Emulador;
 
+impl std::ops::Deref for SesionIde {
+    type Target = lorenz_dbg::comandos::Sesion;
+    fn deref(&self) -> &Self::Target {
+        &self.sesion
+    }
+}
+
+impl std::ops::DerefMut for SesionIde {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.sesion
+    }
+}
+
 pub const MAX_SESIONES: usize = 16;
 
 /// Una ejecucion en curso, con su depurador.
 pub struct SesionIde {
-    pub depurador: Depurador,
+    pub sesion: lorenz_dbg::comandos::Sesion,
     pub maquina: String,
     pub programa: String,
 }
@@ -110,7 +123,7 @@ impl Ide {
         self.sesiones.lock().map_err(|_| "estado corrupto")?.insert(
             id,
             Arc::new(Mutex::new(SesionIde {
-                depurador,
+                sesion: lorenz_dbg::comandos::Sesion::nueva(depurador),
                 maquina: maquina_rel.into(),
                 programa: programa_rel.into(),
             })),

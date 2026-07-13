@@ -170,7 +170,7 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031), explicac
 | RF-DEP-019 | Registrar una traza completa mientras la grabacion esta activa | Hecho | `Traza`, `PasoTraza` |
 | RF-DEP-020 | Activar y desactivar la grabacion | Hecho | `Depurador::grabar`, `traza on/off` |
 | RF-DEP-021 | Retroceder un paso | Hecho | `Depurador::atras` |
-| RF-DEP-022 | Situarse en cualquier instante con un control deslizante | Parcial | `instante N` y `Depurador::ir_a`; el control grafico espera al IDE |
+| RF-DEP-022 | Situarse en cualquier instante con un control deslizante | Hecho | control deslizante `#instante-desliz` sobre `POST .../instante`; panel Instante y velocidad |
 | RF-DEP-023 | Mostrar registros, memoria y pantalla de ese instante | Hecho | `ir_a` restaura la maquina; `registros`, `volcar`, `pantalla` |
 | RF-DEP-024 | Quien escribio por ultima vez una direccion, y saltar | Hecho | `quien_escribio`, `Memoria::registrar_escrituras` |
 | RF-DEP-025 | Quien modifico por ultima vez un registro o bandera | Hecho | `quien_cambio` |
@@ -181,18 +181,18 @@ Linea de comandos (001-018), traza, retroceso y reproduccion (019-031), explicac
 | RF-DEP-030 | Guardar un fallo como archivo reproducible | Hecho | `reproducir::Fallo` (`lorenz-fallo-0.1`) |
 | RF-DEP-031 | Reproducirlo identico en otra instalacion | Hecho | `Fallo::reproducir`; limite: puertos y dispositivos parten vacios |
 | RF-DEP-032 | Explicar una instruccion | Hecho | `Depurador::explicar`, orden `explicar`; la ejecuta en una copia de la maquina |
-| RF-DEP-033 | Animar el recorrido de un dato | Pendiente | fase del IDE |
-| RF-DEP-034 | Ejecucion lenta con animacion | Pendiente | fase del IDE |
+| RF-DEP-033 | Animar el recorrido de un dato | Hecho | panel Camino del dato (SVG): memoria, registros, unidad aritmetica, PC y puertos segun `/explicacion` |
+| RF-DEP-034 | Ejecucion lenta con animacion | Hecho | selector de velocidad; la ejecucion lenta avanza de una en una y respeta rupturas |
 | RF-DEP-035 | Desactivar animaciones | Hecho | la linea de comandos nunca anima |
-| RF-DEP-036 | Mapa de memoria grafico | Pendiente | fase del IDE |
-| RF-DEP-037 | Editor hexadecimal en vivo | Pendiente | fase del IDE; `volcar` y `escribir` hacen lo mismo en texto |
-| RF-DEP-038 | Linea de tiempo de eventos | Pendiente | fase del IDE; `ejecutar` ya lista las interrupciones atendidas |
+| RF-DEP-036 | Mapa de memoria grafico | Hecho | `GET .../mapa` y panel Mapa de memoria (canvas por regiones, PC, SP y solo lectura) |
+| RF-DEP-037 | Editor hexadecimal en vivo | Hecho | panel Memoria: celdas editables (`memoria`), resalta lo que cambio |
+| RF-DEP-038 | Linea de tiempo de eventos | Hecho | panel Linea de tiempo: interrupciones (`/eventos`), E/S de la UART y paradas |
 | RF-DEP-039 | Avisar del desbordamiento de la pila | Hecho | `Depurador::avisar`, orden `avisar`; compara SP con la region donde empezo y con su base |
 | RF-DEP-040 | Avisar de leer un registro sin inicializar | Hecho | `Estado::activar_seguimiento`, `avisar` y `ejecutar --vigilar`; `XOR A, A` cuenta como lectura |
 | RF-DEP-041 | Avisar de leer memoria sin escribir | Hecho | `Memoria::activar_seguimiento`, `avisar` y `ejecutar --vigilar` |
 | RF-DEP-042 | Inyectar fallos | Hecho | `Depurador::programar_inyeccion`, orden `inyectar`, `tests/inyeccion.rs` |
 | RF-DEP-043 | Explorar ordenes de eventos | Hecho | `explorar::explorar`, orden `explorar`, `tests/explorar.rs` |
-| RF-DEP-044 | Mismas operaciones en el depurador grafico | Pendiente | fase del IDE |
+| RF-DEP-044 | Mismas operaciones en el depurador grafico | Hecho | panel Ordenes del depurador (`orden`); `ide::paridad` y su prueba comparan con `ayuda` |
 
 ## Requisitos de pruebas (RF-TST)
 
@@ -355,7 +355,7 @@ conocida, escrita en la columna de evidencia.
 | RF-SGT-021 | Genericos sencillos sobre enteros | Hecho | `genericos::expandir`, `tests/genericos.rs`, `docs/SGT.md` |
 | RF-GPU-001 | Declarar una unidad grafica como componente | Hecho | `config::cargar_config`, `[gpu]`, `ejemplos/gpu-16`, `tests/config.rs` |
 | RF-GPU-002 | Framebuffer de resolucion y profundidad configurable | Hecho | `Superficie`, `ProfundidadColor`, `tests/primitivas.rs` |
-| RF-GPU-003 | Mostrar el framebuffer en tiempo real | Pendiente | fase del IDE; hoy se vuelca a archivo (`lorenz gpu --imagen`) |
+| RF-GPU-003 | Mostrar el framebuffer en tiempo real | Hecho | `/api/gpu` (sesiones graficas, PNG del framebuffer) y panel Unidad grafica en vivo |
 | RF-GPU-004 | Volcar el framebuffer a una imagen | Hecho | `imagen::a_png`, `a_ppm`, `lorenz gpu --imagen`, `tests/imagen.rs` |
 | RF-GPU-005 | Llenado de superficie | Hecho | `raster::rellenar`, comandos `limpiar` y `rellenar` |
 | RF-GPU-006 | Trazado de lineas | Hecho | `raster::linea` |
