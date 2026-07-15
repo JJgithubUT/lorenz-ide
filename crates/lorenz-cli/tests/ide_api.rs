@@ -51,6 +51,16 @@ impl Cliente {
         let texto = o.split_once("\r\n\r\n").map_or("", |x| x.1);
         (estado, Json::analizar(texto).unwrap_or(Json::Nulo))
     }
+
+    fn pedir_bytes(&self, metodo: &str, ruta: &str) -> (u16, Vec<u8>) {
+        let mut c = TcpStream::connect(self.0.direccion()).unwrap();
+        write!(c, "{metodo} {ruta} HTTP/1.1\r\nHost: localhost\r\n\r\n").unwrap();
+        let mut o = Vec::new();
+        c.read_to_end(&mut o).unwrap();
+        let estado = std::str::from_utf8(&o[9..12]).unwrap().parse().unwrap();
+        let corte = o.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+        (estado, o[corte..].to_vec())
+    }
 }
 
 fn entero(j: &Json, k: &str) -> i64 {
@@ -585,4 +595,232 @@ fn compilar_sgt_con_diagnosticos() {
         .0,
         400
     );
+}
+
+#[test]
+fn traza_ordenes_eventos_y_explicacion() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let base = format!("/api/sesiones/{id}");
+    c.pedir(
+        "POST",
+        &format!("{base}/grabar"),
+        Some(r#"{"activa":true}"#),
+    );
+    c.pedir("POST", &format!("{base}/paso"), Some(r#"{"n":3}"#));
+    let (_, e) = c.pedir("GET", &format!("{base}/estado"), None);
+    assert_eq!(entero(&e, "instante"), 3);
+    assert!(entero(&e, "traza_longitud") >= 3);
+    let (s, j) = c.pedir("POST", &format!("{base}/instante"), Some(r#"{"n":1}"#));
+    assert_eq!(s, 200);
+    assert_eq!(entero(&j, "instante"), 1);
+    assert_eq!(entero(&j, "pc"), 1);
+    assert_eq!(
+        c.pedir("POST", &format!("{base}/instante"), Some(r#"{"n":999}"#))
+            .0,
+        422
+    );
+    assert_eq!(
+        c.pedir("POST", &format!("{base}/instante"), Some("{}")).0,
+        400
+    );
+    let (_, x) = c.pedir("GET", &format!("{base}/explicacion"), None);
+    assert!(x
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("ADDI"));
+    assert!(x.get("registros").unwrap().como_lista().is_some());
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"registros"}"#),
+    );
+    assert!(o
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("R1"));
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"paso"}"#),
+    );
+    assert_eq!(entero(o.get("estado").unwrap(), "instante"), 2);
+    let (_, o) = c.pedir(
+        "POST",
+        &format!("{base}/orden"),
+        Some(r#"{"linea":"nada"}"#),
+    );
+    assert!(o
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .starts_with("error"));
+    let (e, ev) = c.pedir("GET", &format!("{base}/eventos"), None);
+    assert_eq!(e, 200);
+    assert!(ev
+        .get("interrupciones")
+        .unwrap()
+        .como_lista()
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn mapa_de_memoria_por_regiones() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let base = format!("/api/sesiones/{id}");
+    let (s, j) = c.pedir("GET", &format!("{base}/mapa?bloque=16"), None);
+    assert_eq!(s, 200);
+    assert_eq!(entero(&j, "bloque"), 16);
+    let regiones = j.get("regiones").and_then(Json::como_lista).unwrap();
+    assert!(!regiones.is_empty());
+    for r in regiones {
+        let desde = entero(r, "desde");
+        let hasta = entero(r, "hasta");
+        let esperados = ((hasta - desde + 1) as usize).div_ceil(16);
+        assert_eq!(
+            r.get("ocupacion").and_then(Json::como_lista).unwrap().len(),
+            esperados
+        );
+    }
+    // El programa cargado ocupa el primer bloque de alguna region.
+    let ocupado = regiones.iter().any(|r| {
+        r.get("ocupacion")
+            .and_then(Json::como_lista)
+            .unwrap()
+            .iter()
+            .any(|o| o.como_entero().unwrap_or(0) > 0)
+    });
+    assert!(ocupado);
+    assert_eq!(
+        c.pedir("GET", &format!("{base}/mapa?bloque=0"), None).0,
+        400
+    );
+}
+
+#[test]
+fn el_ide_cubre_todas_las_ordenes_del_depurador() {
+    let raiz = proyecto();
+    let c = Cliente::nuevo(&raiz);
+    let id = entero(
+        &c.pedir(
+            "POST",
+            "/api/sesiones",
+            Some(r#"{"maquina":"maquina.toml","programa":"p.s"}"#),
+        )
+        .1,
+        "id",
+    );
+    let (_, j) = c.pedir(
+        "POST",
+        &format!("/api/sesiones/{id}/orden"),
+        Some(r#"{"linea":"ayuda"}"#),
+    );
+    let ayuda = j
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .to_string();
+    // Las ordenes son las palabras que abren una linea sangrada con dos espacios.
+    let mut ordenes: Vec<String> = ayuda
+        .lines()
+        .filter(|l| l.starts_with("  ") && !l.starts_with("   "))
+        .filter_map(|l| l.split_whitespace().next())
+        .map(str::to_string)
+        .collect();
+    ordenes.sort();
+    ordenes.dedup();
+    assert!(ordenes.len() >= 30, "{ordenes:?}");
+    let tabla: Vec<&str> = lorenz_cli::ide::paridad::PARIDAD
+        .iter()
+        .map(|p| p.0)
+        .collect();
+    for o in &ordenes {
+        assert!(
+            tabla.contains(&o.as_str()),
+            "la orden `{o}` no tiene equivalente en el IDE"
+        );
+    }
+    for t in &tabla {
+        assert!(
+            ordenes.iter().any(|o| o == t),
+            "`{t}` ya no existe en el depurador"
+        );
+    }
+    // Cada orden se entiende en el panel de ordenes: ninguna da «desconocida».
+    for o in &ordenes {
+        if matches!(o.as_str(), "fin" | "explorar") {
+            continue;
+        }
+        let cuerpo = format!(r#"{{"linea":"{o}"}}"#);
+        let (s, r) = c.pedir("POST", &format!("/api/sesiones/{id}/orden"), Some(&cuerpo));
+        assert_eq!(s, 200);
+        let t = r.get("texto").and_then(Json::como_texto).unwrap_or("");
+        assert!(!t.contains("desconocida"), "{o}: {t}");
+    }
+}
+
+#[test]
+fn visor_de_la_unidad_grafica() {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let c = Cliente::nuevo(&raiz);
+    // Una maquina sin [gpu] se rechaza con un mensaje claro.
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/gpu",
+        Some(r#"{"maquina":"ejemplos/risc-16/maquina.toml","programa":"ejemplos/gpu-16/programas/triangulo.s"}"#),
+    );
+    assert_eq!(s, 422, "{j:?}");
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/gpu",
+        Some(r#"{"maquina":"ejemplos/gpu-16/maquina.toml","programa":"ejemplos/gpu-16/programas/triangulo.s"}"#),
+    );
+    assert_eq!(s, 200, "{j:?}");
+    let id = entero(&j, "id");
+    assert!(entero(&j, "ancho") > 0 && entero(&j, "alto") > 0);
+    let base = format!("/api/gpu/{id}");
+    let (_, e0) = c.pedir("GET", &format!("{base}/estado"), None);
+    assert_eq!(entero(&e0, "instrucciones"), 0);
+    // A medio programa todavia no esta todo dibujado; al terminar, si.
+    let (s, e1) = c.pedir("POST", &format!("{base}/avanzar"), Some(r#"{"n":8}"#));
+    assert_eq!(s, 200);
+    assert_eq!(entero(&e1, "instrucciones"), 8);
+    let (_, e2) = c.pedir("POST", &format!("{base}/avanzar"), Some(r#"{"n":1000}"#));
+    assert_eq!(e2.get("detenida").and_then(Json::como_bool), Some(true));
+    let m = e2.get("metricas").unwrap();
+    assert!(entero(m, "triangulos") >= 1);
+    assert!(entero(m, "pixeles_escritos") > 0);
+    // La imagen es un PNG de verdad.
+    let (s, cuerpo) = c.pedir_bytes("GET", &format!("{base}/imagen"));
+    assert_eq!(s, 200);
+    assert_eq!(&cuerpo[..8], b"\x89PNG\r\n\x1a\n");
+    let (_, px) = c.pedir("GET", &format!("{base}/pixel?x=3&y=5"), None);
+    assert!(px
+        .get("texto")
+        .and_then(Json::como_texto)
+        .unwrap()
+        .contains("(3, 5)"));
+    assert_eq!(c.pedir("GET", "/api/gpu/999/estado", None).0, 404);
 }

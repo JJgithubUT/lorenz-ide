@@ -34,6 +34,12 @@ class Proyecto:
             f.write("        LDI A, 0x48\n        OUT A\n        LDI A, 0x69\n        OUT A\n        LDI A, 0xFF\n        ST [0xF000], A\n        HLT\n")
         with open(os.path.join(self.dir, "q.s"), "w") as f:
             f.write("inicio: LI R1, 5\n        ADDI R2, R1, 1\n        BEQ R1, R1, inicio\n        HLT\n")
+        gpu = os.path.join(self.dir, "z-gpu")
+        os.makedirs(os.path.join(gpu, "risc-16"))
+        os.makedirs(os.path.join(gpu, "gpu-16", "programas"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "risc-16", "maquina.toml"), os.path.join(gpu, "risc-16"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "gpu-16", "maquina.toml"), os.path.join(gpu, "gpu-16"))
+        shutil.copy(os.path.join(raiz_repo, "ejemplos", "gpu-16", "programas", "triangulo.s"), os.path.join(gpu, "gpu-16", "programas"))
         self.puerto = puerto_libre()
         self.proc = subprocess.Popen(
             [binario, "ide", self.dir, "--puerto", str(self.puerto), "--segundos", "120"],
@@ -588,7 +594,115 @@ def prueba_reasignar_un_atajo_desde_la_interfaz(n, p):
     assert n.pag.inner_text("#tabla-atajos [data-atajo='paso']") == "F10"
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz]}
+def abrir_panel(n, id_):
+    if n.pag.locator(f"#panel-{id_}.colapsado").count():
+        n.pag.click(f"#panel-{id_} [data-accion='colapsar']")
+
+
+@con_navegador
+def prueba_instante_con_control_deslizante(n, p):
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0002')")
+    assert n.pag.get_attribute("#instante-desliz", "max") == "2"
+    n.pag.fill("#instante-desliz", "1")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
+    assert "Instante 1 de 2" in n.pag.inner_text("#instante-texto")
+    n.pag.select_option("#velocidad", "250")
+    assert n.pag.evaluate("L.sesion.lento") == 250
+
+
+@con_navegador
+def prueba_camino_del_dato_se_anima(n, p):
+    elegir(n, "serie.toml", "hola.s")
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("document.getElementById('dato-detalle').textContent.length > 0")
+    assert n.pag.get_attribute("#dato-svg", "role") == "img"
+    assert n.pag.locator("#dato-svg .flujo").count() == 7
+    assert n.pag.inner_text("#dato-rotulo").strip() != ""
+    # el significado no depende del color: el rotulo nombra el camino activo
+    for _ in range(12):
+        if "Puertos" in n.pag.inner_text("#dato-rotulo") or "salida" in n.pag.inner_text("#dato-rotulo"):
+            break
+        n.pag.click("#accion-paso")
+        n.pag.wait_for_timeout(150)
+
+
+@con_navegador
+def prueba_mapa_de_memoria_y_editor_hexadecimal(n, p):
+    abrir_panel(n, "mapa")
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_function("document.getElementById('mapa-lienzo').getAttribute('data-bloques') !== null")
+    assert int(n.pag.get_attribute("#mapa-lienzo", "data-bloques")) > 0
+    assert n.pag.locator("#mapa-leyenda li").count() >= 1
+    abrir_panel(n, "memoria")
+    n.pag.wait_for_selector("#memoria-vista .celda")
+    n.pag.click("#memoria-vista .celda[data-dir='100']")
+    n.pag.fill("#memoria-vista input.edicion", "0x5a")
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_function("(document.querySelector('#memoria-vista .celda[data-dir=\\'100\\']')?.textContent || '').includes('5a')")
+    assert "cambi" in n.pag.get_attribute("#memoria-vista .celda[data-dir='100']", "title")
+
+
+@con_navegador
+def prueba_linea_de_tiempo_de_eventos(n, p):
+    abrir_panel(n, "linea-tiempo")
+    elegir(n, "serie.toml", "hola.s")
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.querySelectorAll('#eventos-lista li').length >= 2")
+    textos = n.pag.inner_text("#eventos-lista")
+    assert "E/S" in textos and "PARADA" in textos, textos
+
+
+@con_navegador
+def prueba_consola_de_ordenes_del_depurador(n, p):
+    abrir_panel(n, "ordenes")
+    n.pag.fill("#ordenes-entrada", "paso 2")
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0002')")
+    assert "(lorenz) paso 2" in n.pag.inner_text("#ordenes-salida")
+    n.pag.fill("#ordenes-entrada", "ayuda")
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_function("document.getElementById('ordenes-salida').textContent.includes('atras')")
+    n.pag.click("#ordenes-entrada")
+    n.pag.keyboard.press("ArrowUp")
+    assert n.pag.input_value("#ordenes-entrada") == "ayuda"
+
+
+@con_navegador
+def prueba_visor_de_la_unidad_grafica_en_vivo(n, p):
+    abrir_panel(n, "gpu")
+    n.pag.select_option("#sel-maquina", "z-gpu/gpu-16/maquina.toml")
+    n.pag.select_option("#sel-programa", "z-gpu/gpu-16/programas/triangulo.s")
+    n.pag.click("#gpu-abrir")
+    n.pag.wait_for_function("document.getElementById('gpu-info').textContent.includes('×')")
+    assert n.pag.get_attribute("#gpu-lienzo", "data-pixeles") == "0"
+    n.pag.click("#gpu-vivo")
+    n.pag.wait_for_function("document.getElementById('gpu-info').textContent.includes('DETENIDA')")
+    n.pag.wait_for_function("+document.getElementById('gpu-lienzo').getAttribute('data-pixeles') > 0")
+    n.pag.wait_for_function("+document.getElementById('gpu-lienzo').getAttribute('data-cuadros') >= 2")
+    azul = n.pag.evaluate("(() => { const c = document.getElementById('gpu-lienzo'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let b = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 2] > 200 && d[i] < 60) b++; return b; })()")
+    assert azul > 0, "el triangulo azul debe verse en el lienzo"
+    n.pag.click("#gpu-lienzo", position={"x": 5, "y": 5})
+    n.pag.wait_for_function("document.getElementById('gpu-pixel').textContent.includes('r=')")
+
+
+@con_navegador
+def prueba_ejecucion_lenta_respeta_las_rupturas(n, p):
+    n.pag.select_option("#velocidad", "50")
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector("#desens-lista li")
+    n.pag.click("#desens-lista li[data-direccion='2'] .bp")
+    n.pag.wait_for_selector("#desens-lista li[data-direccion='2'] .bp.puesta")
+    n.pag.click("#accion-reiniciar")
+    n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('instr 0')")
+    n.pag.click("#accion-ejecutar")
+    n.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('ruptura')")
+    assert "PC 0x0002" in n.pag.inner_text("#contadores")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas]}
 
 
 def principal(argv):

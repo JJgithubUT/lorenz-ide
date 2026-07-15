@@ -48,6 +48,30 @@ sonido y accesibilidad; banco de pruebas con Chromium (`pruebas-ui/banco.py`, en
 **Pendiente:** hito D (depurador gráfico avanzado y visor de la GPU), E (editor visual de
 arquitectura, decide D-114), F (versión web y cierre).
 
+## 2026-10-16 — Hito D del sprint 4: depuración gráfica y visor de la GPU
+
+Sprint 4, hito D (v0.8.0): 8 requisitos más (RF-DEP-022, 033, 034, 036, 037, 038, 044 y RF-GPU-003),
+de 358 a 366.
+
+**Hecho:** panel de instante y velocidad; camino del dato animado a partir de la explicación de la
+instrucción; mapa de memoria en `canvas`; editor hexadecimal con celdas editables; línea de tiempo;
+consola de órdenes; sesiones gráficas (`/api/gpu`) y visor en vivo; tabla de paridad con prueba.
+
+**Decisiones:**
+
+- **D-127** — La paridad con el depurador de línea de comandos se garantiza con una tabla
+  (`ide::paridad`) y una prueba que la compara con la salida de `ayuda`: añadir una orden sin decir
+  dónde está en el IDE rompe las pruebas. Las órdenes sin control propio se hacen en el panel de
+  órdenes, que ejecuta cualquiera.
+- **D-128** — El visor de la GPU usa una sesión propia (`SistemaGrafico`) y entrega el framebuffer
+  como PNG; la interfaz lo redibuja por sondeo. Evita un formato nuevo y sirve igual desde la CLI.
+- **D-129** — La ejecución lenta pide `continuar` con límite 1, no `paso`, para que el depurador siga
+  aplicando rupturas y condiciones.
+- **D-130** — Los paneles laterales ya no se encogen hasta taparse: cada uno tiene altura máxima y la
+  zona se desplaza.
+
+**Pendiente:** hito E (editor visual de arquitectura, decide D-114) y F (versión web y cierre).
+
 **Requisitos:** RF-IDE-010 a 038.
 
 **Commits:** ramas `feature/servidor-web`, `feature/api-ide`, `feature/banco-ui`,
