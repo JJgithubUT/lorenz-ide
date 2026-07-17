@@ -8,5 +8,6 @@ license.workspace = true
 
 [dependencies]
 toml.workspace = true
+toml_edit.workspace = true
 serde.workspace = true
 thiserror.workspace = true
