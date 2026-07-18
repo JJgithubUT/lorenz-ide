@@ -448,6 +448,76 @@ fn anadir(
     Ok(())
 }
 
+/// Un fallo de la descripcion situado en el texto, listo para senalarlo en el diagrama (RF-ARQ-041).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Diagnostico {
+    pub linea: usize,
+    pub columna: usize,
+    pub codigo: String,
+    pub mensaje: String,
+}
+
+fn linea_de(texto: &str, desplazamiento: usize) -> (usize, usize) {
+    let d = desplazamiento.min(texto.len());
+    let antes = &texto.as_bytes()[..d];
+    let linea = antes.iter().filter(|b| **b == b'\n').count() + 1;
+    let inicio = antes.iter().rposition(|b| *b == b'\n').map_or(0, |p| p + 1);
+    (linea, d - inicio + 1)
+}
+
+/// Primera linea que contiene `aguja`, o la 1.
+fn buscar_linea(texto: &str, aguja: &str) -> usize {
+    texto
+        .lines()
+        .position(|l| l.contains(aguja))
+        .map_or(1, |i| i + 1)
+}
+
+/// Pasa el texto por el cargador y devuelve todos sus fallos con linea. Vacio si es valido.
+pub fn diagnosticos(
+    texto: &str,
+    carpeta: Option<&std::path::Path>,
+    propia: Option<&std::path::Path>,
+) -> Vec<Diagnostico> {
+    use crate::error::ErrorArquitectura as E;
+    let d = |linea, columna, codigo: &str, mensaje: String| Diagnostico {
+        linea,
+        columna,
+        codigo: codigo.to_string(),
+        mensaje,
+    };
+    match crate::carga::cargar_texto_en(texto, carpeta, propia) {
+        Ok(_) => Vec::new(),
+        Err(E::Validacion(fallos)) => fallos
+            .into_iter()
+            .map(|f| {
+                let p = f
+                    .posicion
+                    .unwrap_or_else(|| crate::error::Posicion::nueva(1, 1));
+                d(p.linea, p.columna, f.regla.codigo(), f.detalle)
+            })
+            .collect(),
+        Err(E::Sintaxis(e)) => {
+            let (l, c) = e.span().map_or((1, 1), |s| linea_de(texto, s.start));
+            vec![d(l, c, "sintaxis", e.message().to_string())]
+        }
+        Err(E::Codificacion { mnemonico, causa }) => vec![d(
+            buscar_linea(texto, &format!("\"{mnemonico}\"")),
+            1,
+            "codificacion",
+            format!("codificacion invalida en {mnemonico}: {causa}"),
+        )],
+        Err(E::VersionFormato { pedida, soportada }) => vec![d(
+            buscar_linea(texto, "formato"),
+            1,
+            "version",
+            format!("la descripcion pide el formato {pedida}; se entiende {soportada}"),
+        )],
+        Err(E::Herencia(m)) => vec![d(buscar_linea(texto, "hereda"), 1, "herencia", m)],
+        Err(otro) => vec![d(1, 1, "lectura", otro.to_string())],
+    }
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -601,6 +671,29 @@ mod pruebas {
             })
             .is_err());
         assert_eq!(d.texto(), BASE);
+    }
+
+    #[test]
+    fn los_fallos_del_cargador_traen_linea() {
+        let ok = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../ejemplos/ejemplo-8/maquina.toml"
+        ))
+        .unwrap();
+        assert!(diagnosticos(&ok, None, None).is_empty());
+        // Un registro con el mismo nombre que otro: se senala la segunda declaracion.
+        let roto = ok.replacen("nombre = \"B\"", "nombre = \"A\"", 1);
+        let ds = diagnosticos(&roto, None, None);
+        let dup = ds
+            .iter()
+            .find(|d| d.codigo == "E-DUPLICADO")
+            .expect("{ds:?}");
+        let l = roto.lines().nth(dup.linea - 1).unwrap();
+        assert!(l.contains("\"A\""), "{dup:?} -> {l}");
+        // Sintaxis rota: linea de la rotura.
+        let ds = diagnosticos("[maquina]\nnombre = \n", None, None);
+        assert_eq!(ds[0].codigo, "sintaxis");
+        assert!(ds[0].linea >= 2);
     }
 
     #[test]
