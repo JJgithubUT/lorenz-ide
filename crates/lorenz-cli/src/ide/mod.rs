@@ -4,6 +4,7 @@
 //! se lanza `lorenz ide`, y ninguna ruta puede salir de ella.
 
 mod api;
+mod arquitectura;
 pub mod editor;
 mod graficos;
 pub mod paridad;

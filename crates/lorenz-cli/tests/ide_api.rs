@@ -824,3 +824,118 @@ fn visor_de_la_unidad_grafica() {
         .contains("(3, 5)"));
     assert_eq!(c.pedir("GET", "/api/gpu/999/estado", None).0, 404);
 }
+
+#[test]
+fn api_del_editor_visual_de_arquitectura() {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let c = Cliente::nuevo(&raiz);
+    let texto = std::fs::read_to_string(raiz.join("ejemplos/ejemplo-8/maquina.toml")).unwrap();
+    let cuerpo = |extra: Json| -> String {
+        let mut m = std::collections::BTreeMap::new();
+        m.insert("texto".to_string(), Json::texto(texto.as_str()));
+        m.insert(
+            "ruta".to_string(),
+            Json::texto("ejemplos/ejemplo-8/maquina.toml"),
+        );
+        if let Json::Objeto(e) = extra {
+            m.extend(e);
+        }
+        Json::Objeto(m).serializar()
+    };
+    // Texto a diagrama: los bloques salen del texto, con su linea.
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/arquitectura/analizar",
+        Some(&cuerpo(Json::objeto([]))),
+    );
+    assert_eq!(s, 200);
+    assert_eq!(
+        j.get("valida").and_then(Json::como_bool),
+        Some(true),
+        "{j:?}"
+    );
+    let bloques = j.get("bloques").and_then(Json::como_lista).unwrap();
+    let registros: Vec<_> = bloques
+        .iter()
+        .filter(|b| b.get("clase").and_then(Json::como_texto) == Some("registro"))
+        .collect();
+    assert!(registros.len() >= 4);
+    let linea_a = entero(registros[0], "linea") as usize;
+    assert_eq!(texto.lines().nth(linea_a - 1), Some("[[registro]]"));
+
+    // Diagrama a texto: renombrar un registro conserva los comentarios.
+    let cambio = Json::objeto([(
+        "cambio",
+        Json::objeto([
+            ("tipo", "fijar".into()),
+            (
+                "ruta",
+                Json::Lista(vec!["registro".into(), Json::Num(0.0), "inicial".into()]),
+            ),
+            ("valor", Json::Num(7.0)),
+        ]),
+    )]);
+    let (s, j) = c.pedir("POST", "/api/arquitectura/editar", Some(&cuerpo(cambio)));
+    assert_eq!(s, 200, "{j:?}");
+    let nuevo = j.get("texto").and_then(Json::como_texto).unwrap();
+    assert!(
+        nuevo.contains("# Maquina de ejemplo de 8 bits."),
+        "se perdieron los comentarios"
+    );
+    assert_ne!(nuevo, texto);
+    assert_eq!(
+        nuevo.lines().count(),
+        texto.lines().count(),
+        "solo cambia el valor"
+    );
+
+    // Un cambio que rompe la descripcion trae el fallo con linea y bloque.
+    let duplicar = Json::objeto([(
+        "cambio",
+        Json::objeto([
+            ("tipo", "fijar".into()),
+            (
+                "ruta",
+                Json::Lista(vec!["registro".into(), Json::Num(1.0), "nombre".into()]),
+            ),
+            ("valor", "A".into()),
+        ]),
+    )]);
+    let (_, j) = c.pedir("POST", "/api/arquitectura/editar", Some(&cuerpo(duplicar)));
+    assert_eq!(j.get("valida").and_then(Json::como_bool), Some(false));
+    let errores = j.get("errores").and_then(Json::como_lista).unwrap();
+    let dup = errores
+        .iter()
+        .find(|e| e.get("codigo").and_then(Json::como_texto) == Some("E-DUPLICADO"))
+        .expect("falta el duplicado");
+    let bloque = entero(dup, "bloque") as usize;
+    let bs = j.get("bloques").and_then(Json::como_lista).unwrap();
+    assert_eq!(
+        bs[bloque].get("nombre").and_then(Json::como_texto),
+        Some("A")
+    );
+    assert_eq!(
+        bs[bloque].get("clase").and_then(Json::como_texto),
+        Some("registro")
+    );
+
+    // Cambios mal formados se rechazan sin tocar nada.
+    let malo = Json::objeto([("cambio", Json::objeto([("tipo", "volar".into())]))]);
+    assert_eq!(
+        c.pedir("POST", "/api/arquitectura/editar", Some(&cuerpo(malo)))
+            .0,
+        400
+    );
+    let (s, j) = c.pedir(
+        "POST",
+        "/api/arquitectura/analizar",
+        Some(r#"{"texto":"[maquina]\nnombre = \n"}"#),
+    );
+    assert_eq!(s, 200);
+    assert_eq!(j.get("valida").and_then(Json::como_bool), Some(false));
+    assert!(j
+        .get("bloques")
+        .and_then(Json::como_lista)
+        .unwrap()
+        .is_empty());
+}
