@@ -208,7 +208,7 @@ ver ni probar.
 | D4 | Paridad con el depurador de línea de comandos (cada orden con su equivalente gráfico, comprobado por una prueba que las compara) | RF-DEP-044 | 8 |
 | D5 | Visor del framebuffer en tiempo real | RF-GPU-003 | 8 |
 
-### Hito E — Editor visual de arquitectura → v0.8.0 (366 → 370)
+### Hito E — Editor visual de arquitectura → v0.8.1 (366 → 370) — **terminado**
 
 | # | Historia | Requisitos | Commits |
 | --- | --- | --- | --- |
