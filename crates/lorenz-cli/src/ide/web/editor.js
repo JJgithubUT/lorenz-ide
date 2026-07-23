@@ -145,6 +145,7 @@
     pintarTextoResaltado();
     sincronizarDesplazamiento();
     pintarPestanas();
+    L.emit('texto-editado', { ruta: actual, texto: d.texto, origen: 'editor' });
     clearTimeout(autoPendiente);
     autoPendiente = setTimeout(function () { if (d.sucio) guardarBorrador(actual); else borrarBorrador(actual); }, 400);
     sugerir();
@@ -377,7 +378,18 @@
   L.atajos.registrar('compilar', function () { L.compilar(); });
   L.atajos.registrar('ir-definicion', function () { L.irADefinicion(); });
 
+  // Cambia el texto de un archivo abierto desde fuera del cuadro de texto (el diagrama de arquitectura).
+  function ponerTexto(ruta, texto) {
+    var d = abiertos[ruta];
+    if (!d) return false;
+    d.texto = texto; d.sucio = d.texto !== d.original;
+    if (ruta === actual) { ui.area.value = texto; pintarTextoResaltado(); sincronizarDesplazamiento(); }
+    pintarPestanas(); guardarBorrador(ruta);
+    return true;
+  }
+
   L.editor = {
+    ponerTexto: ponerTexto,
     abrir: abrir, activo: function () { return actual; }, texto: function () { return actual ? abiertos[actual].texto : ''; },
     diagnosticos: function () { return diagnosticos; }, irALinea: irALinea, guardar: function () { return actual ? guardarArchivo(actual) : Promise.resolve(true); },
     recargar: function (ruta) {

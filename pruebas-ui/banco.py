@@ -702,7 +702,114 @@ def prueba_ejecucion_lenta_respeta_las_rupturas(n, p):
     assert "PC 0x0002" in n.pag.inner_text("#contadores")
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas]}
+def abrir_arquitectura(n, archivo="maquina.toml"):
+    n.pag.evaluate(f"L.editor.abrir('{archivo}')")
+    n.pag.wait_for_function(f"L.editor.activo() === '{archivo}'")
+    abrir_panel(n, "arquitectura")
+    n.pag.wait_for_function("document.getElementById('arq-lienzo').getAttribute('data-bloques') > 0")
+
+
+def bloques_de(n, clase):
+    return n.pag.locator(f".arq-bloque[data-clase='{clase}']").count()
+
+
+@con_navegador
+def prueba_arquitectura_texto_a_diagrama(n, p):
+    abrir_arquitectura(n)
+    texto = n.pag.input_value(".area")
+    esperados = texto.count("[[registro]]")
+    assert esperados >= 3 and bloques_de(n, "registro") == esperados
+    assert bloques_de(n, "region") == texto.count("[[region]]")
+    # Un cambio hecho en el texto aparece en el diagrama
+    n.pag.fill(".area", texto + '\n[[registro]]\nnombre = "ZZ"\nbits = 8\nrol = "general"\ninicial = 0\n')
+    n.pag.wait_for_selector(".arq-bloque[data-clase='registro'][data-nombre='ZZ']")
+    assert bloques_de(n, "registro") == esperados + 1
+    assert "8 bits" in n.pag.text_content(".arq-bloque[data-nombre='ZZ'] .arq-sub")
+    # y al quitarlo del texto desaparece
+    n.pag.fill(".area", texto)
+    n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='registro']\").length === {esperados}")
+
+
+@con_navegador
+def prueba_arquitectura_diagrama_a_texto_conserva_comentarios(n, p):
+    abrir_arquitectura(n)
+    antes = n.pag.input_value(".area")
+    comentarios = [l for l in antes.splitlines() if l.lstrip().startswith("#")]
+    assert comentarios, "la descripcion de prueba debe tener comentarios"
+    regs = bloques_de(n, "registro")
+    n.pag.click("#arq-paleta [data-nuevo='registro']")
+    n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='registro']\").length === {regs + 1}")
+    despues = n.pag.input_value(".area")
+    assert f'nombre = "R{regs + 1}"' in despues
+    for c in comentarios:
+        assert c in despues, f"se perdio el comentario: {c}"
+    assert despues.count("[[registro]]") == regs + 1
+    # el bloque nuevo queda elegido y su formulario permite cambiarlo
+    n.pag.fill("#arq-campo-bits", "4")
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_function("document.querySelector('.arq-bloque.elegido .arq-sub').textContent.startsWith('4 bits')")
+    assert 'bits = 4' in n.pag.input_value(".area")
+    # deshacer devuelve el texto de antes
+    n.pag.click("#arq-deshacer")
+    n.pag.click("#arq-deshacer")
+    n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='registro']\").length === {regs}")
+    assert n.pag.input_value(".area") == antes
+    # el archivo quedo marcado como cambiado hasta que se guarde, y en disco no se toco
+    assert "•" not in n.pag.inner_text(".pestana.activa")
+
+
+@con_navegador
+def prueba_arquitectura_se_compone_arrastrando(n, p):
+    abrir_arquitectura(n)
+    antes = bloques_de(n, "region")
+    origen = n.pag.locator("#arq-paleta [data-nuevo='region']")
+    destino = n.pag.locator("#arq-marco")
+    destino.scroll_into_view_if_needed()
+    origen.drag_to(destino, target_position={"x": 400, "y": 120})
+    n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='region']\").length === {antes + 1}")
+    assert 'acceso = "rw"' in n.pag.input_value(".area")
+    # y el bloque nuevo cae donde se solto: se puede mover despues con el raton
+    caja = n.pag.locator(".arq-bloque.elegido").bounding_box()
+    n.pag.mouse.move(caja["x"] + 20, caja["y"] + 20)
+    n.pag.mouse.down()
+    n.pag.mouse.move(caja["x"] + 80, caja["y"] + 70, steps=5)
+    n.pag.mouse.up()
+    assert n.pag.get_attribute("#arq-lienzo", "data-movidos") is not None
+    despues = n.pag.locator(".arq-bloque.elegido").bounding_box()
+    assert abs(despues["x"] - caja["x"]) > 20
+
+
+@con_navegador
+def prueba_arquitectura_senala_los_errores_en_el_diagrama(n, p):
+    abrir_arquitectura(n)
+    assert n.pag.locator(".arq-bloque.con-error").count() == 0
+    primero = n.pag.locator(".arq-bloque[data-clase='registro']").nth(0).get_attribute("data-nombre")
+    n.pag.locator(".arq-bloque[data-clase='registro']").nth(1).click()
+    n.pag.fill("#arq-campo-nombre", primero)
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_selector(".arq-bloque.con-error")
+    # el error no depende del color: marca en el texto del bloque y descripcion accesible
+    assert "⚠" in n.pag.text_content(".arq-bloque.con-error .arq-nombre")
+    assert "error" in n.pag.get_attribute(".arq-bloque.con-error", "aria-label")
+    assert n.pag.locator("#arq-errores li").count() >= 1
+    n.pag.click("#arq-errores li button")
+    n.pag.wait_for_function("document.activeElement && document.activeElement.classList.contains('area')")
+    n.pag.click("#arq-deshacer")
+    n.pag.wait_for_function("document.querySelectorAll('.arq-bloque.con-error').length === 0")
+
+
+@con_navegador
+def prueba_arquitectura_con_teclado(n, p):
+    abrir_arquitectura(n)
+    regs = bloques_de(n, "registro")
+    n.pag.locator(".arq-bloque[data-clase='registro']").nth(0).focus()
+    n.pag.keyboard.press("Enter")
+    n.pag.wait_for_selector(".arq-bloque.elegido")
+    n.pag.keyboard.press("Delete")
+    n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='registro']\").length === {regs - 1}")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado]}
 
 
 def principal(argv):
@@ -737,7 +844,10 @@ def principal(argv):
                 print(f"ok    {nombre}")
             except Exception as e:  # noqa: BLE001
                 fallos += 1
-                print(f"FALLA {nombre}: {type(e).__name__}: {e}")
+                import traceback
+                linea = [f for f in traceback.extract_tb(e.__traceback__) if f.filename == __file__]
+                donde = f" (banco.py:{linea[-1].lineno})" if linea else ""
+                print(f"FALLA {nombre}{donde}: {type(e).__name__}: {e}")
             finally:
                 p.cerrar()
     return 1 if fallos else 0

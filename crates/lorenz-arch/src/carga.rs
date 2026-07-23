@@ -217,6 +217,20 @@ pub fn mezclar_archivo(ruta: impl AsRef<Path>) -> Result<toml::Table, ErrorArqui
     crate::herencia::resolver(&texto, ruta.parent(), &mut vec![canonica])
 }
 
+/// Valida el texto de un archivo que aun no se ha guardado: el padre se busca en `carpeta` y
+/// `propia` evita que un archivo herede de si mismo.
+pub fn cargar_texto_en(
+    texto: &str,
+    carpeta: Option<&Path>,
+    propia: Option<&Path>,
+) -> Result<Maquina, ErrorArquitectura> {
+    let mut visitados = Vec::new();
+    if let Some(p) = propia {
+        visitados.push(p.canonicalize().unwrap_or_else(|_| p.to_path_buf()));
+    }
+    construir(texto, carpeta, &mut visitados)
+}
+
 /// Lee y valida una descripcion de arquitectura desde su texto TOML.
 ///
 /// Devuelve la maquina solo si pasa todas las reglas de validacion; en caso contrario devuelve la
