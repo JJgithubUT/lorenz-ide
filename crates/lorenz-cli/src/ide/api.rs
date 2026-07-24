@@ -292,6 +292,7 @@ pub fn router(ide: Arc<Ide>) -> Router {
     let (m1, m2, m3) = (ide.clone(), ide.clone(), ide.clone());
     let para_editor = ide.clone();
     let para_graficos = ide.clone();
+    let para_arq = ide.clone();
     let base = Router::nuevo()
         .get("/", |_| Respuesta::html(super::PAGINA))
         .get("/web/:archivo", |p| {
@@ -883,5 +884,6 @@ pub fn router(ide: Arc<Ide>) -> Router {
             }
         });
     let con_editor = super::editor::rutas(base, para_editor);
-    super::graficos::rutas(con_editor, para_graficos)
+    let con_arq = super::arquitectura::rutas(con_editor, para_arq);
+    super::graficos::rutas(con_arq, para_graficos)
 }

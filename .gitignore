@@ -12,3 +12,5 @@ Cargo.lock.bak
 # salidas de ejecucion
 /out
 *.bin.tmp
+__pycache__/
+*.pyc

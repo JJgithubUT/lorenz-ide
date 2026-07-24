@@ -1275,3 +1275,25 @@ commits pequenos).
 **Requisitos:** ninguno todavia; trabajo de infraestructura.
 
 **Commits:** rama `main`, commits iniciales.
+
+## 2026-10-16 — Hito E del sprint 4: editor visual de arquitectura
+
+Sprint 4, hito E (v0.8.1): RF-ARQ-038 a 041; de 366 a 370.
+
+**Hecho:** `lorenz_arch::editar` (edicion y diagnosticos con linea), API `/api/arquitectura/analizar`
+y `/api/arquitectura/editar`, y el panel del diagrama con paleta, formulario y errores.
+
+**Decisiones:**
+
+- **D-114 (resuelta)** — Se usa `toml_edit`, que ya estaba en el arbol de dependencias por `toml`.
+  Un analizador propio habria costado mas que el riesgo de la dependencia, y `toml_edit` es justo la
+  biblioteca pensada para cambiar un TOML sin reescribirlo.
+- **D-131** — El texto del archivo es la fuente de la verdad; el diagrama es una vista. La API es sin
+  estado: recibe el texto, devuelve bloques, errores y, al editar, el texto nuevo. El editor de texto
+  es quien lo guarda, asi que «guardar» y «borrador» siguen funcionando igual.
+- **D-132** — Las posiciones de los bloques no van en el TOML (ensuciarian la descripcion): se
+  recuerdan en el navegador por archivo y bloque.
+- **D-133** — Las instrucciones no se dibujan una a una (hay cientos): un resumen las cuenta y se
+  editan en el texto. Lo heredado de otra descripcion tampoco se muestra; se edita en su archivo.
+
+**Pendiente:** hito F (version web, compartir, galeria y cierre).
