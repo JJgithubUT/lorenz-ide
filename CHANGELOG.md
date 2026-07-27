@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## 0.8.1 — 2026-10-16 — Editor visual de arquitectura
+
+- Panel «Editor visual de arquitectura»: la descripcion como diagrama de bloques (registros,
+  banderas, memoria, dispositivos), con paleta que se arrastra o se pulsa, bloques movibles y
+  formulario por bloque. Se maneja tambien con el teclado.
+- El texto y el diagrama se mantienen en sincronia en los dos sentidos. Lo que se cambia en el
+  diagrama se escribe en el texto con `toml_edit`: los comentarios, el orden y el formato quedan.
+- Los errores del cargador se senalan en el bloque afectado (marca ⚠ y descripcion, no solo color)
+  y llevan a su linea. «Deshacer» revierte el ultimo cambio hecho desde el diagrama.
+
 ## 0.8.0 — 2026-10-16 — Depuracion grafica avanzada
 
 - Control deslizante sobre la traza y velocidad de ejecucion (la lenta respeta las rupturas).

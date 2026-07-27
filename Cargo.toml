@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-ens", "crates/lorenz-dbg", "crates/lorenz-tst", "crates/lorenz-cli", "crates/lorenz-sgt", "crates/lorenz-cic", "crates/lorenz-gpu", "crates/lorenz-paq", "crates/lorenz-web"]
 
 [workspace.package]
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 rust-version = "1.75"
 license = "UNLICENSED"
@@ -11,6 +11,7 @@ repository = "https://github.com/juanjcbreton/lorenz"
 
 [workspace.dependencies]
 toml = "0.8"
+toml_edit = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"

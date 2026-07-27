@@ -99,10 +99,10 @@ Estado a 2026-10-16: 30 hechos, 3 parciales y 9 pendientes de 42. Cada fila se c
 | RF-ARQ-035 | Herencia entre descripciones | Hecho | `herencia::resolver`, clave `hereda`, `eliminar = true`; la ven `Recargable` y `documentar --vigilar` |
 | RF-ARQ-036 | Comentarios que llegan a la documentacion generada | Hecho | los comentarios que preceden a una tabla pasan a `Comentarios`; llegan a la documentacion |
 | RF-ARQ-037 | Descripcion cargada como estructura consultable | Hecho | `Maquina` |
-| RF-ARQ-038 | Editor visual de arquitectura | Pendiente | fase del IDE |
-| RF-ARQ-039 | Editor visual: texto a diagrama | Pendiente | fase del IDE |
-| RF-ARQ-040 | Editor visual: diagrama a texto | Pendiente | fase del IDE |
-| RF-ARQ-041 | Editor visual: errores de validacion en el diagrama | Pendiente | fase del IDE |
+| RF-ARQ-038 | Editor visual de arquitectura | Hecho | panel Editor visual de arquitectura: diagrama de bloques, paleta que se arrastra o se pulsa, bloques que se mueven; `ide::arquitectura` |
+| RF-ARQ-039 | Editor visual: texto a diagrama | Hecho | `POST /api/arquitectura/analizar`: los bloques salen del texto abierto y se redibujan al escribir |
+| RF-ARQ-040 | Editor visual: diagrama a texto | Hecho | `lorenz_arch::editar` (`toml_edit`): cada cambio del diagrama se aplica al texto sin perder comentarios, orden ni base de los numeros |
+| RF-ARQ-041 | Editor visual: errores de validacion en el diagrama | Hecho | `editar::diagnosticos`: cada fallo del cargador llega con linea y bloque; el diagrama marca el bloque con ⚠ y lo describe |
 | RF-ARQ-042 | Al menos cuatro arquitecturas de ejemplo | Hecho | `ejemplos/`: `ejemplo-8`, `ejemplo-8-serie`, `risc-16` y `pila-8`, cada uno con programas y pruebas |
 
 ## Requisitos del ensamblador (RF-ENS)

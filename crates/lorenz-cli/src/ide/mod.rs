@@ -4,6 +4,7 @@
 //! se lanza `lorenz ide`, y ninguna ruta puede salir de ella.
 
 mod api;
+mod arquitectura;
 pub mod editor;
 mod graficos;
 pub mod paridad;
@@ -22,7 +23,7 @@ macro_rules! estatico {
 #[rustfmt::skip]
 pub const ESTATICOS: &[(&str, &str)] = &[
     estatico!("ide.css"), estatico!("util.js"), estatico!("atajos.js"), estatico!("paneles.js"),
-    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("depuracion.js"), estatico!("main.js"),
+    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("depuracion.js"), estatico!("arquitectura.js"), estatico!("main.js"),
 ];
 
 /// Tipo de contenido segun la extension.

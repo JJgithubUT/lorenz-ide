@@ -6,6 +6,7 @@
 pub mod bits;
 pub mod carga;
 pub mod documentar;
+pub mod editar;
 pub mod error;
 mod herencia;
 mod localizar;

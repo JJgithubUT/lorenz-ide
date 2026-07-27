@@ -162,3 +162,16 @@ fieldset { border: 1px solid var(--color-borde); border-radius: var(--radio); ma
 /* Las zonas laterales y la de abajo desplazan sus paneles en vez de apretarlos hasta taparse. */
 #zona-izq > .panel, #zona-der > .panel, #zona-abajo > .panel { flex-shrink: 0; }
 #zona-izq > .panel > .cuerpo, #zona-der > .panel > .cuerpo, #zona-abajo > .panel > .cuerpo { max-height: 20rem; }
+
+/* Editor visual de arquitectura */
+.arq-marco { border: 1px solid var(--color-borde); border-radius: var(--radio); overflow: auto; max-height: 26rem; background: rgba(0,0,0,.15); }
+.arq-marco.sobre { border-color: var(--color-acento); border-style: dashed; }
+.arq-bloque rect { fill: var(--color-superficie); stroke: var(--color-borde); stroke-width: 2; cursor: grab; }
+.arq-bloque:hover rect, .arq-bloque:focus rect { stroke: var(--color-acento); } .arq-bloque { outline: none; }
+.arq-bloque.elegido rect { stroke: var(--color-acento); stroke-width: 3; }
+.arq-bloque.con-error rect { stroke: #ff6b6b; stroke-width: 3; stroke-dasharray: 6 3; }
+.arq-nombre { fill: var(--color-texto); font-size: 13px; font-weight: bold; } .arq-sub { fill: var(--color-suave); font-size: 11px; }
+.arq-columna { fill: var(--color-acento); font-size: 12px; font-weight: 600; }
+.arq-formulario { padding: .3rem 0; } .campo-arq { display: inline-block; margin: 0 .6rem .3rem 0; }
+.enlace { background: none; border: 0; color: inherit; text-align: left; cursor: pointer; text-decoration: underline; }
+#panel-arquitectura { flex: 0 0 auto; } #panel-arquitectura > .cuerpo { max-height: 32rem; }

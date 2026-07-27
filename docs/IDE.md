@@ -43,6 +43,8 @@ Todo es JSON; los errores salen como `{"error": "..."}`.
 | `POST .../instante` `{n}` · `orden` `{linea}` | salta a un instante de la traza; ejecuta una orden del depurador de linea de comandos |
 | `GET .../mapa?bloque=` | regiones de memoria con su ocupacion por bloques, PC y SP |
 | `GET .../eventos` · `.../explicacion` | interrupciones atendidas; que hara la proxima instruccion |
+| `POST /api/arquitectura/analizar` `{texto, ruta}` | bloques del diagrama y errores del cargador (con linea y bloque) |
+| `POST /api/arquitectura/editar` `{texto, ruta, cambio}` | aplica `fijar`, `quitar` o `anadir` al texto sin perder comentarios; devuelve el texto nuevo |
 | `POST /api/gpu` `{maquina, programa}` | abre una sesion grafica (la maquina necesita `[gpu]`) |
 | `POST /api/gpu/:id/avanzar` `{n}` · `GET .../estado` | ejecuta n instrucciones de la CPU junto a la GPU; metricas |
 | `GET /api/gpu/:id/imagen?ampliar=` · `.../pixel?x=&y=` | framebuffer como PNG; describe un pixel |
@@ -113,3 +115,19 @@ unidad aritmetica, PC y puertos; el rotulo lo dice con palabras), **Mapa de memo
 **Memoria** (hexadecimal, con celdas editables), **Linea de tiempo**, **Ordenes del depurador** y
 **Unidad grafica**. `ide::paridad` lista cada orden de `lorenz depurar` con su equivalente grafico y
 una prueba la compara con la ayuda del depurador.
+
+## Editor visual de arquitectura
+
+El panel *Editor visual de arquitectura* dibuja la descripcion abierta en el editor (cualquier
+`.toml`) como bloques: registros, banderas, regiones de memoria y dispositivos. Se puede:
+
+- **Anadir** un bloque pulsando o arrastrando desde la paleta hasta el diagrama.
+- **Cambiar** un campo en el formulario del bloque elegido; **quitar** el bloque con su boton o con
+  Supr; **mover** los bloques con el raton (la posicion se recuerda en el navegador).
+- **Deshacer** el ultimo cambio hecho desde el diagrama.
+
+El diagrama y el texto van a la par: escribir en el texto redibuja el diagrama y un cambio del
+diagrama se escribe en el texto con `toml_edit`, de modo que los comentarios, el orden y la base de
+los numeros (`0xFF`) se conservan. Los fallos del cargador se marcan en el bloque con ⚠ y su
+descripcion; pulsar el fallo lleva a su linea. Las instrucciones se cuentan, pero se editan en el
+texto, igual que lo que la descripcion hereda de otra.
