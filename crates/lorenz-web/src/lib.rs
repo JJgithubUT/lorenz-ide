@@ -15,4 +15,4 @@ pub use json::Json;
 pub use peticion::Peticion;
 pub use respuesta::Respuesta;
 pub use ruta::Router;
-pub use servidor::{Limites, Servidor};
+pub use servidor::{Limites, Manejador, Servidor};

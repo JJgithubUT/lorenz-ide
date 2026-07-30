@@ -48,6 +48,14 @@ impl Peticion {
             .map(|(_, v)| v.as_str())
     }
 
+    /// El valor de una galleta (`Cookie: a=1; b=2`).
+    pub fn galleta(&self, nombre: &str) -> Option<&str> {
+        self.cabecera("cookie")?.split(';').find_map(|par| {
+            let (k, v) = par.trim().split_once('=')?;
+            (k == nombre).then_some(v)
+        })
+    }
+
     pub fn parametro(&self, nombre: &str) -> Option<&str> {
         self.parametros.get(nombre).map(String::as_str)
     }
