@@ -8,10 +8,11 @@ mod arquitectura;
 pub mod editor;
 mod graficos;
 pub mod paridad;
+pub mod seguridad;
 mod sesion;
 
 pub use api::router;
-pub use sesion::{Ide, MAX_SESIONES};
+pub use sesion::{Ide, Restricciones, CARPETA_COMPARTIDA, MAX_SESIONES};
 
 macro_rules! estatico {
     ($n:literal) => {

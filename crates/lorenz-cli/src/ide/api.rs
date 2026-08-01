@@ -339,6 +339,9 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 Ok(x) => x,
                 Err(m) => return error(400, m),
             };
+            if let Err(m) = c.permitir_escritura(ruta, texto) {
+                return error(403, m);
+            }
             if let Some(padre) = destino.parent() {
                 if let Err(e) = std::fs::create_dir_all(padre) {
                     return error(500, format!("{ruta}: {e}"));
@@ -360,6 +363,9 @@ pub fn router(ide: Arc<Ide>) -> Router {
                 Ok(x) => x,
                 Err(m) => return error(400, m),
             };
+            if let Err(m) = d.permitir_borrado(r) {
+                return error(403, m);
+            }
             match std::fs::remove_file(&ruta) {
                 Ok(()) => ok(Json::objeto([("ruta", r.into())])),
                 Err(e) => error(404, format!("{r}: {e}")),
