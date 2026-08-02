@@ -26,7 +26,7 @@ fn uso(dir: &Path) -> (usize, u64) {
     if let Ok(rd) = std::fs::read_dir(dir) {
         for e in rd.filter_map(Result::ok) {
             let Ok(t) = e.file_type() else { continue };
-            if t.is_symlink() {
+            if t.is_symlink() || e.file_name().to_string_lossy().starts_with('.') {
                 continue;
             }
             if t.is_dir() {

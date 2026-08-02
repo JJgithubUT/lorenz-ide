@@ -5,10 +5,12 @@
 
 mod api;
 mod arquitectura;
+mod compartir;
 pub mod editor;
 mod graficos;
 pub mod paridad;
 pub mod seguridad;
+pub mod servicio;
 mod sesion;
 
 pub use api::router;

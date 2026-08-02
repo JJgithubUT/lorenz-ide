@@ -69,6 +69,7 @@ Uso:
   lorenz enlazar <maquina.toml> <objeto.toml | fuente.s>... [-o PROGRAMA.hex] [--mapa ARCHIVO]
                  [--simbolos ARCHIVO] [--objeto ARCHIVO]
   lorenz ide [carpeta] [--puerto N] [--segundos N]
+  lorenz servir [--direccion HOST:PUERTO] [--datos CARPETA] [--segundos N]
   lorenz explicar <maquina.toml> <programa> [--limite N] [--direccion A]
   lorenz exportar <verilog|pdf|logisim> <maquina.toml> [programa] -o SALIDA
   lorenz --seguro <orden> ...   (sin escribir archivos ni abrir procesos o conexiones)
@@ -356,6 +357,11 @@ pub fn ejecutar_cli_con_entrada(
             puerto,
             segundos,
         } => crate::ide::ide_cli(carpeta.as_deref(), puerto, segundos, salida, errores),
+        Orden::Servir {
+            direccion,
+            datos,
+            segundos,
+        } => crate::ide::servicio::servir_cli(&direccion, &datos, segundos, salida, errores),
         Orden::Explicar {
             maquina,
             programa,

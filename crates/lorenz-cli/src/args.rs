@@ -172,6 +172,12 @@ pub enum Orden {
         /// Termina tras estos segundos; sin el, sirve hasta que se interrumpa.
         segundos: Option<u64>,
     },
+    /// Servir el IDE a varias personas desde un servidor (version web).
+    Servir {
+        direccion: String,
+        datos: String,
+        segundos: Option<u64>,
+    },
     /// Contar en palabras lo que hace un programa, instruccion a instruccion.
     Explicar {
         maquina: String,
@@ -373,6 +379,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "exportar" => interpretar_exportar(resto),
         "explicar" => interpretar_explicar(resto),
         "ide" => interpretar_ide(resto),
+        "servir" => interpretar_servir(resto),
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
@@ -1591,6 +1598,34 @@ fn interpretar_ide(resto: &[String]) -> Result<Orden, ErrorUso> {
     Ok(Orden::Ide {
         carpeta,
         puerto,
+        segundos,
+    })
+}
+
+fn interpretar_servir(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let mut direccion = "127.0.0.1:8080".to_string();
+    let mut datos = "lorenz-datos".to_string();
+    let mut segundos = None;
+    let mut it = resto.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--direccion" | "--datos" | "--segundos" => {
+                let valor = it
+                    .next()
+                    .ok_or_else(|| ErrorUso::OpcionSinValor(a.clone()))?;
+                match a.as_str() {
+                    "--direccion" => direccion = valor.clone(),
+                    "--datos" => datos = valor.clone(),
+                    _ => segundos = Some(numero(a, valor)?),
+                }
+            }
+            o if o.starts_with("--") => return Err(ErrorUso::OpcionDesconocida(o.to_string())),
+            _ => return Err(ErrorUso::Sobra(a.clone())),
+        }
+    }
+    Ok(Orden::Servir {
+        direccion,
+        datos,
         segundos,
     })
 }
