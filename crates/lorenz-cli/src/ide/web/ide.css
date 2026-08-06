@@ -175,3 +175,8 @@ fieldset { border: 1px solid var(--color-borde); border-radius: var(--radio); ma
 .arq-formulario { padding: .3rem 0; } .campo-arq { display: inline-block; margin: 0 .6rem .3rem 0; }
 .enlace { background: none; border: 0; color: inherit; text-align: left; cursor: pointer; text-decoration: underline; }
 #panel-arquitectura { flex: 0 0 auto; } #panel-arquitectura > .cuerpo { max-height: 32rem; }
+
+/* Version web */
+#banda-web { background: var(--color-superficie); border-bottom: 1px solid var(--color-borde); padding: .2rem .6rem; font-size: .85rem; }
+#banda-web summary { display: inline; cursor: pointer; text-decoration: underline; margin-left: .4rem; }
+.entrada-galeria { border-bottom: 1px solid var(--color-borde); padding: .25rem 0; }
