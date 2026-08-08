@@ -25,6 +25,7 @@ class Proyecto:
     """Una carpeta temporal con una maquina y un programa, y un `lorenz ide` sirviéndola."""
 
     def __init__(self, binario, raiz_repo):
+        self.binario = binario
         self.dir = tempfile.mkdtemp(prefix="lorenz-ui-")
         shutil.copy(os.path.join(raiz_repo, "ejercicios", "maquina.toml"), self.dir)
         with open(os.path.join(self.dir, "p.s"), "w") as f:
@@ -61,10 +62,37 @@ class Proyecto:
         shutil.rmtree(self.dir, ignore_errors=True)
 
 
+class ProyectoWeb:
+    """Un `lorenz servir` con sus datos en una carpeta temporal (la version web)."""
+
+    def __init__(self, binario):
+        self.dir = tempfile.mkdtemp(prefix="lorenz-web-")
+        self.puerto = puerto_libre()
+        self.proc = subprocess.Popen(
+            [binario, "servir", "--datos", self.dir, "--direccion", f"127.0.0.1:{self.puerto}", "--segundos", "120"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        self.url = f"http://127.0.0.1:{self.puerto}"
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(self.url + "/api/modo", timeout=1).read()
+                return
+            except Exception:
+                time.sleep(0.05)
+        self.cerrar()
+        raise RuntimeError("el servicio no arranco")
+
+    def cerrar(self):
+        self.proc.kill()
+        self.proc.wait()
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+
 class Navegador:
     """Un Chromium con una pagina abierta en el IDE; falla si la pagina lanza errores de JS."""
 
-    def __init__(self, pw, p, ancho=1400, alto=900):
+    def __init__(self, pw, p, ancho=1400, alto=900, seleccionar=True):
+        self.seleccionar = seleccionar
         self.b = pw.chromium.launch()
         self.ctx = self.b.new_context(viewport={"width": ancho, "height": alto})
         self.pag = self.ctx.new_page()
@@ -79,8 +107,9 @@ class Navegador:
         self.pag.goto(self.url + "/")
         self.pag.wait_for_selector("body[data-listo='1']")
         # Por defecto se trabaja con la maquina RISC-16 y p.s; las pruebas eligen otras si hace falta.
-        self.pag.select_option("#sel-maquina", "maquina.toml")
-        self.pag.select_option("#sel-programa", "p.s")
+        if self.seleccionar:
+            self.pag.select_option("#sel-maquina", "maquina.toml")
+            self.pag.select_option("#sel-programa", "p.s")
 
     def recargar(self):
         self.pag.reload()
@@ -809,7 +838,106 @@ def prueba_arquitectura_con_teclado(n, p):
     n.pag.wait_for_function(f"document.querySelectorAll(\".arq-bloque[data-clase='registro']\").length === {regs - 1}")
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado]}
+def con_web(f):
+    """La prueba recibe un servicio web propio y una funcion para abrir visitantes distintos."""
+    def envuelta(pw, p):
+        w = ProyectoWeb(p.binario)
+        abiertos = []
+
+        def visitante():
+            n = Navegador(pw, w, seleccionar=False)
+            abiertos.append(n)
+            return n
+
+        try:
+            f(visitante, w)
+        finally:
+            for n in abiertos:
+                n.cerrar()
+            w.cerrar()
+    envuelta.__name__ = f.__name__
+    return envuelta
+
+
+@con_navegador
+def prueba_ide_local_explica_que_compartir_es_de_la_web(n, p):
+    assert n.pag.is_hidden("#banda-web")
+    abrir_panel(n, "compartir")
+    assert n.pag.is_visible("#compartir-solo-web")
+    assert n.pag.is_hidden("#compartir-web")
+
+
+@con_web
+def prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio(visitante, w):
+    n = visitante()
+    n.pag.wait_for_selector("#banda-web:not([hidden])")
+    n.pag.click("#web-diferencias summary")
+    assert n.pag.locator("#web-limitaciones li").count() >= 5
+    assert "externos" in n.pag.inner_text("#web-limitaciones")
+    assert "Versión web" in n.pag.inner_text("#banda-web")
+    # el espacio viene con ejemplos
+    assert n.pag.locator("#sel-maquina option[value='ejemplo-8/maquina.toml']").count() == 1
+
+
+@con_web
+def prueba_web_conserva_el_trabajo_entre_sesiones(visitante, w):
+    n = visitante()
+    n.pag.evaluate("L.api('PUT','/api/archivo',{ruta:'mio.s',texto:'        HLT\\n'})")
+    n.pag.reload()
+    n.pag.wait_for_selector("body[data-listo='1']")
+    assert n.pag.locator("#sel-programa option[value='mio.s']").count() == 1
+    # otra persona (otro navegador, otra galleta) no lo ve
+    otro = visitante()
+    assert otro.pag.locator("#sel-programa option[value='mio.s']").count() == 0
+    # exportar da un paquete
+    datos = n.pag.evaluate("fetch('/api/exportar').then(r => r.text()).then(t => t.slice(0, 20))")
+    assert datos.startswith("LORENZ-PAQUETE 1")
+
+
+@con_web
+def prueba_web_compartir_abrir_ejecutar_derivar_y_galeria(visitante, w):
+    ana = visitante()
+    ana.pag.select_option("#sel-maquina", "ejemplo-8/maquina.toml")
+    ana.pag.select_option("#sel-programa", "ejemplo-8/programas/suma.s")
+    abrir_panel(ana, "compartir")
+    ana.pag.click("#compartir-hacer")
+    ana.pag.wait_for_function("document.getElementById('compartir-enlace').value.includes('/c/')")
+    enlace = ana.pag.input_value("#compartir-enlace")
+    ana.pag.fill("#galeria-titulo", "Suma en ocho bits")
+    ana.pag.fill("#galeria-descripcion", "Un ejemplo para empezar")
+    ana.pag.fill("#galeria-etiquetas", "didáctica, suma")
+    ana.pag.click("#galeria-publicar")
+    ana.pag.wait_for_function("document.getElementById('compartir-aviso').textContent.includes('Publicado')")
+
+    # Eva abre el enlace sin instalar nada y lo ejecuta
+    eva = visitante()
+    eva.pag.goto(enlace)
+    eva.pag.wait_for_selector("body[data-listo='1']")
+    assert eva.pag.input_value("#sel-maquina").startswith("compartido/")
+    assert eva.pag.input_value("#sel-programa").endswith("suma.s")
+    eva.pag.click("#accion-ejecutar")
+    eva.pag.wait_for_function("document.getElementById('estado-texto').textContent.includes('detenida')")
+    # lo compartido no se edita...
+    resp = eva.pag.evaluate("L.api('PUT','/api/archivo',{ruta:L.proyecto.programa,texto:'x'}).then(r => r.estado)")
+    assert resp == 403
+    # ...se deriva una copia, y esa si
+    abrir_panel(eva, "compartir")
+    eva.pag.fill("#derivar-nombre", "mi-suma")
+    eva.pag.click("#derivar-hacer")
+    eva.pag.wait_for_function("document.getElementById('sel-programa').value === 'mi-suma/ejemplo-8/programas/suma.s'")
+    resp = eva.pag.evaluate("L.api('PUT','/api/archivo',{ruta:L.proyecto.programa,texto:'        HLT\\n'}).then(r => r.estado)")
+    assert resp == 200
+    # la galeria la encuentra por palabras, sin importar acentos
+    eva.pag.fill("#galeria-q", "didactica")
+    eva.pag.click("#galeria-buscar")
+    eva.pag.wait_for_selector("#galeria-lista .entrada-galeria")
+    assert "Suma en ocho bits" in eva.pag.inner_text("#galeria-lista")
+    eva.pag.fill("#galeria-q", "cohete")
+    eva.pag.click("#galeria-buscar")
+    eva.pag.wait_for_selector("#galeria-vacia")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado, prueba_ide_local_explica_que_compartir_es_de_la_web, prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio, prueba_web_conserva_el_trabajo_entre_sesiones, prueba_web_compartir_abrir_ejecutar_derivar_y_galeria]}
 
 
 def principal(argv):
