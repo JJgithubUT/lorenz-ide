@@ -52,6 +52,19 @@ Todo es JSON; los errores salen como `{"error": "..."}`.
 Las respuestas de `paso`, `continuar` y `hasta` traen `parada` (`tipo`: `paso`, `detenida`,
 `ruptura`, `observacion`, `llegada`, `retorno`, `limite`, `fallo`, `condicion`) y el `estado`.
 
+### Version alojada (`lorenz servir`)
+
+| Metodo y ruta | Hace |
+|---|---|
+| `GET /api/modo` | si es alojado, cuotas y limitaciones |
+| `GET /api/exportar` | el espacio como `.lpkg` |
+| `POST /api/compartir` `{maquina, programa}` | enlace `/c/<id>` por contenido |
+| `GET /c/:id` · `GET /api/compartido/:id` | abre lo compartido en `compartido/` |
+| `POST /api/derivar` `{id, nombre}` | copia propia editable |
+| `GET/POST /api/galeria`, `DELETE /api/galeria/:id`, `GET /api/galeria/etiquetas` | galeria con busqueda |
+
+Ver `docs/WEB.md`.
+
 ## Pruebas
 
 `crates/lorenz-cli/tests/ide_api.rs` prueba la API contra un servidor real. `pruebas-ui/banco.py`
