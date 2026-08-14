@@ -9,7 +9,10 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::peticion::{leer, ErrorPeticion};
-use crate::{Respuesta, Router};
+use crate::{Peticion, Respuesta, Router};
+
+/// Lo que atiende cada peticion: un enrutador, o cualquier funcion que elija entre varios.
+pub type Manejador = Arc<dyn Fn(&Peticion) -> Respuesta + Send + Sync>;
 
 #[derive(Debug, Clone)]
 pub struct Limites {
@@ -58,7 +61,7 @@ fn host_local(host: &str) -> bool {
     )
 }
 
-fn atender(mut flujo: TcpStream, router: &Router, limites: &Limites) {
+fn atender(mut flujo: TcpStream, manejador: &Manejador, limites: &Limites) {
     let _ = flujo.set_read_timeout(Some(limites.espera));
     let _ = flujo.set_write_timeout(Some(limites.espera));
     let respuesta = match leer(&mut flujo, limites) {
@@ -66,7 +69,7 @@ fn atender(mut flujo: TcpStream, router: &Router, limites: &Limites) {
             if limites.solo_locales && !p.cabecera("host").is_some_and(host_local) {
                 Respuesta::texto(403, "host no permitido")
             } else {
-                catch_unwind(AssertUnwindSafe(|| router.despachar(&p)))
+                catch_unwind(AssertUnwindSafe(|| manejador(&p)))
                     .unwrap_or_else(|_| Respuesta::texto(500, "error interno"))
             }
         }
@@ -90,10 +93,20 @@ fn atender(mut flujo: TcpStream, router: &Router, limites: &Limites) {
 impl Servidor {
     /// Empieza a escuchar en `direccion` (por ejemplo `127.0.0.1:0` para un puerto libre).
     pub fn iniciar(direccion: &str, router: Router, limites: Limites) -> std::io::Result<Self> {
+        Self::iniciar_con(direccion, Arc::new(move |p| router.despachar(p)), limites)
+    }
+
+    /// Como [`Servidor::iniciar`], pero con un manejador propio (por ejemplo, uno que elija el
+    /// enrutador segun el visitante).
+    pub fn iniciar_con(
+        direccion: &str,
+        manejador: Manejador,
+        limites: Limites,
+    ) -> std::io::Result<Self> {
         let escucha = TcpListener::bind(direccion)?;
         let local = escucha.local_addr()?;
         let parada = Arc::new(AtomicBool::new(false));
-        let router = Arc::new(router);
+        let router = manejador;
         let limites = Arc::new(limites);
         let activas = Arc::new(AtomicUsize::new(0));
         let p = Arc::clone(&parada);
