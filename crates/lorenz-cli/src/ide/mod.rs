@@ -5,13 +5,16 @@
 
 mod api;
 mod arquitectura;
+mod compartir;
 pub mod editor;
 mod graficos;
 pub mod paridad;
+pub mod seguridad;
+pub mod servicio;
 mod sesion;
 
 pub use api::router;
-pub use sesion::{Ide, MAX_SESIONES};
+pub use sesion::{Ide, Restricciones, CARPETA_COMPARTIDA, MAX_SESIONES};
 
 macro_rules! estatico {
     ($n:literal) => {
@@ -23,7 +26,7 @@ macro_rules! estatico {
 #[rustfmt::skip]
 pub const ESTATICOS: &[(&str, &str)] = &[
     estatico!("ide.css"), estatico!("util.js"), estatico!("atajos.js"), estatico!("paneles.js"),
-    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("depuracion.js"), estatico!("arquitectura.js"), estatico!("main.js"),
+    estatico!("archivos.js"), estatico!("resaltado.js"), estatico!("editor.js"), estatico!("herramientas.js"), estatico!("depurador.js"), estatico!("instrumentos.js"), estatico!("ajustes.js"), estatico!("depuracion.js"), estatico!("arquitectura.js"), estatico!("web.js"), estatico!("main.js"),
 ];
 
 /// Tipo de contenido segun la extension.

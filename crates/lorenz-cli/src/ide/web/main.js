@@ -30,6 +30,6 @@
     sp.addEventListener('change', function () { L.proyecto.programa = sp.value; L.guardado.escribir('programa', sp.value); L.emit('programa', sp.value); });
     (L.modulos || []).forEach(function (f) { f(); });
     L.paneles.iniciar();
-    L.cargarProyecto().then(function () { L.emit('listo'); L.estado('Listo'); document.body.setAttribute('data-listo', '1'); });
+    L.cargarProyecto().then(function () { if (L.abrirDeEnlace) L.abrirDeEnlace(); L.emit('listo'); L.estado('Listo'); document.body.setAttribute('data-listo', '1'); });
   });
 })();

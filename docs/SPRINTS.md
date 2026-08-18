@@ -217,7 +217,7 @@ ver ni probar.
 | E3 | Sincronía texto ↔ diagrama en ambos sentidos | RF-ARQ-039, 040 | 12 |
 | E4 | Errores del cargador señalados en el diagrama | RF-ARQ-041 | 6 |
 
-### Hito F — Versión web, compartir y galería → v0.9.0 (370 → 378, 99,5 %)
+### Hito F — Versión web, compartir y galería → v0.9.0 (370 → 378, 99,5 %) — terminado
 
 | # | Historia | Requisitos | Commits |
 | --- | --- | --- | --- |

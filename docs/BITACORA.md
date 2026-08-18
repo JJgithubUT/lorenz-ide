@@ -1297,3 +1297,23 @@ y `/api/arquitectura/editar`, y el panel del diagrama con paleta, formulario y e
   editan en el texto. Lo heredado de otra descripcion tampoco se muestra; se edita en su archivo.
 
 **Pendiente:** hito F (version web, compartir, galeria y cierre).
+
+## 2026-10-16 — Hito F del sprint 4: version web, compartir y galeria
+
+Sprint 4, hito F (v0.9.0): RF-ECO-010 a 013 y 030 a 033; de 370 a 378.
+
+**Hecho:** `lorenz servir`, espacios por visitante, cuotas y filtros de ruta, exportar, compartir,
+derivar, galeria y la interfaz con su banda de avisos; pruebas de integracion y de Chromium.
+
+**Decisiones:**
+
+- **D-134** — El visitante se identifica con una galleta `HttpOnly` de 32 hex y tiene su carpeta;
+  no hay cuentas ni contrasenas.
+- **D-135** — El identificador de lo compartido sale del contenido: el mismo lote da el mismo
+  enlace y no se duplica.
+- **D-136** — Lo compartido vive en `compartido/`, de solo lectura; se edita derivando una copia.
+- **D-137** — Seguridad por capas: rutas, cuotas, rechazo de externos, `Origin` y limite de
+  peticiones. El HTTPS y el aislamiento de red se dejan al despliegue (docs/WEB.md).
+- **D-138** — RF-ECO-029 queda «por verificar»: se deja el guion, no se pudo instalar `wasm32`.
+
+**Pendiente:** RF-ECO-045 (exige IA; RF-ECO-043 lo impide).
