@@ -47,6 +47,7 @@ fn abrir(ide: &Ide, maquina_rel: &str, programa_rel: &str) -> Result<Grafica, St
     } else {
         crate::ensamblar::cargar_segmentos(&maquina, &rp, inicio)?
     };
+    ide.permitir_maquina(&maquina)?;
     let mut emu = Emulador::nuevo(maquina).map_err(|e| format!("{maquina_rel}: {e}"))?;
     lorenz_emu::programa::precargar_regiones(&mut emu, &crate::ordenes::carpeta_de(&rm))
         .map_err(|e| format!("{maquina_rel}: {e}"))?;

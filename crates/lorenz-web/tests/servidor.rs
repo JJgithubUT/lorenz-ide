@@ -126,3 +126,20 @@ fn con_demasiadas_conexiones_responde_503() {
     drop(lenta);
     s.detener();
 }
+
+#[test]
+fn un_manejador_propio_elige_la_respuesta_y_lee_galletas() {
+    let m: lorenz_web::Manejador = std::sync::Arc::new(|p| {
+        let quien = p.galleta("visita").unwrap_or("nadie").to_string();
+        Respuesta::texto(200, &format!("hola {quien}")).con_cabecera("Set-Cookie", "visita=ana")
+    });
+    let s = Servidor::iniciar_con("127.0.0.1:0", m, Limites::default()).unwrap();
+    let r = pedir(
+        &s,
+        b"GET / HTTP/1.1\r\nHost: localhost\r\nCookie: otra=1; visita=luis\r\n\r\n",
+    );
+    assert!(r.ends_with("hola luis"), "{r}");
+    assert!(r.contains("Set-Cookie: visita=ana"));
+    let r = pedir(&s, b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    assert!(r.ends_with("hola nadie"));
+}

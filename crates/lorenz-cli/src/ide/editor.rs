@@ -439,6 +439,13 @@ pub fn rutas(router: Router, ide: Arc<Ide>) -> Router {
                     ultimo = i + aguja.len();
                 }
                 nuevo.push_str(&t[ultimo..]);
+                let rel = ruta
+                    .strip_prefix(d.raiz())
+                    .map(|r| r.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                if d.permitir_escritura(&rel, &nuevo).is_err() {
+                    continue;
+                }
                 if std::fs::write(&ruta, nuevo).is_ok() {
                     cambios += pos.len();
                     tocados.push(Json::from(

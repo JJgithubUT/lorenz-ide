@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.9.0 — 2026-10-16 — Version web, compartir y galeria
+
+- `lorenz servir`: el IDE alojado, con espacio propio y persistente por visitante, cuotas, sin
+  dispositivos externos y con aviso de las diferencias frente al escritorio.
+- Exportar el espacio a `.lpkg`; compartir por enlace (`/c/<id>`), derivar una copia y galeria con
+  busqueda sin acentos. Ver `docs/WEB.md`.
+- Guion `scripts/compilar-wasm.sh` para el nucleo en WebAssembly (por verificar).
+
 ## 0.8.1 — 2026-10-16 — Editor visual de arquitectura
 
 - Panel «Editor visual de arquitectura»: la descripcion como diagrama de bloques (registros,

@@ -20,6 +20,26 @@ impl std::ops::DerefMut for SesionIde {
     }
 }
 
+/// Archivos y bytes que ocupa una carpeta.
+fn uso(dir: &Path) -> (usize, u64) {
+    let mut total = (0usize, 0u64);
+    if let Ok(rd) = std::fs::read_dir(dir) {
+        for e in rd.filter_map(Result::ok) {
+            let Ok(t) = e.file_type() else { continue };
+            if t.is_symlink() || e.file_name().to_string_lossy().starts_with('.') {
+                continue;
+            }
+            if t.is_dir() {
+                let (a, b) = uso(&e.path());
+                total = (total.0 + a, total.1 + b);
+            } else if let Ok(m) = e.metadata() {
+                total = (total.0 + 1, total.1 + m.len());
+            }
+        }
+    }
+    total
+}
+
 pub const MAX_SESIONES: usize = 16;
 
 /// Una ejecucion en curso, con su depurador.
@@ -29,8 +49,33 @@ pub struct SesionIde {
     pub programa: String,
 }
 
+/// Limites de un espacio de trabajo alojado en un servidor (`lorenz servir`).
+#[derive(Debug, Clone)]
+pub struct Restricciones {
+    /// Archivos como maximo en el espacio.
+    pub max_archivos: usize,
+    /// Bytes como maximo entre todos los archivos.
+    pub max_bytes: u64,
+    /// Bytes como maximo de un archivo.
+    pub max_archivo: usize,
+}
+
+impl Default for Restricciones {
+    fn default() -> Self {
+        Self {
+            max_archivos: 300,
+            max_bytes: 4 * 1024 * 1024,
+            max_archivo: 512 * 1024,
+        }
+    }
+}
+
+/// Carpeta de lo compartido por otros: se lee y se ejecuta, pero no se edita (se deriva una copia).
+pub const CARPETA_COMPARTIDA: &str = "compartido";
+
 pub struct Ide {
     raiz: PathBuf,
+    restricciones: Option<Restricciones>,
     sesiones: Mutex<BTreeMap<u32, Arc<Mutex<SesionIde>>>>,
     siguiente: Mutex<u32>,
 }
@@ -39,9 +84,93 @@ impl Ide {
     pub fn nuevo(raiz: impl Into<PathBuf>) -> Self {
         Self {
             raiz: raiz.into(),
+            restricciones: None,
             sesiones: Mutex::new(BTreeMap::new()),
             siguiente: Mutex::new(1),
         }
+    }
+
+    /// Un espacio de trabajo en un servidor: con cuotas, sin dispositivos externos y sin rutas que
+    /// salgan de la carpeta.
+    pub fn alojado(raiz: impl Into<PathBuf>, restricciones: Restricciones) -> Self {
+        let mut ide = Self::nuevo(raiz);
+        ide.restricciones = Some(restricciones);
+        ide
+    }
+
+    pub fn es_alojado(&self) -> bool {
+        self.restricciones.is_some()
+    }
+
+    pub fn restricciones(&self) -> Option<&Restricciones> {
+        self.restricciones.as_ref()
+    }
+
+    /// Comprueba que se pueda escribir `texto` en `rel`. Sin restricciones, siempre se puede.
+    pub fn permitir_escritura(&self, rel: &str, texto: &str) -> Result<(), String> {
+        let Some(r) = &self.restricciones else {
+            return Ok(());
+        };
+        let limpia = rel.trim_start_matches("./");
+        if limpia == CARPETA_COMPARTIDA || limpia.starts_with(&format!("{CARPETA_COMPARTIDA}/")) {
+            return Err(format!(
+                "`{CARPETA_COMPARTIDA}/` es de solo lectura: deriva una copia propia para editarla"
+            ));
+        }
+        if texto.len() > r.max_archivo {
+            return Err(format!(
+                "`{rel}` pesa {} bytes y el maximo por archivo es {}",
+                texto.len(),
+                r.max_archivo
+            ));
+        }
+        if let Some(fallo) = crate::ide::seguridad::ruta_fuera_del_espacio(texto) {
+            return Err(format!("`{rel}`: {fallo}"));
+        }
+        let destino = self.resolver(rel)?;
+        let (archivos, bytes) = uso(&self.raiz);
+        let (era_archivo, era_bytes) = std::fs::metadata(&destino)
+            .map(|m| (m.is_file(), m.len()))
+            .unwrap_or((false, 0));
+        let archivos = archivos + usize::from(!era_archivo);
+        let bytes = bytes - era_bytes + texto.len() as u64;
+        if archivos > r.max_archivos {
+            return Err(format!(
+                "el espacio ya tiene el maximo de {} archivos",
+                r.max_archivos
+            ));
+        }
+        if bytes > r.max_bytes {
+            return Err(format!(
+                "el espacio superaria {} bytes en total (cuota {})",
+                bytes, r.max_bytes
+            ));
+        }
+        Ok(())
+    }
+
+    /// Comprueba que se pueda borrar `rel`.
+    pub fn permitir_borrado(&self, rel: &str) -> Result<(), String> {
+        if self.restricciones.is_some() {
+            let limpia = rel.trim_start_matches("./");
+            if limpia.starts_with(&format!("{CARPETA_COMPARTIDA}/")) {
+                return Err(format!("`{CARPETA_COMPARTIDA}/` es de solo lectura"));
+            }
+        }
+        Ok(())
+    }
+
+    /// Una maquina que se va a ejecutar: en un servidor no se admiten dispositivos que lancen
+    /// procesos o abran conexiones.
+    pub fn permitir_maquina(&self, m: &lorenz_arch::Maquina) -> Result<(), String> {
+        if self.restricciones.is_some()
+            && m.dispositivos
+                .iter()
+                .any(|d| matches!(d.tipo, lorenz_arch::TipoDispositivo::Externo { .. }))
+        {
+            return Err("los dispositivos externos no estan disponibles en la version web".into());
+        }
+        Ok(())
     }
 
     pub fn raiz(&self) -> &Path {
@@ -100,6 +229,7 @@ impl Ide {
         } else {
             crate::ensamblar::cargar_segmentos(&maquina, &rp, inicio)?
         };
+        self.permitir_maquina(&maquina)?;
         let mut emulador = Emulador::nuevo(maquina).map_err(|e| format!("{maquina_rel}: {e}"))?;
         lorenz_emu::programa::precargar_regiones(&mut emulador, &crate::ordenes::carpeta_de(&rm))
             .map_err(|e| format!("{maquina_rel}: {e}"))?;
