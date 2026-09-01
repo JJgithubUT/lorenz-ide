@@ -145,6 +145,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lorenz-wasm"
+version = "0.9.0"
+dependencies = [
+ "lorenz-arch",
+ "lorenz-emu",
+ "lorenz-ens",
+]
+
+[[package]]
 name = "lorenz-web"
 version = "0.9.0"
 
