@@ -53,7 +53,13 @@ compartido (se deriva una copia). El trabajo vive en el servidor: se exporta con
 
 ## Nucleo en WebAssembly (RF-ECO-029)
 
-`scripts/compilar-wasm.sh` compila `lorenz-arch` y `lorenz-emu` para `wasm32-unknown-unknown`.
-El entorno donde se desarrollo no podia instalar ese objetivo, asi que **no esta verificado**:
-queda como «por verificar» hasta compilarlo en un equipo con `rustup`. La version web actual ejecuta
-en el servidor, no en el navegador.
+`crates/lorenz-wasm` empaqueta arquitectura, ensamblador y emulador como un modulo `.wasm` sin
+dependencias de JavaScript (interfaz C minima: `lorenz_reservar`, `lorenz_ejecutar`,
+`lorenz_liberar`). `scripts/compilar-wasm.sh` lo compila y lo deja en `crates/lorenz-wasm/web/`,
+junto a `lorenz.js` (cargador), `index.html` (pagina de prueba) y `probar.mjs` (comprobacion con
+Node).
+
+Verificado en un equipo con Windows: el modulo pesa ~1 MB, ensambla y ejecuta `suma.s` del ejemplo
+y explica los errores de ensamblado, ejecutado por el motor WebAssembly de Node 24. Limites: no
+hay disco, asi que `.incluir` y la herencia de arquitecturas no funcionan dentro del modulo, y los
+dispositivos externos no existen.

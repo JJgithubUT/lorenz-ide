@@ -284,7 +284,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-011 | Ejecutar un enlace compartido sin instalar nada | Hecho | `GET /c/:id` abre en `compartido/`; `prueba_web_compartir_abrir_ejecutar_derivar_y_galeria` |
 | RF-ECO-012 | Derivar una copia propia de lo compartido | Hecho | `POST /api/derivar`; `compartido/` es de solo lectura |
 | RF-ECO-013 | Galeria de maquinas publicadas con busqueda | Hecho | `/api/galeria` (sin acentos ni mayusculas) |
-| RF-ECO-029 | Nucleo compilado a modulo de navegador | Por verificar | `scripts/compilar-wasm.sh`; no se pudo instalar `wasm32` (docs/WEB.md) |
+| RF-ECO-029 | Nucleo compilado a modulo de navegador | Hecho | `crates/lorenz-wasm`, `scripts/compilar-wasm.sh`; verificado con `probar.mjs` en wasm32 (docs/WEB.md) |
 | RF-ECO-030 | Editar, ensamblar y ejecutar sin instalacion | Hecho | `lorenz servir`, `ide::servicio`; `docs/WEB.md` |
 | RF-ECO-031 | Conservar el trabajo entre sesiones | Hecho | espacio por galleta en `<datos>/espacios`; persiste tras reinicio |
 | RF-ECO-032 | Exportar el proyecto al escritorio | Hecho | `GET /api/exportar` (`.lpkg`) |

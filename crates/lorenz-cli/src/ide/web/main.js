@@ -27,7 +27,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     var sm = document.getElementById('sel-maquina'), sp = document.getElementById('sel-programa');
     sm.addEventListener('change', function () { L.proyecto.maquina = sm.value; L.guardado.escribir('maquina', sm.value); L.emit('maquina', sm.value); });
-    sp.addEventListener('change', function () { L.proyecto.programa = sp.value; L.guardado.escribir('programa', sp.value); L.emit('programa', sp.value); });
+    sp.addEventListener('change', function () { L.proyecto.programa = sp.value; L.guardado.escribir('programa', sp.value); L.emit('programa', sp.value); if (/\.(s|asm|lasm|sgt)$/.test(sp.value)) L.emit('abrir-archivo', { ruta: sp.value }); });
     (L.modulos || []).forEach(function (f) { f(); });
     L.paneles.iniciar();
     L.cargarProyecto().then(function () { if (L.abrirDeEnlace) L.abrirDeEnlace(); L.emit('listo'); L.estado('Listo'); document.body.setAttribute('data-listo', '1'); });
