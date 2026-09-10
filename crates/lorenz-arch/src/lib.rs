@@ -4,6 +4,7 @@
 //! su cuenta, todas la consultan aqui (RNF-MAN-002).
 
 pub mod bits;
+pub mod borrador;
 pub mod carga;
 pub mod documentar;
 pub mod editar;
