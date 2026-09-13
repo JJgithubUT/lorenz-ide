@@ -943,7 +943,26 @@ def prueba_elegir_un_programa_lo_abre_en_el_editor(n, p):
     n.pag.wait_for_function("L.editor.activo() === 'p.s' && L.editor.texto().length > 0")
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado, prueba_ide_local_explica_que_compartir_es_de_la_web, prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio, prueba_web_conserva_el_trabajo_entre_sesiones, prueba_web_compartir_abrir_ejecutar_derivar_y_galeria, prueba_elegir_un_programa_lo_abre_en_el_editor]}
+@con_navegador
+def prueba_borrador_desde_texto_crea_y_abre_la_maquina(n, p):
+    abrir_panel(n, "arquitectura")
+    n.pag.click("#arq-borrador summary")
+    n.pag.fill("#borrador-texto", "Procesador de 16 bits con 8 registros, 64 KiB de memoria, suma y resta")
+    n.pag.click("#borrador-crear")
+    n.pag.wait_for_function("L.editor.activo() === 'borrador.toml'")
+    assert n.pag.locator("#borrador-supuestos li").count() >= 2
+    # el diagrama muestra la maquina nueva y es valida
+    n.pag.wait_for_function("document.getElementById('arq-aviso').textContent.includes('válida')")
+    # una segunda vez no pisa la primera
+    n.pag.click("#borrador-crear")
+    n.pag.wait_for_function("L.editor.activo() === 'borrador-2.toml'")
+    # sin texto, avisa
+    n.pag.fill("#borrador-texto", "")
+    n.pag.click("#borrador-crear")
+    assert "Escribe" in n.pag.inner_text("#borrador-aviso")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado, prueba_ide_local_explica_que_compartir_es_de_la_web, prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio, prueba_web_conserva_el_trabajo_entre_sesiones, prueba_web_compartir_abrir_ejecutar_derivar_y_galeria, prueba_elegir_un_programa_lo_abre_en_el_editor, prueba_borrador_desde_texto_crea_y_abre_la_maquina]}
 
 
 def principal(argv):
