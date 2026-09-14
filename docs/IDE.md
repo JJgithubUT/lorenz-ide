@@ -45,6 +45,7 @@ Todo es JSON; los errores salen como `{"error": "..."}`.
 | `GET .../eventos` · `.../explicacion` | interrupciones atendidas; que hara la proxima instruccion |
 | `POST /api/arquitectura/analizar` `{texto, ruta}` | bloques del diagrama y errores del cargador (con linea y bloque) |
 | `POST /api/arquitectura/editar` `{texto, ruta, cambio}` | aplica `fijar`, `quitar` o `anadir` al texto sin perder comentarios; devuelve el texto nuevo |
+| `POST /api/arquitectura/borrador` `{descripcion}` | borrador de maquina desde texto: `{texto, supuestos}` (docs/BORRADOR.md) |
 | `POST /api/gpu` `{maquina, programa}` | abre una sesion grafica (la maquina necesita `[gpu]`) |
 | `POST /api/gpu/:id/avanzar` `{n}` · `GET .../estado` | ejecuta n instrucciones de la CPU junto a la GPU; metricas |
 | `GET /api/gpu/:id/imagen?ampliar=` · `.../pixel?x=&y=` | framebuffer como PNG; describe un pixel |

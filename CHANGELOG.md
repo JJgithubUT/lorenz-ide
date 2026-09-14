@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.10.0 — 2026-10-16 — Nucleo en el navegador y borrador de arquitectura
+
+- `crates/lorenz-wasm`: arquitectura, ensamblador y emulador como modulo WebAssembly, con cargador
+  JavaScript, pagina de prueba y comprobacion con Node. Verificado en Windows (RF-ECO-029).
+- `lorenz borrador` y panel del IDE: una maquina valida a partir de una descripcion en palabras,
+  por reglas y sin IA, con la lista de supuestos (RF-ECO-045). Ver `docs/BORRADOR.md`.
+- El IDE abre en el editor el programa que se elige.
+
 ## 0.9.0 — 2026-10-16 — Version web, compartir y galeria
 
 - `lorenz servir`: el IDE alojado, con espacio propio y persistente por visitante, cuotas, sin
