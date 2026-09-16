@@ -1317,3 +1317,18 @@ derivar, galeria y la interfaz con su banda de avisos; pruebas de integracion y 
 - **D-138** — RF-ECO-029 queda «por verificar»: se deja el guion, no se pudo instalar `wasm32`.
 
 **Pendiente:** RF-ECO-045 (exige IA; RF-ECO-043 lo impide).
+
+## 2026-10-16 — Cierre de los requisitos: wasm y borrador
+
+Sprint 4, cierre (v0.10.0): RF-ECO-029 y RF-ECO-045; de 378 a 380.
+
+**Decisiones:**
+
+- **D-139** — El modulo wasm exporta una interfaz C minima (`lorenz_reservar`, `lorenz_ejecutar`,
+  `lorenz_liberar`) en vez de usar `wasm-bindgen`: ninguna dependencia nueva.
+- **D-140** — RF-ECO-045 se cumple con reglas fijas, no con un modelo: RF-ECO-043 obliga a que todo
+  funcione sin IA. El borrador es determinista, lista sus supuestos y pasa por el cargador antes de
+  entregarse.
+
+**Revision de la interfaz:** recorrida en un navegador real; se encontro que elegir un programa no
+lo abria en el editor, y se corrigio.

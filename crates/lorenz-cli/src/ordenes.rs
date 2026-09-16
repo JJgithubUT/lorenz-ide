@@ -48,6 +48,7 @@ Uso:
              [--ampliar N] [--pixel X,Y]... [--texto]
   lorenz nuevo <plantilla | carpeta-plantilla> <destino> [--nombre NOMBRE]
   lorenz plantillas
+  lorenz borrador <descripcion en palabras> [-o maquina.toml]
   lorenz ejercicio listar <carpeta-de-ejercicios>
   lorenz ejercicio ver <ejercicio> [--pista N]
   lorenz ejercicio verificar <ejercicio> [--solucion ARCHIVO]
@@ -348,6 +349,10 @@ pub fn ejecutar_cli_con_entrada(
             destino,
             nombre,
         } => crate::nuevo::nuevo_cli(&plantilla, &destino, nombre.as_deref(), salida, errores),
+        Orden::Borrador {
+            descripcion,
+            salida: archivo,
+        } => crate::borrador::borrador_cli(&descripcion, archivo.as_deref(), salida, errores),
         Orden::Convencion {
             maquina,
             salida: archivo,

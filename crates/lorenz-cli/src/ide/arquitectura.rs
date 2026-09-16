@@ -217,6 +217,30 @@ pub fn rutas(router: Router, ide: Arc<Ide>) -> Router {
                 }
             }
         })
+        .post("/api/arquitectura/borrador", move |p| {
+            let j = match cuerpo(p) {
+                Ok(j) => j,
+                Err(r) => return r,
+            };
+            let d = match texto_de(&j, "descripcion") {
+                Ok(d) => d,
+                Err(r) => return r,
+            };
+            match lorenz_arch::borrador::desde_descripcion(d) {
+                Ok(b) => ok(objeto(vec![
+                    ("texto", b.texto.into()),
+                    (
+                        "supuestos",
+                        b.supuestos
+                            .iter()
+                            .map(|s| Json::texto(s.as_str()))
+                            .collect::<Vec<_>>()
+                            .into(),
+                    ),
+                ])),
+                Err(e) => error(422, e),
+            }
+        })
         .post("/api/arquitectura/editar", move |p| {
             let (j, texto) = match pedir(p) {
                 Ok(x) => x,

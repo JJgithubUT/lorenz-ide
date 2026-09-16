@@ -280,6 +280,7 @@ comunidad, extensiones) llega con su fase. Los paquetes estan en `docs/PAQUETES.
 | RF-ECO-042 | Crear un proyecto desde una plantilla | Hecho | `lorenz nuevo`, `lorenz-cli/src/nuevo.rs` |
 | RF-ECO-028 | Documentar el formato de arquitectura con su gramatica completa | Hecho | `docs/FORMATO.md` |
 | RF-ECO-043 | Funcionar por completo sin funciones de IA | Hecho | ninguna orden usa red ni modelos; `tests/sin_ia.rs` vigila las dependencias |
+| RF-ECO-045 | Borrador de arquitectura desde lenguaje natural, editable | Hecho | `lorenz_arch::borrador`, `lorenz borrador`, `POST /api/arquitectura/borrador`, panel del editor visual; por reglas, sin IA (D-140); `tests/borrador.rs` |
 | RF-ECO-010 | Compartir una maquina y su programa con un enlace | Hecho | `ide::compartir`, `POST /api/compartir`, id por contenido; `tests/servicio.rs`, banco UI |
 | RF-ECO-011 | Ejecutar un enlace compartido sin instalar nada | Hecho | `GET /c/:id` abre en `compartido/`; `prueba_web_compartir_abrir_ejecutar_derivar_y_galeria` |
 | RF-ECO-012 | Derivar una copia propia de lo compartido | Hecho | `POST /api/derivar`; `compartido/` es de solo lectura |

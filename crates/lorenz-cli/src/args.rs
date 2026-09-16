@@ -160,6 +160,11 @@ pub enum Orden {
         destino: String,
         nombre: Option<String>,
     },
+    /// Proponer un borrador de arquitectura a partir de una descripcion en lenguaje natural.
+    Borrador {
+        descripcion: String,
+        salida: Option<String>,
+    },
     /// Escribir la convencion de llamada de SGT en una maquina.
     Convencion {
         maquina: String,
@@ -383,6 +388,7 @@ pub fn interpretar(args: &[String]) -> Result<Orden, ErrorUso> {
         "compilar" => interpretar_compilar(resto),
         "convencion" => interpretar_convencion(resto),
         "nuevo" => interpretar_nuevo(resto),
+        "borrador" => interpretar_borrador(resto),
         "ciclos" => interpretar_ciclos(resto),
         "comparar-ciclos" => interpretar_comparar_ciclos(resto),
         "sugerir" => interpretar_sugerir(resto),
@@ -970,6 +976,27 @@ fn interpretar_nuevo(resto: &[String]) -> Result<Orden, ErrorUso> {
         plantilla,
         destino,
         nombre,
+    })
+}
+
+fn interpretar_borrador(resto: &[String]) -> Result<Orden, ErrorUso> {
+    let (mut palabras, mut salida) = (Vec::new(), None);
+    let mut i = 0;
+    while i < resto.len() {
+        let a = &resto[i];
+        match a.as_str() {
+            "-o" | "--salida" => salida = Some(valor_de(resto, &mut i, a)?.clone()),
+            _ if a.starts_with('-') => return Err(ErrorUso::OpcionDesconocida(a.clone())),
+            _ => palabras.push(a.clone()),
+        }
+        i += 1;
+    }
+    if palabras.is_empty() {
+        return Err(ErrorUso::Falta("descripcion"));
+    }
+    Ok(Orden::Borrador {
+        descripcion: palabras.join(" "),
+        salida,
     })
 }
 

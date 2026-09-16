@@ -72,7 +72,7 @@ pub extern "C" fn lorenz_reservar(n: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn lorenz_liberar(p: *mut u8, n: usize) {
     if !p.is_null() {
-        drop(Box::from_raw(std::slice::from_raw_parts_mut(p, n)));
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(p, n)));
     }
 }
 

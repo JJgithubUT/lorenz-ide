@@ -50,6 +50,7 @@ pub mod documentar;
 /// Compilacion de SGT.
 pub mod compilar;
 
+pub mod borrador;
 pub mod nuevo;
 
 /// Simulacion ciclo a ciclo.
