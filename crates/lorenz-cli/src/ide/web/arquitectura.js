@@ -252,7 +252,38 @@
         anadir(m[1], { x: Math.max(0, Math.round((ev.clientX - r.left) * k - ANCHO / 2)), y: Math.max(0, Math.round((ev.clientY - r.top) * k - ALTO / 2)) });
       });
 
-      cuerpo.append(aviso, paleta, marco, formulario, errores);
+      // --- borrador desde texto (RF-ECO-045) ---------------------------------------------------
+      var bTexto = L.el('textarea', { id: 'borrador-texto', rows: '3', 'aria-label': 'Describe la máquina con tus palabras', placeholder: 'Por ejemplo: procesador de 16 bits con 8 registros, 64 KiB de memoria, suma y resta' });
+      var bCrear = L.el('button', { type: 'button', id: 'borrador-crear', texto: 'Crear borrador' });
+      var bAviso = L.el('p', { id: 'borrador-aviso', class: 'suave', role: 'status', 'aria-live': 'polite' });
+      var bLista = L.el('ul', { id: 'borrador-supuestos', class: 'lista', 'aria-label': 'Supuestos del borrador' });
+      var borrador = L.el('details', { id: 'arq-borrador' }, [
+        L.el('summary', { texto: 'Borrador desde una descripción' }),
+        L.el('p', { class: 'suave', texto: 'Sin IA: lee números y palabras clave. Lo que no diga, lo supone y te lo cuenta; después lo editas como cualquier descripción.' }),
+        bTexto, L.el('div', { class: 'fila' }, [bCrear]), bAviso, bLista
+      ]);
+      function nombreLibre() {
+        var usados = (L.proyecto.archivos || []).map(function (a) { return a.ruta; });
+        var n = 'borrador.toml', i = 2;
+        while (usados.indexOf(n) >= 0) { n = 'borrador-' + i + '.toml'; i++; }
+        return n;
+      }
+      bCrear.addEventListener('click', function () {
+        bLista.textContent = '';
+        if (!bTexto.value.trim()) { bAviso.textContent = 'Escribe primero la descripción.'; return; }
+        L.api('POST', '/api/arquitectura/borrador', { descripcion: bTexto.value }).then(function (r) {
+          if (!r.ok) { bAviso.textContent = 'No se pudo: ' + (r.datos.error || r.estado); return; }
+          var ruta = nombreLibre();
+          return L.api('PUT', '/api/archivo', { ruta: ruta, texto: r.datos.texto }).then(function (w) {
+            if (!w.ok) { bAviso.textContent = 'No se pudo guardar ' + ruta + ': ' + (w.datos.error || w.estado); return; }
+            (r.datos.supuestos || []).forEach(function (t) { bLista.append(L.el('li', { texto: t })); });
+            bAviso.textContent = 'Borrador guardado en ' + ruta + '. Revisa estos supuestos:';
+            return L.cargarProyecto().then(function () { L.emit('abrir-archivo', { ruta: ruta }); });
+          });
+        });
+      });
+
+      cuerpo.append(aviso, borrador, paleta, marco, formulario, errores);
       L.on('texto-editado', function (d) { if (d.ruta === rutaActual()) programar(); });
       L.on('editor-activo', function () { estado.elegido = null; analizar(); });
       L.on('disposicion', function () { if (!cuerpo.closest('.panel').classList.contains('colapsado')) analizar(); });
