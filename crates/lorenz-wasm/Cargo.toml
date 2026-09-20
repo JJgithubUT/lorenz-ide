@@ -1,0 +1,15 @@
+[package]
+name = "lorenz-wasm"
+description = "El nucleo de Lorenz como modulo WebAssembly: ensambla y ejecuta en el navegador (RF-ECO-029)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+lorenz-arch = { path = "../lorenz-arch" }
+lorenz-emu = { path = "../lorenz-emu" }
+lorenz-ens = { path = "../lorenz-ens" }
