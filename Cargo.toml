@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/lorenz-arch", "crates/lorenz-emu", "crates/lorenz-ens", "crates/lorenz-dbg", "crates/lorenz-tst", "crates/lorenz-cli", "crates/lorenz-sgt", "crates/lorenz-cic", "crates/lorenz-gpu", "crates/lorenz-paq", "crates/lorenz-web", "crates/lorenz-wasm"]
 
 [workspace.package]
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 rust-version = "1.75"
 license = "UNLICENSED"
