@@ -11,6 +11,14 @@
   var ui = {};
   var autoPendiente = null;
 
+  // La linea que la maquina esta a punto de ejecutar, si es de este archivo.
+  var ejecucion = null;
+  function lineaEnEjecucion() {
+    if (!ejecucion || !actual || !ejecucion.archivo) return 0;
+    var a = String(ejecucion.archivo).replace(/\\/g, '/');
+    return (a === actual || a.slice(-(actual.length + 1)) === '/' + actual) ? ejecucion.linea : 0;
+  }
+
   function lenguaje() { return L.lenguajeDe(actual || ''); }
 
   // --- pintado -------------------------------------------------------------------------
@@ -18,12 +26,14 @@
     if (!actual) { ui.resalte.innerHTML = ''; return; }
     var lineas = L.resaltar(abiertos[actual].texto, lenguaje());
     var errs = diagnosticos[actual] || {};
+    var ahora = lineaEnEjecucion();
     ui.resalte.innerHTML = lineas.map(function (h, i) {
       var e = errs[i + 1];
-      return '<span class="linea' + (e ? ' con-error' : '') + '" data-n="' + (i + 1) + '"' + (e ? ' title="' + L.escapar(e) + '"' : '') + '>' + (h || ' ') + (e ? '<span class="marca-error" aria-hidden="true"> ✖ ' + L.escapar(e) + '</span>' : '') + '</span>';
+      return '<span class="linea' + (e ? ' con-error' : '') + (ahora === i + 1 ? ' ejecutando' : '') + '" data-n="' + (i + 1) + '"' + (e ? ' title="' + L.escapar(e) + '"' : '') + '>' + (h || ' ') + (e ? '<span class="marca-error" aria-hidden="true"> ✖ ' + L.escapar(e) + '</span>' : '') + '</span>';
     }).join('\n');
     ui.numeros.innerHTML = lineas.map(function (_, i) {
       var e = errs[i + 1];
+      if (ahora === i + 1 && !e) return '<div class="ejecutando" aria-label="línea ' + (i + 1) + ', la siguiente en ejecutarse">▶' + (i + 1) + '</div>';
       return '<div' + (e ? ' class="con-error" aria-label="línea ' + (i + 1) + ' con error"' : '') + '>' + (e ? '✖' : '') + (i + 1) + '</div>';
     }).join('');
   }
@@ -355,6 +365,17 @@
     }
   });
 
+  L.on('estado', function (e) {
+    var antes = lineaEnEjecucion();
+    ejecucion = e && e.ubicacion ? e.ubicacion : null;
+    if (antes === lineaEnEjecucion()) return;
+    pintarTextoResaltado();
+    var n = lineaEnEjecucion();
+    if (n && ui.area) { // que la linea quede a la vista
+      var alto = ui.area.clientHeight, y = (n - 1) * 1.55 * 0.96 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      if (y < ui.area.scrollTop || y > ui.area.scrollTop + alto - 40) { ui.area.scrollTop = Math.max(0, y - alto / 3); sincronizarDesplazamiento(); }
+    }
+  });
   L.on('abrir-archivo', function (d) { abrir(d.ruta, d.linea); });
   L.on('maquina', function (m) { L.cargarLenguaje(m).then(function () { pintarTextoResaltado(); }); });
   L.on('lenguaje', function () { pintarTextoResaltado(); });
