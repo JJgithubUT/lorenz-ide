@@ -72,6 +72,20 @@ Ver `docs/WEB.md`.
 abre el IDE en Chromium (playwright) y la prueba `ide_ui.rs` lo lanza; se omite si no hay
 playwright o Chromium.
 
+## La interfaz (rediseno 0.10.1)
+
+- **Cabecera de panel:** solo el nombre y un chevron para plegar; mover, separar o acoplar viven en
+  el menu «⋯» (Escape o pulsar fuera lo cierra). Doble clic en la cabecera pliega.
+- **Barra superior:** las acciones van agrupadas por lo que hacen (Construir, Ejecucion,
+  Depuracion); Ejecutar es la accion principal. Maquina y programa quedan a la derecha.
+- **Zona inferior en pestanas:** Buscar, Problemas, Consola, Pantalla, Instante, Camino del dato,
+  Mapa, Eventos y Ordenes se alternan con flechas, Inicio y Fin; la pestana se recuerda. Un
+  error de compilacion lleva solo a Problemas. Se redimensiona con el asa de su esquina.
+- **Linea en ejecucion:** el editor marca la linea que la maquina va a ejecutar (con ▶ en el
+  numero, no solo con color).
+- **Estados vacios** que dicen que hacer; tokens de color en `ide.css` (grafito con lamparas ambar
+  y cian solo para el foco).
+
 ## La interfaz
 
 `lorenz ide` sirve una pagina con paneles (todos se pueden mover entre las cuatro zonas, separar
