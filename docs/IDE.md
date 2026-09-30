@@ -72,7 +72,7 @@ Ver `docs/WEB.md`.
 abre el IDE en Chromium (playwright) y la prueba `ide_ui.rs` lo lanza; se omite si no hay
 playwright o Chromium.
 
-## La interfaz (rediseno 0.10.1)
+## Rediseno de la interfaz (0.10.1)
 
 - **Cabecera de panel:** solo el nombre y un chevron para plegar; mover, separar o acoplar viven en
   el menu «⋯» (Escape o pulsar fuera lo cierra). Doble clic en la cabecera pliega.
