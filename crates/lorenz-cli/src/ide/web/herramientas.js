@@ -6,7 +6,7 @@
 
   // --- buscar y reemplazar --------------------------------------------------------------
   L.paneles.registrar({
-    id: 'buscar', titulo: 'Buscar y reemplazar', zona: 'abajo',
+    id: 'buscar', titulo: 'Buscar y reemplazar', corto: 'Buscar', zona: 'abajo',
     construir: function (cuerpo) {
       var texto = L.el('input', { type: 'search', id: 'buscar-texto', 'aria-label': 'Texto a buscar', placeholder: 'Buscar…' });
       var por = L.el('input', { type: 'text', id: 'buscar-por', 'aria-label': 'Texto de reemplazo', placeholder: 'Reemplazar por…' });
@@ -62,12 +62,13 @@
 
   // --- problemas ---------------------------------------------------------------------------
   L.paneles.registrar({
-    id: 'problemas', titulo: 'Problemas', zona: 'abajo',
+    id: 'problemas', titulo: 'Problemas', corto: 'Problemas', zona: 'abajo',
     construir: function (cuerpo) {
       var lista = L.el('ul', { class: 'lista', id: 'problemas-lista', role: 'listbox', 'aria-label': 'Problemas del último compilado' });
-      cuerpo.append(L.el('p', { class: 'suave', id: 'problemas-vacio', texto: 'Sin problemas.' }), lista);
+      cuerpo.append(L.el('p', { class: 'suave', id: 'problemas-vacio', texto: 'Sin problemas en el último compilado.' }), lista);
       L.on('problemas', function (ds) {
         lista.textContent = '';
+        if (ds.length) L.paneles.activar('problemas');
         document.getElementById('problemas-vacio').hidden = ds.length > 0;
         ds.forEach(function (d) {
           var li = L.el('li', { role: 'option', tabindex: '0', 'aria-selected': 'false' }, [

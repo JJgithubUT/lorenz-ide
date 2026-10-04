@@ -147,6 +147,12 @@ def prueba_api_desde_el_navegador(n, p):
     assert isinstance(r["id"], int), r
 
 
+def accion_panel(n, panel, accion):
+    """Mover o separar un panel: esas acciones viven en su menu «⋯»."""
+    n.pag.click(f"#panel-{panel} .menu-panel > summary")
+    n.pag.click(f"#panel-{panel} .menu [data-accion='{accion}']")
+
+
 def zona_de(n, panel):
     return n.pag.evaluate(f"document.getElementById('panel-{panel}').parentElement.id")
 
@@ -154,15 +160,15 @@ def zona_de(n, panel):
 @con_navegador
 def prueba_paneles_se_mueven_y_se_recuerdan(n, p):
     assert zona_de(n, "archivos") == "zona-izq"
-    n.pag.click("#panel-archivos [data-accion='der']")
+    accion_panel(n, "archivos", "der")
     assert zona_de(n, "archivos") == "zona-der"
     n.recargar()
     assert zona_de(n, "archivos") == "zona-der", "la disposicion no se recordo"
-    n.pag.click("#panel-archivos [data-accion='separar']")
+    accion_panel(n, "archivos", "separar")
     assert "flotante" in n.pag.get_attribute("#panel-archivos", "class")
     n.recargar()
     assert "flotante" in n.pag.get_attribute("#panel-archivos", "class"), "el panel separado no se recordo"
-    n.pag.click("#panel-archivos [data-accion='separar']")
+    accion_panel(n, "archivos", "separar")
     n.pag.click("#panel-archivos [data-accion='colapsar']")
     assert "colapsado" in n.pag.get_attribute("#panel-archivos", "class")
     n.pag.evaluate("L.paneles.restaurar()")
@@ -313,6 +319,7 @@ def prueba_guardado_automatico_y_recuperacion(n, p):
 
 @con_navegador
 def prueba_buscar_y_reemplazar_en_el_proyecto(n, p):
+    abrir_panel(n, "buscar")
     n.pag.fill("#buscar-texto", "inicio")
     n.pag.click("#buscar-ir")
     n.pag.wait_for_function("document.getElementById('buscar-info').textContent.startsWith('2')")
@@ -464,6 +471,7 @@ def prueba_pantalla_muestra_el_framebuffer(n, p):
 
 @con_navegador
 def prueba_efectos_del_monitor_son_independientes(n, p):
+    abrir_panel(n, "pantalla")
     clases = lambda: n.pag.get_attribute("#monitor", "class")
     for f in ["curvatura", "grano", "parpadeo", "texturas"]:
         assert f"efecto-{f}" in clases()
@@ -498,7 +506,7 @@ def prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad(n, p):
     })()""")
     assert estilo["sombra"] == "none" and estilo["antes"] == "none" and estilo["despues"] == "none", estilo
     assert estilo["textura"] == "none" and estilo["radio"] in ("0px", "0"), estilo
-    assert estilo["fondo"] == "rgb(255, 255, 255)", estilo
+    assert estilo["fondo"] == "rgb(232, 235, 239)", estilo
     # La misma funcionalidad: depurar, editar, buscar.
     n.pag.click("#accion-paso")
     n.pag.wait_for_selector("[data-registro='R1']")
@@ -522,11 +530,11 @@ def prueba_temas_propios_con_marcas_modificables(n, p):
     n.recargar()
     assert css("--color-fondo") == "#102030", "el tema propio se recuerda"
     n.pag.select_option("#ajuste-tema", "oscuro")
-    assert css("--color-fondo") == "#1b1d21"
+    assert css("--color-fondo") == "#121418"
     n.pag.select_option("#ajuste-tema", "mio")
     assert css("--color-fondo") == "#102030"
     n.pag.click("#tema-borrar")
-    assert css("--color-fondo") == "#1b1d21"
+    assert css("--color-fondo") == "#121418"
     assert n.pag.locator("#ajuste-tema option[value='mio']").count() == 0
 
 
@@ -624,12 +632,16 @@ def prueba_reasignar_un_atajo_desde_la_interfaz(n, p):
 
 
 def abrir_panel(n, id_):
-    if n.pag.locator(f"#panel-{id_}.colapsado").count():
+    """Deja el panel a la vista: lo despliega, o elige su pestana si esta en la zona inferior."""
+    if n.pag.locator(f"#panel-{id_}.en-pestana-oculta").count():
+        n.pag.click(f"#pestana-{id_}")
+    elif n.pag.locator(f"#panel-{id_}.colapsado").count() and not n.pag.locator(f"#zona-abajo #panel-{id_}").count():
         n.pag.click(f"#panel-{id_} [data-accion='colapsar']")
 
 
 @con_navegador
 def prueba_instante_con_control_deslizante(n, p):
+    abrir_panel(n, "instante")
     n.pag.click("#accion-paso")
     n.pag.wait_for_function("document.getElementById('contadores').textContent.includes('PC 0x0001')")
     n.pag.click("#accion-paso")
@@ -719,6 +731,7 @@ def prueba_visor_de_la_unidad_grafica_en_vivo(n, p):
 
 @con_navegador
 def prueba_ejecucion_lenta_respeta_las_rupturas(n, p):
+    abrir_panel(n, "instante")
     n.pag.select_option("#velocidad", "50")
     n.pag.click("#accion-paso")
     n.pag.wait_for_selector("#desens-lista li")
@@ -962,7 +975,44 @@ def prueba_borrador_desde_texto_crea_y_abre_la_maquina(n, p):
     assert "Escribe" in n.pag.inner_text("#borrador-aviso")
 
 
-PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado, prueba_ide_local_explica_que_compartir_es_de_la_web, prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio, prueba_web_conserva_el_trabajo_entre_sesiones, prueba_web_compartir_abrir_ejecutar_derivar_y_galeria, prueba_elegir_un_programa_lo_abre_en_el_editor, prueba_borrador_desde_texto_crea_y_abre_la_maquina]}
+@con_navegador
+def prueba_pestanas_inferiores_se_manejan_con_teclado(n, p):
+    assert n.pag.locator("#pestanas-abajo [role=tab]").count() >= 6
+    assert n.pag.locator("#zona-abajo .panel:not(.en-pestana-oculta)").count() == 1, "solo un panel a la vez"
+    n.pag.click("#pestana-buscar")
+    n.pag.wait_for_selector("#buscar-texto", state="visible")
+    n.pag.keyboard.press("ArrowRight")
+    n.pag.wait_for_function("document.activeElement.id === 'pestana-problemas'")
+    assert n.pag.get_attribute("#pestana-problemas", "aria-selected") == "true"
+    assert n.pag.get_attribute("#pestana-buscar", "aria-selected") == "false"
+    n.recargar()
+    assert n.pag.get_attribute("#pestana-problemas", "aria-selected") == "true", "la pestana se recuerda"
+
+
+@con_navegador
+def prueba_menu_del_panel_se_cierra_con_escape(n, p):
+    n.pag.click("#panel-archivos .menu-panel > summary")
+    assert n.pag.is_visible("#panel-archivos .menu [data-accion='der']")
+    n.pag.keyboard.press("Escape")
+    assert not n.pag.is_visible("#panel-archivos .menu [data-accion='der']")
+    n.pag.click("#panel-archivos .menu-panel > summary")
+    n.pag.click("#titulo-editor")
+    assert not n.pag.is_visible("#panel-archivos .menu [data-accion='der']"), "pulsar fuera lo cierra"
+
+
+@con_navegador
+def prueba_la_linea_en_ejecucion_se_marca_en_el_editor(n, p):
+    abrir_archivo(n, "p.s")
+    assert n.pag.locator(".resalte .linea.ejecutando").count() == 0
+    n.pag.click("#accion-paso")
+    n.pag.wait_for_selector(".resalte .linea.ejecutando")
+    assert n.pag.locator(".resalte .linea.ejecutando").count() == 1
+    assert n.pag.locator(".numeros .ejecutando").count() == 1
+    n.pag.click("#accion-reiniciar")
+    n.pag.wait_for_function("document.querySelectorAll('.resalte .linea.ejecutando').length <= 1")
+
+
+PRUEBAS = {f.__name__: f for f in [prueba_pagina_carga, prueba_api_desde_el_navegador, prueba_paneles_se_mueven_y_se_recuerdan, prueba_paneles_se_arrastran, prueba_atajos_reasignables, prueba_editor_resalta_segun_la_arquitectura, prueba_editor_resalta_sgt, prueba_editor_autocompleta, prueba_editor_muestra_la_codificacion, prueba_editor_marca_errores_en_la_linea, prueba_editor_va_a_la_definicion, prueba_guardado_automatico_y_recuperacion, prueba_buscar_y_reemplazar_en_el_proyecto, prueba_lista_de_problemas, prueba_documentacion_dentro_del_ide, prueba_depurador_paso_a_paso_con_lamparas, prueba_depurador_lamparas_se_pueden_conmutar, prueba_depurador_ruptura_y_ejecucion, prueba_depuracion_completa_solo_con_teclado, prueba_las_banderas_no_dependen_del_color, prueba_consola_de_teletipo, prueba_pantalla_muestra_el_framebuffer, prueba_efectos_del_monitor_son_independientes, prueba_tema_sobrio_sin_efectos_con_la_misma_funcionalidad, prueba_temas_propios_con_marcas_modificables, prueba_sonido_por_familia_y_sin_sonido, prueba_tamano_de_texto_sin_romper_la_disposicion, prueba_alto_contraste, prueba_progreso_de_operaciones_largas, prueba_reasignar_un_atajo_desde_la_interfaz, prueba_instante_con_control_deslizante, prueba_camino_del_dato_se_anima, prueba_mapa_de_memoria_y_editor_hexadecimal, prueba_linea_de_tiempo_de_eventos, prueba_consola_de_ordenes_del_depurador, prueba_visor_de_la_unidad_grafica_en_vivo, prueba_ejecucion_lenta_respeta_las_rupturas, prueba_arquitectura_texto_a_diagrama, prueba_arquitectura_diagrama_a_texto_conserva_comentarios, prueba_arquitectura_se_compone_arrastrando, prueba_arquitectura_senala_los_errores_en_el_diagrama, prueba_arquitectura_con_teclado, prueba_ide_local_explica_que_compartir_es_de_la_web, prueba_web_avisa_de_lo_que_no_hay_en_el_escritorio, prueba_web_conserva_el_trabajo_entre_sesiones, prueba_web_compartir_abrir_ejecutar_derivar_y_galeria, prueba_elegir_un_programa_lo_abre_en_el_editor, prueba_borrador_desde_texto_crea_y_abre_la_maquina, prueba_pestanas_inferiores_se_manejan_con_teclado, prueba_menu_del_panel_se_cierra_con_escape, prueba_la_linea_en_ejecucion_se_marca_en_el_editor]}
 
 
 def principal(argv):

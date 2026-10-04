@@ -1332,3 +1332,18 @@ Sprint 4, cierre (v0.10.0): RF-ECO-029 y RF-ECO-045; de 378 a 380.
 
 **Revision de la interfaz:** recorrida en un navegador real; se encontro que elegir un programa no
 lo abria en el editor, y se corrigio.
+
+## 2026-10-17 — Rediseno de la interfaz
+
+Releido con capturas en Chromium: cada panel llevaba 8 botones de cabecera (se cortaban en la
+columna derecha), los paneles vacios ocupaban media pantalla, todo el rotulado era del mismo
+naranja y la consola, la pantalla y el camino del dato quedaban fuera de vista bajo un scroll.
+
+**Decisiones:**
+
+- **D-141** — La cabecera es solo el nombre; las acciones raras (mover, separar) van en un menu.
+- **D-142** — La zona inferior se organiza en pestanas (patron conocido, un panel a la vez) en vez
+  de apilar paneles; el pliegue no aplica al panel a la vista.
+- **D-143** — El ambar queda para el estado (accion principal, lampara, linea en ejecucion) y el
+  cian para el foco; el resto es grafito. Sin fuentes externas: el servidor no depende de la red.
+- **D-144** — La linea que se va a ejecutar se marca en el editor con color y con ▶.
