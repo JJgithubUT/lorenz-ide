@@ -197,20 +197,25 @@
   // --- barra de acciones ----------------------------------------------------------------
   (L.modulos = L.modulos || []).push(function () {
     var barra = document.getElementById('acciones');
-    function boton(id, texto, accion, atajo) {
-      var b = L.el('button', { type: 'button', id: 'accion-' + id, texto: texto, onclick: function () { L.atajos.lanzar(accion); } });
+    var grupos = {};
+    function grupo(nombre) {
+      if (!grupos[nombre]) { grupos[nombre] = L.el('span', { class: 'grupo', role: 'group', 'aria-label': nombre }); barra.append(grupos[nombre]); }
+      return grupos[nombre];
+    }
+    function boton(id, texto, accion, nombreGrupo, clase) {
+      var b = L.el('button', { type: 'button', id: 'accion-' + id, class: clase || '', texto: texto, onclick: function () { L.atajos.lanzar(accion); } });
       function titulo() { b.title = L.atajos.nombres[accion] + (L.atajos.de(accion) ? ' (' + L.atajos.de(accion) + ')' : ''); b.setAttribute('aria-keyshortcuts', L.atajos.de(accion) || ''); }
       titulo(); L.on('atajos', titulo);
-      barra.append(b);
+      grupo(nombreGrupo).append(b);
       return b;
     }
-    boton('compilar', 'Compilar', 'compilar');
-    botones.ejecutar = boton('ejecutar', '▶ Ejecutar', 'ejecutar');
-    botones.pausar = boton('pausar', '⏸ Pausar', 'pausar');
-    botones.paso = boton('paso', '⏭ Paso', 'paso');
-    botones.atras = boton('atras', '⏮ Atrás', 'paso-atras');
-    boton('reiniciar', '↺ Reiniciar', 'reiniciar');
-    botones.ruptura = boton('ruptura', '● Ruptura', 'ruptura');
+    boton('compilar', 'Compilar', 'compilar', 'Construir');
+    botones.ejecutar = boton('ejecutar', '▶ Ejecutar', 'ejecutar', 'Ejecución', 'primario');
+    botones.pausar = boton('pausar', '⏸ Pausar', 'pausar', 'Ejecución');
+    botones.paso = boton('paso', '⏭ Paso', 'paso', 'Ejecución');
+    botones.atras = boton('atras', '⏮ Atrás', 'paso-atras', 'Ejecución');
+    boton('reiniciar', '↺ Reiniciar', 'reiniciar', 'Ejecución');
+    botones.ruptura = boton('ruptura', '● Ruptura', 'ruptura', 'Depuración');
     actualizarBotones();
   });
 
@@ -230,7 +235,7 @@
         conmutar.textContent = modo === 'lamparas' ? 'Ver como números' : 'Ver como lámparas';
         conmutar.setAttribute('aria-pressed', modo === 'lamparas' ? 'true' : 'false');
         filas.textContent = ''; banderas.textContent = ''; info.textContent = '';
-        if (!e) { filas.append(L.el('p', { class: 'suave', texto: 'Sin sesión. Pulsa Paso o Ejecutar.' })); return; }
+        if (!e) { filas.append(L.el('p', { class: 'vacio' }, [L.el('strong', { texto: 'Aún no hay ejecución' }), 'Pulsa Paso para avanzar una instrucción, o Ejecutar para correr el programa.'])); return; }
         var previos = {};
         if (sesion.previo) sesion.previo.registros.forEach(function (r) { previos[r.nombre] = r.valor; });
         e.registros.forEach(function (r) {
@@ -238,7 +243,7 @@
           var fila = L.el('div', { class: 'registro' + (cambio ? ' cambio' : ''), role: 'row', 'data-registro': r.nombre });
           fila.append(L.el('span', { class: 'nombre', role: 'rowheader', texto: r.nombre }));
           if (modo === 'lamparas' && r.bits) {
-            var grupo = L.el('span', { class: 'lamparas', role: 'cell' });
+            var grupo = L.el('span', { class: 'lamparas' + (r.bits > 8 ? ' ancho' : ''), role: 'cell' });
             for (var b = r.bits - 1; b >= 0; b--) {
               (function (b) {
                 var enc = ((r.valor >> b) & 1) === 1 && b < 31 || (b >= 31 && Math.floor(r.valor / Math.pow(2, b)) % 2 === 1);
