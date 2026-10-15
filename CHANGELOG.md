@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.10.1 — 2026-10-17 — Rediseno de la interfaz
+
+- Cabeceras de panel limpias (menu «⋯»), barra de acciones agrupada, paleta y tipografia nuevas,
+  zona inferior en pestanas con teclado, estados vacios que orientan.
+- El editor marca la linea que se va a ejecutar; los registros de 16 bits ya no se cortan.
+- Ver `docs/IDE.md`.
+
 ## 0.10.0 — 2026-10-16 — Nucleo en el navegador y borrador de arquitectura
 
 - `crates/lorenz-wasm`: arquitectura, ensamblador y emulador como modulo WebAssembly, con cargador

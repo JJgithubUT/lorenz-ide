@@ -12,9 +12,11 @@
   <strong class="marca">Lorenz</strong>
   <span id="acciones"></span>
   <span class="relleno"></span>
-  <label>Máquina <select id="sel-maquina" aria-label="Arquitectura activa"></select></label>
-  <label>Programa <select id="sel-programa" aria-label="Programa a ejecutar"></select></label>
   <span id="progreso" role="status" aria-live="polite" hidden><span class="giro" aria-hidden="true"></span> <span id="progreso-texto"></span></span>
+  <span class="contexto" role="group" aria-label="Qué se ejecuta">
+    <label>Máquina <select id="sel-maquina" aria-label="Arquitectura activa"></select></label>
+    <label>Programa <select id="sel-programa" aria-label="Programa a ejecutar"></select></label>
+  </span>
 </header>
 <div id="banda-web" role="region" aria-label="Versión web" hidden></div>
 <main id="zonas">
